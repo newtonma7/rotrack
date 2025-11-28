@@ -58,6 +58,3 @@ Thumbs.db
 frontend/.next/
 frontend/out/
 frontend/.vercel/
-
-# Optional: if you want to ignore package-lock.json (usually you should commit it)
-# frontend/package-lock.json
