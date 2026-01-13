@@ -2,7 +2,7 @@
 export const colors = {
   // Primary colors
   primary: {
-    DEFAULT: "#171717",
+    DEFAULT: "#343d46",
     light: "#383838",
     dark: "#0a0a0a",
   },
