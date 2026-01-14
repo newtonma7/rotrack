@@ -1,3 +1,4 @@
+import "./globals.css";
 import { colors } from "./themes";
 
 export default function RootLayout({
