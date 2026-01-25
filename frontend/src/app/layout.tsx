@@ -1,4 +1,5 @@
 import "./globals.css";
+
 import { AuthProvider } from "./context/AuthProvider";
 
 export default function RootLayout({
@@ -8,7 +9,7 @@ export default function RootLayout({
 }) {
   return (
     <html>
-      <body>
+      <body className="bg-primary min-h-screen">
         <AuthProvider>
           {children}
         </AuthProvider>
@@ -16,3 +17,4 @@ export default function RootLayout({
     </html>
   );
 }
+
