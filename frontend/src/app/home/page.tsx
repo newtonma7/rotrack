@@ -1,13 +1,14 @@
 "use client";
 
+import { useAuth } from "../context/AuthProvider";
 import { useState } from "react";
-import { colors } from "../themes";
 
-export default function SignUp() {
+export default function Home() {
+  const { user, loading } = useAuth();
 
   return (
-    <div style={{ backgroundColor: colors.primary.DEFAULT, minHeight: "100vh" }}>
-      <h1>Welcome user</h1>
+    <div>
+      {user ? <h1>Welcome {user?.email}</h1> : <h1>Please sign in</h1>}
     </div>
   );
 }
