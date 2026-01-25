@@ -1,8 +1,6 @@
-import { colors } from "./themes";
-
 export default function LandingPage() {
   return (
-    <div style={{ backgroundColor: colors.primary.DEFAULT, minHeight: "100vh" }}>
+    <div className="min-h-screen bg-primary">
       <h1>Hello World</h1>
     </div>
   );

@@ -1,4 +1,4 @@
-import { colors } from "./themes";
+import "./globals.css";
 
 export default function RootLayout({
   children,
@@ -7,7 +7,8 @@ export default function RootLayout({
 }) {
   return (
     <html>
-      <body style={{ backgroundColor: colors.primary.DEFAULT, minHeight: "100vh" }}>{children}</body>
+      <body className="bg-primary min-h-screen">{children}</body>
     </html>
   );
 }
+
