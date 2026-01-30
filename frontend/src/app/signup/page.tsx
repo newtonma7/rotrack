@@ -1,13 +1,11 @@
-"use client";
+"use client"
+import SignUp from "../components/SignUp";
 
-import { useState } from "react";
-import { colors } from "../themes";
-
-export default function SignUp() {
-
+export default function SignUpPage() {
   return (
-    <div style={{ backgroundColor: colors.primary.DEFAULT, minHeight: "100vh" }}>
-      <h1>Sign Up</h1>
-    </div>
+    <>
+    <SignUp />
+    </>
   );
 }
+

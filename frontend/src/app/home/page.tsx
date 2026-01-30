@@ -1,6 +1,11 @@
 "use client";
 
+import { useAuth } from "../context/AuthProvider";
+import { useState } from "react";
+
+
 export default function LandingPage() {
+  const { user, loading } = useAuth();
   return (
     <div className="min-h-screen w-full bg-landing-gradient-end">
       {/* Hero Section with Gradient Background */}
