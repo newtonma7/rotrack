@@ -18,7 +18,7 @@ export default function LandingPage() {
           
           {/* Main Headline */}
           <h1 className="text-6xl font-bold text-white text-center mb-10 leading-tight">
-            A bold headline that delivers
+            {user ? `Welcome, ${user?.email}, you FUCK!` : "FUCK YOU"}
           </h1>
           
           {/* Call to Action Buttons */}
