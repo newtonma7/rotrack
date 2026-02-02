@@ -6,17 +6,23 @@ import { Activity, Brain, Zap, Calendar, Edit2, Home, BarChart2, Settings, LogOu
 import { Button } from "@/components/ui/button"
 
 // Custom Tooltip Component
-const CustomTooltip = ({ active, payload, label }: any) => {
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: { name: string; value: number; color: string }[];
+  label?: string;
+}
+
+const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     // Filter duplicates - only show visible lines (those with uppercase 'name')
-    const uniquePayload = payload.filter((item: any) => 
+    const uniquePayload = payload.filter((item) => 
       ['Work', 'Stagnant', 'Rot'].includes(item.name)
     );
 
     return (
       <div className="bg-[#1F1414] border border-[#A90C0C] p-2 rounded shadow-md">
         <p className="text-white font-bold mb-1">{label}</p>
-        {uniquePayload.map((entry: any, index: number) => (
+        {uniquePayload.map((entry, index) => (
           <p key={index} style={{ color: entry.color }}>
             {entry.name}: {entry.value}
           </p>
@@ -139,7 +145,7 @@ export default function DashboardPage() {
                 <LineChart data={timelineData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
                   <XAxis dataKey="time" stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}m`} />
+                  <YAxis stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}m`} width={50} dx={-5} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend wrapperStyle={{ color: '#9ca3af' }} />
                   <Line 
