@@ -3,6 +3,14 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@font-face {
+  font-family: "Figtree";
+  src: url("/fonts/Figtree-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
 
   /* Brand Colors */
@@ -59,8 +67,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: "Figtree", sans-serif;
+  --font-mono: "Figtree", monospace;
 
   --color-primary: var(--color-primary);
   --color-primary-light: var(--color-primary-light);
@@ -149,5 +157,6 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: "Figtree", sans-serif;
   }
 }

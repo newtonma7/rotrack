@@ -20,10 +20,10 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
     );
 
     return (
-      <div className="bg-[#1F1414] border border-[#A90C0C] p-2 rounded shadow-md">
+      <div className="bg-[#1F1414] p-2 rounded-lg shadow-md">
         <p className="text-white font-bold mb-1">{label}</p>
         {uniquePayload.map((entry, index) => (
-          <p key={index} style={{ color: entry.color }}>
+          <p key={index} className="text-gray-400">
             {entry.name}: {entry.value}
           </p>
         ))}
@@ -96,7 +96,7 @@ export default function DashboardPage() {
             <Activity className="h-5 w-5 text-landing-gradient-start" />
           </CardHeader>
           <CardContent className="flex-1 flex flex-col justify-end">
-            <div className="text-2xl font-bold text-landing-gradient-start mb-1">72%</div>
+            <div className="text-4xl font-bold text-landing-gradient-start mb-1">72%</div>
             <p className="text-xs text-landing-eyebrow">+2.1% from yesterday</p>
           </CardContent>
         </Card>
@@ -116,7 +116,7 @@ export default function DashboardPage() {
             <Zap className="h-5 w-5 text-landing-gradient-start" />
           </CardHeader>
           <CardContent className="flex-1 flex flex-col justify-end">
-            <div className="text-2xl font-bold text-red-500 mb-1">2h 05m</div>
+            <div className="text-4xl font-bold text-red-500 mb-1">2h 05m</div>
             <p className="text-xs text-landing-eyebrow">15m less than avg</p>
           </CardContent>
         </Card>
@@ -126,7 +126,7 @@ export default function DashboardPage() {
             <Calendar className="h-5 w-5 text-landing-gradient-start" />
           </CardHeader>
           <CardContent className="flex-1 flex flex-col justify-end">
-            <div className="text-2xl font-bold text-landing-gradient-start mb-1">5 Days</div>
+            <div className="text-4xl font-bold text-landing-gradient-start mb-1">5 Days</div>
             <p className="text-xs text-landing-eyebrow">Keep it up!</p>
           </CardContent>
         </Card>
@@ -205,7 +205,7 @@ export default function DashboardPage() {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: '#1F1414', borderColor: '#A90C0C', color: '#fff' }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#1F1414', color: '#fff', borderRadius: '8px', border: 'none' }} itemStyle={{ color: '#fff' }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
