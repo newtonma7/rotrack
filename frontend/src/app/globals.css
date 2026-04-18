@@ -1,8 +1,23 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+/* Figtree at extra weights is loaded via <link> in layout.tsx,
+   because CSS @import rules must precede all other rules and
+   `@import "tailwindcss"` expands inline ahead of this file. */
+
+/* Don't scan markdown (docs, READMEs, design system) for Tailwind classes.
+   Placeholder/wildcard examples in those files (e.g. bg-[var(--rt-*)])
+   would otherwise be emitted as invalid CSS. */
+@source not "../../**/*.md";
+@source not "../../**/*.mdx";
 
 @custom-variant dark (&:is(.dark *));
 
+/* ---------------------------------------------------------------
+   Typography
+   Display: Migha Black  — chunky, characterful wordmark / headlines
+   Body:    Figtree      — clean geometric sans for UI & prose
+   Mono:    Digital-7    — retained for LED clock display
+--------------------------------------------------------------- */
 @font-face {
   font-family: "Figtree";
   src: url("/fonts/Figtree-Regular.otf") format("opentype");
@@ -11,21 +26,52 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "Migha";
+  src: url("/fonts/Migha-Black.otf") format("opentype");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Digital-7";
+  src: url("/fonts/digital-7.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ---------------------------------------------------------------
+   rotrack design tokens
+   Palette: warm cream canvas + CS:GO Asimov orange + deep ink
+--------------------------------------------------------------- */
 :root {
+  /* Rotrack brand */
+  --rt-cream:        #F5F2EC;  /* warm off-white canvas */
+  --rt-cream-soft:   #EFEBE3;  /* slightly deeper panel */
+  --rt-paper:        #FFFFFF;  /* crisp cards */
+  --rt-ink:          #0A0A0A;  /* near-black text */
+  --rt-ink-soft:     #1F1F1F;
+  --rt-ink-muted:    #6B6B6B;
+  --rt-orange:       #EC6B0E;  /* Asimov orange */
+  --rt-orange-deep:  #D4580A;
+  --rt-orange-soft:  #F9C99E;  /* tint for bubbles */
+  --rt-line:         #E5E1D8;  /* hairline dividers */
 
-  /* Brand Colors */
-  --color-primary: #343d46;
-  --color-primary-light: #383838;
-  --color-primary-dark: #0a0a0a;
+  /* Back-compat tokens used elsewhere in the app */
+  --color-primary: var(--rt-ink);
+  --color-primary-light: var(--rt-ink-soft);
+  --color-primary-dark: #000000;
 
-  --color-accent: #0070f3;
-  --color-accent-hover: #0051cc;
+  --color-accent: var(--rt-orange);
+  --color-accent-hover: var(--rt-orange-deep);
 
-  /* Landing Page Specific Colors */
-  --color-landing-gradient-start: #D86F19;
-  --color-landing-gradient-mid: #A90C0C;
-  --color-landing-gradient-end: #1F1414;
-  --color-landing-eyebrow: #9ca3af;
+  --color-landing-gradient-start: var(--rt-cream);
+  --color-landing-gradient-mid: var(--rt-cream-soft);
+  --color-landing-gradient-end: var(--rt-ink);
+  --color-landing-eyebrow: var(--rt-ink-muted);
+
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -61,14 +107,27 @@
 }
 
 @utility bg-hero-gradient {
-  background: linear-gradient(180deg, var(--color-landing-gradient-start) 0%, var(--color-landing-gradient-start) 40%, var(--color-landing-gradient-mid) 76%, var(--color-landing-gradient-end) 100%);
+  background: linear-gradient(180deg, var(--color-landing-gradient-start) 0%, var(--color-landing-gradient-mid) 50%, var(--color-landing-gradient-end) 100%);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "Figtree", sans-serif;
-  --font-mono: "Figtree", monospace;
+  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Migha", "Figtree", sans-serif;
+  --font-mono: "Digital-7", ui-monospace, monospace;
+
+  /* Rotrack palette exposed to tailwind */
+  --color-rt-cream: var(--rt-cream);
+  --color-rt-cream-soft: var(--rt-cream-soft);
+  --color-rt-paper: var(--rt-paper);
+  --color-rt-ink: var(--rt-ink);
+  --color-rt-ink-soft: var(--rt-ink-soft);
+  --color-rt-ink-muted: var(--rt-ink-muted);
+  --color-rt-orange: var(--rt-orange);
+  --color-rt-orange-deep: var(--rt-orange-deep);
+  --color-rt-orange-soft: var(--rt-orange-soft);
+  --color-rt-line: var(--rt-line);
 
   --color-primary: var(--color-primary);
   --color-primary-light: var(--color-primary-light);
@@ -81,6 +140,7 @@
   --color-landing-gradient-mid: var(--color-landing-gradient-mid);
   --color-landing-gradient-end: var(--color-landing-gradient-end);
   --color-landing-eyebrow: var(--color-landing-eyebrow);
+
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -155,8 +215,66 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-    font-family: "Figtree", sans-serif;
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 2rem;
   }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+  }
+  html, body {
+    background: var(--rt-cream);
+    color: var(--rt-ink);
+  }
+  body {
+    font-family: "Figtree", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+  ::selection {
+    background: var(--rt-orange);
+    color: var(--rt-cream);
+  }
+}
+
+/* ---------------------------------------------------------------
+   rotrack landing motion + shape utilities
+--------------------------------------------------------------- */
+@utility font-display {
+  font-family: "Migha", "Figtree", sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+@keyframes rt-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-18px) rotate(3deg); }
+}
+@keyframes rt-float-slow {
+  0%, 100% { transform: translate(0,0) scale(1); }
+  50%      { transform: translate(10px,-22px) scale(1.04); }
+}
+@keyframes rt-rise {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes rt-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@keyframes rt-spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.rt-float        { animation: rt-float 7s ease-in-out infinite; }
+.rt-float-slow   { animation: rt-float-slow 11s ease-in-out infinite; }
+.rt-rise         { animation: rt-rise 900ms cubic-bezier(.2,.7,.2,1) both; }
+.rt-marquee      { animation: rt-marquee 40s linear infinite; }
+.rt-spin-slow    { animation: rt-spin-slow 28s linear infinite; }
+
+.rt-grain {
+  background-image:
+    radial-gradient(rgba(10,10,10,0.05) 1px, transparent 1px);
+  background-size: 3px 3px;
 }
