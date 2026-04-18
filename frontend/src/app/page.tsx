@@ -122,7 +122,7 @@ function Hero({ time }: { time: string }) {
               animationDelay: "80ms",
             }}
           >
-            track the
+            track your
             <br />
             <span className="relative inline-block">
               <span className="relative z-10 text-[var(--rt-orange)]">rot</span>
@@ -130,7 +130,7 @@ function Hero({ time }: { time: string }) {
             </span>
             , own
             <br />
-            the <span className="italic font-normal">clock.</span>
+            the <span className="italic font-normal">clock</span>
           </h1>
 
           <p
@@ -138,7 +138,7 @@ function Hero({ time }: { time: string }) {
             style={{ animationDelay: "160ms" }}
           >
             Rotrack is a playful time-study tool that splits your day into three
-            honest buckets &mdash; <b className="text-[var(--rt-ink)]">rot</b>,{" "}
+            honest buckets: <b className="text-[var(--rt-ink)]">rot</b>,{" "}
             <b className="text-[var(--rt-ink)]">stagnant</b>, and{" "}
             <b className="text-[var(--rt-ink)]">work</b>. Log minutes, watch
             patterns emerge, reclaim the hours you didn&apos;t know you lost.
@@ -316,7 +316,7 @@ function Categories() {
           <h2 className="mt-4 font-display text-[clamp(2.4rem,5.5vw,4.8rem)] leading-[0.95] tracking-tight">
             every minute lands
             <br />
-            in <span className="text-[var(--rt-orange)]">one of three</span> places.
+            in <span className="text-[var(--rt-orange)]">one of three</span> places
           </h2>
           <p className="mt-6 text-[1.05rem] text-[var(--rt-ink-soft)] max-w-xl">
             No 40-category tagging system. No guilt-trips. Just a framework
@@ -371,7 +371,7 @@ function BucketCard({ b, index }: { b: Bucket; index: number }) {
         </div>
 
         <h3 className="mt-6 font-display text-[3rem] leading-none tracking-tight">
-          {b.label}.
+          {b.label}
         </h3>
         <p className={[
           "mt-2 text-[1rem] font-medium",
@@ -469,7 +469,7 @@ function HowItWorks() {
                 </span>
                 <span className="h-px flex-1 bg-[var(--rt-line)]" />
               </div>
-              <h3 className="mt-5 font-display text-[1.6rem] leading-tight tracking-tight">
+              <h3 className="mt-5 text-[1.5rem] leading-tight tracking-[-0.02em] font-semibold">
                 {s.t}
               </h3>
               <p className="mt-3 text-[0.95rem] leading-relaxed text-[var(--rt-ink-soft)]">
