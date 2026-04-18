@@ -29,8 +29,11 @@ export default function LandingPage() {
 
   return (
     <main className="min-h-screen w-full bg-[var(--rt-cream)] text-[var(--rt-ink)] overflow-x-clip">
-      <Nav />
-      <Hero time={time} />
+      {/* viewport 1: nav + hero share a single screen */}
+      <div className="min-h-svh flex flex-col">
+        <Nav />
+        <Hero time={time} />
+      </div>
       <Categories />
       <HowItWorks />
       <FinalCta />
@@ -102,7 +105,7 @@ function ArrowRight() {
 /* ============================================================ */
 function Hero({ time }: { time: string }) {
   return (
-    <section className="relative pt-4 md:pt-6 pb-20 md:pb-28">
+    <section className="relative flex-1 flex items-center py-10 md:py-12">
       {/* decorative bubbles — kept off the headline reading path */}
       <Bubble className="left-[8%] bottom-[-2%] h-16 w-16 bg-[var(--rt-orange)] rt-float-slow" />
       <Bubble className="left-[2%] bottom-[38%] h-3 w-3 bg-[var(--rt-ink)] rt-float" />
@@ -113,7 +116,7 @@ function Hero({ time }: { time: string }) {
 
       <div className="mx-auto max-w-[1400px] px-6 md:px-10 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-6 items-center">
         {/* left — copy */}
-        <div className="lg:col-span-7 relative z-10">
+        <div className="lg:col-span-7 lg:self-start lg:pt-2 relative z-10">
           <h1
             className="rt-rise text-[clamp(3rem,7.5vw,6.8rem)] leading-[0.95] tracking-[-0.035em]"
             style={{
@@ -166,7 +169,7 @@ function Hero({ time }: { time: string }) {
         </div>
 
         {/* right — graphic panel */}
-        <div className="lg:col-span-5 relative">
+        <div className="lg:col-span-5 relative lg:-mr-4 xl:-mr-12">
           <HeroGraphic time={time} />
         </div>
       </div>
@@ -209,7 +212,7 @@ function HeroGraphic({ time }: { time: string }) {
       </div>
 
       {/* floating clock card */}
-      <div className="absolute -left-6 sm:-left-10 top-6 rotate-[-4deg] rt-float">
+      <div className="absolute left-8 sm:left-16 top-6 rotate-[-4deg] rt-float">
         <div className="rounded-2xl bg-[var(--rt-paper)] border border-[var(--rt-line)] shadow-[0_20px_50px_-20px_rgba(10,10,10,0.35)] p-4 w-[260px]">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[0.7rem] uppercase tracking-widest text-[var(--rt-ink-muted)]">right now</span>
@@ -230,7 +233,7 @@ function HeroGraphic({ time }: { time: string }) {
       </div>
 
       {/* floating bucket chip */}
-      <div className="absolute -right-4 bottom-16 rotate-[5deg] rt-float-slow">
+      <div className="absolute right-0 sm:right-[-28px] bottom-16 rotate-[5deg] rt-float-slow">
         <div className="rounded-2xl bg-[var(--rt-ink)] text-[var(--rt-cream)] p-4 w-[210px] shadow-[0_20px_50px_-20px_rgba(10,10,10,0.55)]">
           <div className="flex items-center justify-between">
             <span className="text-[0.7rem] uppercase tracking-widest opacity-70">today&rsquo;s rot</span>
@@ -243,7 +246,7 @@ function HeroGraphic({ time }: { time: string }) {
       </div>
 
       {/* orbiting shape */}
-      <div className="absolute -top-6 right-10 h-20 w-20 rt-spin-slow">
+      <div className="absolute -top-6 right-6 h-20 w-20 rt-spin-slow">
         <div className="h-full w-full rounded-full border-2 border-[var(--rt-ink)] border-dashed" />
         <span className="absolute -top-2 left-1/2 -translate-x-1/2 h-4 w-4 rounded-full bg-[var(--rt-orange)]" />
       </div>
@@ -299,7 +302,7 @@ function Categories() {
   return (
     <section
       id="categories"
-      className="relative py-28 md:py-36 bg-[var(--rt-paper)] border-y border-[var(--rt-line)] overflow-hidden"
+      className="relative min-h-svh flex items-center py-24 md:py-28 bg-[var(--rt-paper)] border-y border-[var(--rt-line)] overflow-hidden"
     >
       <div className="absolute inset-0 rt-grain opacity-30 pointer-events-none" />
       <Bubble className="left-[-40px] top-20 h-40 w-40 bg-[var(--rt-orange-soft)]/60 rt-float-slow" />
@@ -430,7 +433,7 @@ function HowItWorks() {
   ];
 
   return (
-    <section id="how" className="relative py-28 md:py-36 bg-[var(--rt-cream)] overflow-hidden">
+    <section id="how" className="relative min-h-svh flex items-center py-24 md:py-28 bg-[var(--rt-cream)] overflow-hidden">
       <div className="absolute inset-0 rt-grain opacity-20 pointer-events-none" />
       <Bubble className="left-[-60px] top-[18%] h-48 w-48 border-2 border-[var(--rt-ink)]/10 rt-float-slow" />
       <Bubble className="right-[6%] top-[12%] h-4 w-4 bg-[var(--rt-orange)] rt-float" />
@@ -488,7 +491,7 @@ function HowItWorks() {
 /* ============================================================ */
 function FinalCta() {
   return (
-    <section className="relative py-28 md:py-36 overflow-hidden">
+    <section className="relative min-h-svh flex items-center py-24 md:py-28 overflow-hidden">
       <Bubble className="left-[10%] top-10 h-10 w-10 bg-[var(--rt-orange)] rt-float" />
       <Bubble className="right-[8%] bottom-16 h-28 w-28 border-2 border-[var(--rt-ink)] bg-transparent rt-float-slow" />
       <Bubble className="left-[48%] bottom-4 h-4 w-4 bg-[var(--rt-ink)]" />
