@@ -139,7 +139,7 @@ The application uses Supabase PostgreSQL. Schema leverages Supabase Auth for use
 
 - `id` (UUID, primary key, default gen_random_uuid())
 - `user_id` (UUID, foreign key to users.id, NOT NULL)
-- `activity_type` (enum: 'ROT', 'STAGNANT', 'WORKING', NOT NULL)
+- `activity_type` (enum: 'ROT', 'WORK', NOT NULL)
 - `start_time` (timestamp, NOT NULL)
 - `end_time` (timestamp, nullable for active sessions)
 - `duration_minutes` (integer, calculated)
@@ -286,7 +286,7 @@ Error responses:
 **Tracker Page** (`app/tracker/page.tsx`)
 
 - Main time tracking interface
-- Three activity type buttons (ROT, Stagnant, Working)
+- Two activity type buttons (ROT, Work)
 - Active timer display
 - Recent entries list
 - Edit/delete functionality

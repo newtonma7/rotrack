@@ -185,10 +185,10 @@ page background.
 - Lowercase headlines with one confident full-stop per line.
 - Short. Honest. A little dry. Never motivational-poster.
 - Example good copy: *"stop guessing where your hours go."*,
-  *"three taps. one honest picture."*, *"every minute lands in one of
-  three places."*
-- Label the three buckets consistently: **rot**, **stagnant**, **work**.
-  Capitalize only as section headings.
+  *"two taps. one honest picture."*, *"every minute lands in one of
+  two places."*
+- Label the two buckets consistently: **rot** and **work**.
+  If not actively working, time defaults to rot. Capitalize only as section headings.
 
 ---
 

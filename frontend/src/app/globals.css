@@ -67,30 +67,25 @@
   --color-accent: var(--rt-orange);
   --color-accent-hover: var(--rt-orange-deep);
 
-  --color-landing-gradient-start: var(--rt-cream);
-  --color-landing-gradient-mid: var(--rt-cream-soft);
-  --color-landing-gradient-end: var(--rt-ink);
-  --color-landing-eyebrow: var(--rt-ink-muted);
-
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --background: var(--rt-cream);
+  --foreground: var(--rt-ink);
+  --card: var(--rt-paper);
+  --card-foreground: var(--rt-ink);
+  --popover: var(--rt-paper);
+  --popover-foreground: var(--rt-ink);
+  --primary: var(--rt-orange);
+  --primary-foreground: var(--rt-cream);
+  --secondary: var(--rt-cream-soft);
+  --secondary-foreground: var(--rt-ink);
+  --muted: var(--rt-cream-soft);
+  --muted-foreground: var(--rt-ink-muted);
+  --accent: var(--rt-cream-soft);
+  --accent-foreground: var(--rt-ink);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: var(--rt-line);
+  --input: var(--rt-line);
+  --ring: var(--rt-orange);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -104,10 +99,6 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-}
-
-@utility bg-hero-gradient {
-  background: linear-gradient(180deg, var(--color-landing-gradient-start) 0%, var(--color-landing-gradient-mid) 50%, var(--color-landing-gradient-end) 100%);
 }
 
 @theme inline {
@@ -135,11 +126,6 @@
 
   --color-accent: var(--color-accent);
   --color-accent-hover: var(--color-accent-hover);
-
-  --color-landing-gradient-start: var(--color-landing-gradient-start);
-  --color-landing-gradient-mid: var(--color-landing-gradient-mid);
-  --color-landing-gradient-end: var(--color-landing-gradient-end);
-  --color-landing-eyebrow: var(--color-landing-eyebrow);
 
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);

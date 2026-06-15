@@ -1,7 +1,13 @@
 "use client";
+
+import Link from "next/link";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function SignIn() {
   const router = useRouter();
@@ -10,63 +16,72 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const handleSignIn = async (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
-      password, 
+      password,
     });
     setLoading(false);
     if (error) {
       setMessage(error.message);
     } else {
-      router.push("/home");
+      router.push("/");
     }
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    setMessage("");
-  };
-
   return (
-    <div className="max-w-md mx-auto mt-16 p-6 bg-white rounded shadow">
-      <h2 className="text-2xl mb-4 text-black">Sign in</h2>
-      <form>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full mb-2 p-2 border rounded text-black"
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full mb-2 p-2 border rounded text-black"
-        />
-
-        <button
-          type="button"
-          onClick={handleSignIn}
-          disabled={loading}
-          className="flex-1 p-2 bg-blue-500 text-white rounded text-black"
-        >
-          Sign In
-        </button>
-      </form>
-
-      <button
-        onClick={handleSignOut}
-        className="mt-4 text-sm text-gray-600 underline text-black"
-      >
-        Sign out
-      </button>
-
-      {message && <p className="mt-4 text-center text-black">{message}</p>}
+    <div className="min-h-screen bg-[var(--rt-cream)] flex flex-col items-center justify-center px-6 py-16">
+      <Link href="/" className="font-display text-2xl text-[var(--rt-ink)] mb-8 hover:text-[var(--rt-orange)] transition-colors">
+        rotrack
+      </Link>
+      <Card className="w-full max-w-md border-[var(--rt-line)] bg-[var(--rt-paper)] shadow-[0_20px_50px_-20px_rgba(10,10,10,0.15)]">
+        <CardHeader>
+          <CardTitle className="font-display text-2xl">Sign in</CardTitle>
+          <CardDescription className="text-[var(--rt-ink-muted)]">
+            Welcome back. Pick up where you left off.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSignIn} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <Button type="submit" disabled={loading} className="w-full rounded-full">
+              {loading ? "Signing in..." : "Sign in"}
+            </Button>
+          </form>
+          <p className="mt-6 text-center text-sm text-[var(--rt-ink-muted)]">
+            No account?{" "}
+            <Link href="/signup" className="text-[var(--rt-orange)] hover:underline">
+              Sign up
+            </Link>
+          </p>
+          {message && (
+            <p className="mt-4 text-center text-sm text-[var(--rt-ink-soft)]">{message}</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

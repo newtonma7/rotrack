@@ -56,9 +56,8 @@ function Nav() {
             </span>
           </Link>
           <ul className="hidden md:flex items-center gap-8 text-[0.9rem] text-[var(--rt-ink-soft)]">
-            <li><a href="#categories" className="hover:text-[var(--rt-orange)] transition-colors">The three</a></li>
+            <li><a href="#categories" className="hover:text-[var(--rt-orange)] transition-colors">The two</a></li>
             <li><a href="#how" className="hover:text-[var(--rt-orange)] transition-colors">How it works</a></li>
-            <li><Link href="/aboutus" className="hover:text-[var(--rt-orange)] transition-colors">About</Link></li>
           </ul>
           <div className="flex items-center gap-1.5">
             <Link
@@ -140,11 +139,11 @@ function Hero({ time }: { time: string }) {
             className="rt-rise mt-8 max-w-xl text-[1.05rem] md:text-[1.15rem] leading-relaxed text-[var(--rt-ink-soft)]"
             style={{ animationDelay: "160ms" }}
           >
-            Rotrack is a playful time-study tool that splits your day into three
-            honest buckets: <b className="text-[var(--rt-ink)]">rot</b>,{" "}
-            <b className="text-[var(--rt-ink)]">stagnant</b>, and{" "}
-            <b className="text-[var(--rt-ink)]">work</b>. Log minutes, watch
-            patterns emerge, reclaim the hours you didn&apos;t know you lost.
+            Rotrack is a playful time-study tool that splits your day into two
+            honest buckets: <b className="text-[var(--rt-ink)]">rot</b> and{" "}
+            <b className="text-[var(--rt-ink)]">work</b>. If you&apos;re not
+            actively working, you&apos;re rotting. Log minutes, watch patterns
+            emerge, reclaim the hours you didn&apos;t know you lost.
           </p>
 
           <div
@@ -267,7 +266,7 @@ function Bubble({ className = "" }: { className?: string }) {
 /*  CATEGORIES                                                   */
 /* ============================================================ */
 type Bucket = {
-  key: "rot" | "stagnant" | "work";
+  key: "rot" | "work";
   label: string;
   tagline: string;
   body: string;
@@ -279,15 +278,8 @@ const BUCKETS: Bucket[] = [
     key: "rot",
     label: "Rot",
     tagline: "The scroll. The spiral.",
-    body: "Time that quietly disappears. Autoplay feeds, 2 a.m. reddit, video essays you won't remember. Log it without guilt &mdash; just see it.",
+    body: "Time that quietly disappears. Autoplay feeds, 2 a.m. reddit, tab-flipping, waiting-to-start. If you&apos;re not in active work, it&apos;s rot. Log it without guilt &mdash; just see it.",
     examples: ["tiktok", "reddit hole", "youtube autoplay", "doomscroll"],
-  },
-  {
-    key: "stagnant",
-    label: "Stagnant",
-    tagline: "Busy, but not moving.",
-    body: "The in-between. Tab-flipping, half-watching, waiting-to-start. Productive-adjacent motion that isn't really going anywhere.",
-    examples: ["email triage", "tab shuffle", "\u201cresearch\u201d", "fake planning"],
   },
   {
     key: "work",
@@ -314,12 +306,12 @@ function Categories() {
       <div className="mx-auto max-w-[1400px] px-6 md:px-10">
         <div className="max-w-3xl">
           <span className="inline-block text-[0.8rem] uppercase tracking-[0.2em] text-[var(--rt-orange)] font-medium">
-            &sect; 01 &mdash; the three buckets
+            &sect; 01 &mdash; the two buckets
           </span>
           <h2 className="mt-4 font-display text-[clamp(2.4rem,5.5vw,4.8rem)] leading-[0.95] tracking-tight">
             every minute lands
             <br />
-            in <span className="text-[var(--rt-orange)]">one of three</span> places
+            in <span className="text-[var(--rt-orange)]">one of two</span> places
           </h2>
           <p className="mt-6 text-[1.05rem] text-[var(--rt-ink-soft)] max-w-xl">
             No 40-category tagging system. No guilt-trips. Just a framework
@@ -327,7 +319,7 @@ function Categories() {
           </p>
         </div>
 
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl">
           {BUCKETS.map((b, i) => (
             <BucketCard key={b.key} b={b} index={i} />
           ))}
@@ -354,7 +346,6 @@ function BucketCard({ b, index }: { b: Bucket; index: number }) {
         className={[
           "absolute -right-10 -top-10 h-40 w-40 rounded-full transition-transform duration-700 group-hover:scale-110",
           b.key === "rot" && "bg-[var(--rt-orange)]",
-          b.key === "stagnant" && "bg-[var(--rt-orange-soft)]",
           b.key === "work" && "bg-[var(--rt-orange)]/90",
         ].filter(Boolean).join(" ")}
       />
@@ -423,7 +414,7 @@ function HowItWorks() {
     {
       n: "02",
       t: "Let the week shape up",
-      d: "Rotrack quietly stitches your taps into a week-view. Orange for rot, soft for stagnant, ink for work. Patterns surface on their own.",
+      d: "Rotrack quietly stitches your taps into a week-view. Orange for rot, ink for work. Patterns surface on their own.",
     },
     {
       n: "03",
@@ -447,7 +438,7 @@ function HowItWorks() {
               &sect; 02 &mdash; how it works
             </span>
             <h2 className="mt-4 font-display text-[clamp(2.4rem,5.5vw,4.8rem)] leading-[0.95] tracking-tight">
-              three taps. one honest picture.
+              two taps. one honest picture.
             </h2>
           </div>
           <p className="text-[1rem] text-[var(--rt-ink-soft)] max-w-sm">
@@ -565,7 +556,6 @@ function Footer() {
           <span className="text-[0.85rem]">&mdash; track the rot.</span>
         </div>
         <div className="text-[0.85rem] text-[var(--rt-ink-muted)] flex items-center gap-5">
-          <Link href="/aboutus" className="hover:text-[var(--rt-orange)]">About</Link>
           <Link href="/signup" className="hover:text-[var(--rt-orange)]">Sign up</Link>
           <span>&copy; {new Date().getFullYear()}</span>
         </div>
