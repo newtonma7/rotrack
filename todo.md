@@ -31,6 +31,27 @@ You are an expert pair-programming AI and senior full-stack architect. Your goal
 * If the user leaves the app (closes tab, minimizes, navigates away), the active timer MUST stop.
 * Implemented via `usePageVisibilityStop` — `visibilitychange` + `fetch(..., { keepalive: true })` to the stop endpoint.
 
+# Development Standards
+
+*Persistent process rules also live in [`.cursor/rules/rotrack-dev-standards.mdc`](.cursor/rules/rotrack-dev-standards.mdc).*
+
+## Learning-mode comments
+
+The primary developer is learning the stack. When writing or changing code, add **teachable inline comments** so each file explains itself:
+
+1. **File header** (2–5 lines): purpose, layer (frontend / API / DB), and main dependencies.
+2. **Block comments** before non-obvious logic: auth, JWT → API, hooks, RLS, timer/auto-stop, enums, state/effects.
+3. Explain **why** and **what breaks if wrong** — not restatements of obvious syntax.
+4. Trace **data flow** across boundaries: `Browser → Next.js → Spring Boot → Supabase Postgres`.
+5. Skip comments on trivial layout or boilerplate shadcn usage.
+
+## Phase gates (verify before advancing)
+
+- **No phase is complete** until that phase's **Exit criteria** below are checked and proof is recorded.
+- **Proof format** (append under the phase): commands run, HTTP status/body snippets, routes clicked, or known blockers.
+- Before starting phase *N+1*, confirm phase *N* exit criteria are all `[x]` or explicitly deferred with reason.
+- Every finished task should include: learning comments in touched files + verification from the current phase exit list.
+
 ---
 
 # Progress Summary
@@ -75,6 +96,17 @@ Reference: [`arch.plan.md`](arch.plan.md) — sections *Implementation Approach*
   - Removed unused Three.js dependencies
   - Removed About links from landing nav/footer
 
+**Phase 0 exit criteria** *(retroactive — confirm if revisiting)*
+
+- [x] No `stagnant` / three-bucket references in app code or design docs
+- [x] `npm run build` passes in `frontend/`
+- [x] Routes: `/`, `/signin`, `/signup`, `/dashboard`, `/tracker` (no `/home`, `/timing`, `/aboutus`)
+- [ ] Learning comments added to key files touched in Phase 0 (ongoing as we revisit code)
+
+**Proof log:**
+
+- _(add notes when re-verifying)_
+
 ---
 
 ## Phase 1: Backend & Database Genesis — SCAFFOLDED
@@ -87,6 +119,18 @@ Reference: [`arch.plan.md`](arch.plan.md) — sections *Implementation Approach*
 - [x] **Task 1.3: Core API Endpoints (MVP subset)**
   - `POST /time-entries/start`, `PUT /time-entries/{id}/stop`, `PUT /time-entries/active/stop`
   - `GET /time-entries/active`, `GET /dashboard/stats`, `GET /health`
+
+**Phase 1 exit criteria**
+
+- [x] Migration SQL exists at `database/migrations/001_initial_schema.sql`
+- [x] Spring Boot project compiles (when Java 21 + Maven available)
+- [ ] Migration **applied** to Supabase dev project
+- [ ] `GET http://localhost:8080/api/v1/health` returns `{"status":"ok"}` with backend running
+- [ ] Learning comments on `SecurityConfig`, `TimeEntryService`, and controllers explain JWT + session flow
+
+**Proof log:**
+
+- _(fill after Phase 3 backend wiring)_
 
 ---
 
@@ -103,6 +147,18 @@ Reference: [`arch.plan.md`](arch.plan.md) — sections *Implementation Approach*
   - `frontend/src/hooks/usePageVisibilityStop.ts`
 - [x] **Task 2.4: Dashboard Wiring**
   - `/dashboard` fetches from `GET /dashboard/stats` with graceful empty-state fallback
+
+**Phase 2 exit criteria**
+
+- [x] `frontend/src/lib/api.ts`, hooks, `/tracker`, `/dashboard` exist
+- [x] `npm run build` passes
+- [ ] Live API connected: start/stop session updates dashboard stats (depends on Phase 3)
+- [ ] Auto-stop observed in Network tab when tab hidden
+- [ ] Learning comments on `api.ts`, `useTimeTracking`, `usePageVisibilityStop`, `ActiveTracker`
+
+**Proof log:**
+
+- _(fill after Phase 3 E2E smoke test)_
 
 ---
 
@@ -124,6 +180,27 @@ Reference: [`arch.plan.md`](arch.plan.md) — sections *Implementation Approach*
   - Sign up → sign in → start Work session on `/tracker` → stop → see stats on `/dashboard`
   - Verify auto-stop fires when tab is hidden
   - Fix any CORS, JWT issuer, or enum mapping issues discovered
+
+**Phase 3 exit criteria** *(required before Phase 4)*
+
+- [ ] `001_initial_schema.sql` applied; new signup creates `public.users` row
+- [ ] RLS verified: user A cannot read user B's `time_entries`
+- [ ] Backend runs locally with valid env; health check passes
+- [ ] Frontend `.env.local` has Supabase + `NEXT_PUBLIC_API_URL`
+- [ ] E2E: sign up → sign in → `/tracker` start WORK → stop → `/dashboard` shows non-empty stats
+- [ ] Tab hide triggers stop request (`keepalive` PUT) with 2xx response
+- [ ] Phase 1 & 2 exit criteria marked complete with proof logs below
+- [ ] Learning comments added/updated on integration touchpoints (`api.ts`, auth layouts, backend service layer)
+
+**Proof log:**
+
+```
+# Example — replace with real output
+# curl http://localhost:8080/api/v1/health
+# npm run build (frontend)
+# mvn spring-boot:run (backend)
+# Steps: ...
+```
 
 ---
 
@@ -147,6 +224,19 @@ Reference: [`arch.plan.md`](arch.plan.md) — sections *Implementation Approach*
   - Query param support on `/dashboard/stats` (`startDate`, `endDate`, `granularity`)
 - [ ] **Task 4.5: API Documentation**
   - SpringDoc OpenAPI (Swagger UI) per arch.plan § Technology Stack
+
+**Phase 4 exit criteria** *(required before Phase 5)*
+
+- [ ] `user_preferences` migration applied; CRUD works via API
+- [ ] Full time-entry CRUD tested with Postman/curl (list, create, update, delete)
+- [ ] Profile + preferences endpoints return/update correct user data
+- [ ] `/dashboard/summary` and `/dashboard/trends` return expected shapes for frontend
+- [ ] Swagger UI loads and documents all public endpoints
+- [ ] Learning comments on new entities, controllers, and DTOs
+
+**Proof log:**
+
+- _(curl examples, Swagger URL, migration version)_
 
 ---
 
@@ -172,6 +262,19 @@ Reference: [`arch.plan.md`](arch.plan.md) — sections *Implementation Approach*
   - Evaluate `@supabase/ssr` + middleware for cookie-based session
   - Email confirmation UX polish
 
+**Phase 5 exit criteria** *(required before Phase 6)*
+
+- [ ] Dashboard and tracker decomposed into named components per arch.plan hierarchy
+- [ ] React Query (or SWR) caches dashboard + active session; no duplicate fetches on navigation
+- [ ] `/settings` edits profile/preferences end-to-end
+- [ ] Forms use Zod validation with clear error messages
+- [ ] `npm run build` passes; manual UX pass on tracker, dashboard, settings, auth
+- [ ] Learning comments on extracted components and query hooks
+
+**Proof log:**
+
+- _(component list, settings flow steps)_
+
 ---
 
 ## Phase 6: Future Product Features
@@ -191,6 +294,17 @@ Reference: [`arch.plan.md`](arch.plan.md) — sections *Implementation Approach*
   - Export (CSV, PDF)
   - Dashboard date-range picker wired to API query params
 
+**Phase 6 exit criteria** *(required before Phase 7)*
+
+- [ ] Each shipped feature (goals / groups / analytics) has migration + API + UI + manual test script
+- [ ] Study group stats do not leak individual entries (privacy check documented)
+- [ ] Export produces valid CSV/PDF for sample account
+- [ ] Learning comments on new domain logic (goals, aggregation, export)
+
+**Proof log:**
+
+- _(feature checklist per 6.1–6.3)_
+
 ---
 
 ## Phase 7: Testing
@@ -208,6 +322,18 @@ Reference: [`arch.plan.md`](arch.plan.md) — sections *Implementation Approach*
   - Playwright or Cypress: sign-in → track → dashboard flow
 - [ ] **Task 7.4: Migration Tests**
   - Verify schema constraints, foreign keys, RLS policy behavior
+
+**Phase 7 exit criteria** *(required before Phase 8)*
+
+- [ ] Backend test suite passes (`mvn test`)
+- [ ] Frontend unit tests pass (`npm test` or documented test command)
+- [ ] CI runs lint + tests on PR (local dry-run acceptable before pipeline exists)
+- [ ] RLS / constraint tests documented or automated
+- [ ] Optional E2E: sign-in → track → dashboard green in Playwright/Cypress
+
+**Proof log:**
+
+- _(test commands + pass counts)_
 
 ---
 
@@ -229,6 +355,18 @@ Reference: [`arch.plan.md`](arch.plan.md) — sections *Implementation Approach*
   - HTTPS enforcement, rate limiting, secrets management
   - CORS locked to production frontend domain
 
+**Phase 8 exit criteria** *(required before Phase 9)*
+
+- [ ] Staging URLs live for frontend + backend; health check public
+- [ ] Production env vars set (no secrets in repo)
+- [ ] CI/CD deploys staging on merge; rollback path documented
+- [ ] Smoke test passes against staging (same script as Phase 3 E2E)
+- [ ] HTTPS + CORS verified from production frontend origin
+
+**Proof log:**
+
+- _(staging URLs, deploy command, smoke result)_
+
 ---
 
 ## Phase 9: Documentation & Observability
@@ -246,6 +384,18 @@ Reference: [`arch.plan.md`](arch.plan.md) — sections *Implementation Approach*
 - [ ] **Task 9.4: User Guide**
   - Short end-user doc: two buckets, tracker, dashboard, auto-stop behavior
 
+**Phase 9 exit criteria** *(project MVP documentation complete)*
+
+- [ ] Root `README.md` documents full local setup (frontend + backend + Supabase)
+- [ ] Swagger/OpenAPI published; new dev can call APIs without reading source
+- [ ] Error tracking or structured logs confirmed in staging/prod
+- [ ] User guide covers two-bucket model, tracker, dashboard, auto-stop
+- [ ] `todo.md` progress table reflects final phase status with proof links
+
+**Proof log:**
+
+- _(README sections, doc URLs)_
+
 ---
 
-**Cursor:** Phases 0–2 are implemented in code. Start with **Phase 3** (apply migration, configure env, run end-to-end smoke test) unless directed otherwise.
+**Cursor:** Phases 0–2 are implemented in code. Follow **Development Standards** (learning comments + phase gates). Start with **Phase 3** unless directed otherwise. Do not advance past a phase until its exit criteria are checked and proof is logged.

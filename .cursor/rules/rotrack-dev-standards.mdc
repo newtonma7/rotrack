@@ -1,0 +1,47 @@
+---
+description: rotrack learning-mode comments and phase-gate verification before advancing
+alwaysApply: true
+---
+
+# rotrack Development Standards
+
+The developer is learning the stack. Prioritize **teachable, inline comments** over minimal documentation.
+
+## Learning-mode comments (required on new/changed code)
+
+When adding or materially changing code in `frontend/`, `backend/`, or `database/`:
+
+1. **File header** (2–5 lines): what this file does, which layer it belongs to, and what it talks to (e.g. Supabase, Spring API, Postgres).
+2. **Block comments** before non-trivial logic: auth, JWT forwarding, hooks, API calls, RLS assumptions, timer/auto-stop, enum mapping, React state/effects.
+3. **Explain why**, not just what — e.g. why `keepalive`, why layout guards vs middleware, why server calculates duration.
+4. **Name the data flow** when crossing boundaries: `Browser → Next.js → Spring Boot → Postgres`.
+5. **Avoid noise** on obvious JSX layout or standard shadcn props — comment concepts, not every line.
+
+### TypeScript example
+
+```typescript
+// Fetch the Supabase session JWT on every API call — tokens expire and refresh in the background.
+// Spring Boot validates this Bearer token against Supabase's JWKS (public keys).
+const token = await getAuthToken();
+```
+
+### Java example
+
+```java
+// Stop is idempotent from the client's view: we set end_time here so duration is computed
+// server-side (single source of truth) rather than trusting the browser clock.
+entry.setEndTime(Instant.now());
+```
+
+## Phase gates (no advance without proof)
+
+- Do **not** mark a phase or task complete in `todo.md` until its **Exit criteria** are satisfied.
+- Before closing a phase: run builds/tests listed in exit criteria, execute smoke steps, note proof in the task (commands, routes, sample responses).
+- If exit criteria fail, fix or document blockers — do not start the next phase's implementation work.
+- Cross-reference: [`todo.md`](../todo.md) § Development Standards and per-phase Exit criteria.
+
+## When finishing a task
+
+1. Add/update learning comments in touched files.
+2. Run phase-appropriate verification (`npm run build`, API health check, manual smoke path).
+3. Update `todo.md` checkboxes and append brief proof under the phase exit criteria.
