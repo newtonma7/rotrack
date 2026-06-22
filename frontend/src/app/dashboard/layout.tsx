@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * Route guard for /dashboard — requires a Supabase session.
+ *
+ * Landing (/) stays public; only app routes like dashboard and tracker are gated.
+ * Uses client-side AuthProvider because we have not adopted @supabase/ssr yet.
+ * Flow: no user after load → redirect to /signin (JWT needed for API calls anyway).
+ */
+
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthProvider";

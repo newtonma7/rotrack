@@ -1,7 +1,15 @@
 "use client";
 
+/**
+ * Tracker route shell — thin page wrapper around ActiveTracker.
+ *
+ * Auth is enforced in tracker/layout.tsx (not here).
+ * This file only provides nav chrome; timer logic is in components/tracker/ActiveTracker.tsx.
+ */
+
 import Link from "next/link";
 import { ActiveTracker } from "@/components/tracker/ActiveTracker";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 
 export default function TrackerPage() {
   return (
@@ -11,12 +19,15 @@ export default function TrackerPage() {
           <Link href="/" className="font-display text-2xl hover:text-[var(--rt-orange)] transition-colors">
             rotrack
           </Link>
-          <Link
-            href="/dashboard"
-            className="text-sm text-[var(--rt-ink-muted)] hover:text-[var(--rt-orange)] transition-colors"
-          >
-            Dashboard
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/dashboard"
+              className="text-sm text-[var(--rt-ink-muted)] hover:text-[var(--rt-orange)] transition-colors"
+            >
+              Dashboard
+            </Link>
+            <SignOutButton className="text-sm text-[var(--rt-ink-muted)] hover:text-red-600 px-2 h-auto" />
+          </div>
         </div>
       </header>
       <main className="px-6 py-16">

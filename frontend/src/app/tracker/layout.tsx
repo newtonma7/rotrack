@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Route guard for /tracker — same pattern as dashboard/layout.tsx.
+ * User must be signed in so api.ts can attach a Bearer token to Spring Boot requests.
+ */
+
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthProvider";

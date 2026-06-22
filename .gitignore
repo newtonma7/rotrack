@@ -58,3 +58,5 @@ Thumbs.db
 frontend/.next/
 frontend/out/
 frontend/.vercel/
+
+backend/secrets/*

@@ -1,5 +1,17 @@
 "use client";
 
+/**
+ * Main tracker UI — the core product surface on `/tracker`.
+ *
+ * Two-bucket rule: only Work and Rot buttons. If you're not in Work, you're in Rot.
+ * This component is presentational; all timer/API logic lives in useTimeTracking().
+ *
+ * UX rules enforced here:
+ * - Only one bucket active at a time (other button disabled while session runs)
+ * - Stop button visible only when a session is open
+ * - Digital-7 font on elapsed time (matches landing hero clock aesthetic)
+ */
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +43,7 @@ export function ActiveTracker() {
             </div>
           </div>
 
+          {/* Starting a bucket calls the API immediately — no separate "confirm" step. */}
           <div className="grid grid-cols-2 gap-4">
             <ActivityButton
               label="Work"
@@ -68,7 +81,7 @@ export function ActiveTracker() {
       </Card>
 
       <p className="text-center text-sm text-[var(--rt-ink-muted)]">
-        Sessions auto-stop when you leave the tab.{" "}
+        Sessions keep running when you switch tabs; they auto-stop when you close this tab.{" "}
         <Link href="/dashboard" className="text-[var(--rt-orange)] hover:underline">
           View dashboard
         </Link>

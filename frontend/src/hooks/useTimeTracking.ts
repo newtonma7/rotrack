@@ -1,14 +1,26 @@
 "use client";
 
+/**
+ * Tracker state hook — orchestrates active session UI + API calls.
+ *
+ * Data flow on mount:  GET /time-entries/active → restore timer if session exists
+ * Data flow on start:  POST /time-entries/start → store entry, begin local tick
+ * Data flow on stop:   PUT /time-entries/{id}/stop → clear entry
+ *
+ * The elapsed display is computed client-side for smooth 1s updates; authoritative
+ * duration is only written when the backend stops the session.
+ */
+
 import { useCallback, useEffect, useState } from "react";
 import {
   getActiveSession,
   startSession,
   stopSession,
 } from "@/lib/api";
-import { usePageVisibilityStop } from "@/hooks/usePageVisibilityStop";
+import { usePageUnloadStop } from "@/hooks/usePageUnloadStop";
 import type { ActivityType, TimeEntry } from "@/types/time-entry";
 
+/** Formats milliseconds since startTime as HH:MM:SS for the Digital-7 display. */
 function formatElapsed(startTime: string): string {
   const start = new Date(startTime).getTime();
   const now = Date.now();
@@ -27,7 +39,8 @@ export function useTimeTracking() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  usePageVisibilityStop(activeEntry?.id ?? null);
+  // Register auto-stop on tab close (not tab switch) whenever we have an open session id.
+  usePageUnloadStop(activeEntry?.id ?? null);
 
   const refreshActive = useCallback(async () => {
     try {
@@ -41,10 +54,12 @@ export function useTimeTracking() {
     }
   }, []);
 
+  // On first load, ask the backend if a session was left running (e.g. after refresh).
   useEffect(() => {
     void refreshActive();
   }, [refreshActive]);
 
+  // Local 1-second ticker — purely cosmetic until stop; server owns the truth.
   useEffect(() => {
     if (!activeEntry?.startTime) {
       setElapsed("00:00:00");

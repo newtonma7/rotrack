@@ -154,7 +154,7 @@ Reference: [`arch.plan.md`](arch.plan.md) — sections *Implementation Approach*
 - [x] `npm run build` passes
 - [ ] Live API connected: start/stop session updates dashboard stats (depends on Phase 3)
 - [ ] Auto-stop observed in Network tab when tab hidden
-- [ ] Learning comments on `api.ts`, `useTimeTracking`, `usePageVisibilityStop`, `ActiveTracker`
+- [x] Learning comments on `api.ts`, `useTimeTracking`, `usePageVisibilityStop`, `ActiveTracker`, `types/time-entry.ts`, dashboard fetch, route layouts
 
 **Proof log:**
 

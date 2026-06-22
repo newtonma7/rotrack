@@ -1,5 +1,15 @@
 "use client"
 
+/**
+ * Dashboard page — read-only analytics view for the signed-in user.
+ *
+ * Data flow: mount → getDashboardStats() → Spring aggregates time_entries → Recharts
+ * Auth: protected by dashboard/layout.tsx (redirects to /signin if no Supabase session)
+ *
+ * EMPTY_STATS is the fallback when the API is down or the user has no sessions yet —
+ * charts still render instead of crashing.
+ */
+
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,6 +47,7 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   return null;
 };
 
+/** Converts backend minute totals to human-readable "4h 12m" for score cards. */
 function formatMinutes(total: number): string {
   const hours = Math.floor(total / 60)
   const minutes = total % 60
@@ -67,6 +78,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Single fetch on mount — Phase 5 may replace this with React Query for caching/refetch.
   useEffect(() => {
     void (async () => {
       try {
