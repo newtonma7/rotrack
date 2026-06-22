@@ -11,12 +11,18 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 
-export function SignOutButton({ className }: { className?: string }) {
+export function SignOutButton({
+  className,
+  redirectTo = "/signin",
+}: {
+  className?: string;
+  redirectTo?: string;
+}) {
   const router = useRouter();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    router.push("/signin");
+    router.push(redirectTo);
   };
 
   return (

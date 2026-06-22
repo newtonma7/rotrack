@@ -27,7 +27,8 @@ export default function SignIn() {
     if (error) {
       setMessage(error.message);
     } else {
-      router.push("/");
+      // Authenticated users land on dashboard (stats home) rather than public marketing page.
+      router.push("/dashboard");
     }
   };
 

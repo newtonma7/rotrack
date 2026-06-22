@@ -2,9 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthProvider";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 
 /* ---------------------------------------------------------------
    rotrack — landing page
+   Layer: frontend marketing route. Auth-aware nav uses AuthProvider
+   (Supabase session) to route logged-in users to /tracker instead of signup.
    Aesthetic: "Tangerine Studio"
    Warm cream canvas · Asimov orange pops · playful bubbles ·
    chunky display type + clean body sans · subtle grain
@@ -46,6 +50,10 @@ export default function LandingPage() {
 /*  NAV                                                          */
 /* ============================================================ */
 function Nav() {
+  const { user, loading } = useAuth();
+  const isLoggedIn = !loading && !!user;
+  const startHref = isLoggedIn ? "/tracker" : "/signup";
+
   return (
     <header className="relative z-30">
       <div className="mx-auto max-w-[1400px] px-6 md:px-10 pt-5">
@@ -60,14 +68,26 @@ function Nav() {
             <li><a href="#how" className="hover:text-[var(--rt-orange)] transition-colors">How it works</a></li>
           </ul>
           <div className="flex items-center gap-1.5">
+            {isLoggedIn ? (
+              <>
+                <span className="hidden md:inline text-[0.85rem] text-[var(--rt-ink-muted)] max-w-[140px] truncate">
+                  {user.email}
+                </span>
+                <SignOutButton
+                  redirectTo="/"
+                  className="inline-flex px-3 sm:px-4 py-2 h-auto text-[0.85rem] sm:text-[0.9rem] text-[var(--rt-ink-soft)] hover:text-[var(--rt-ink)] hover:bg-transparent"
+                />
+              </>
+            ) : (
+              <Link
+                href="/signin"
+                className="hidden sm:inline-flex px-4 py-2 text-[0.9rem] text-[var(--rt-ink-soft)] hover:text-[var(--rt-ink)] transition-colors"
+              >
+                Sign in
+              </Link>
+            )}
             <Link
-              href="/signin"
-              className="hidden sm:inline-flex px-4 py-2 text-[0.9rem] text-[var(--rt-ink-soft)] hover:text-[var(--rt-ink)] transition-colors"
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/signup"
+              href={startHref}
               className="inline-flex items-center gap-1.5 rounded-full bg-[var(--rt-ink)] text-[var(--rt-cream)] px-4 py-2 text-[0.9rem] font-medium hover:bg-[var(--rt-orange)] transition-colors"
             >
               Start tracking
@@ -103,6 +123,9 @@ function ArrowRight() {
 /*  HERO                                                         */
 /* ============================================================ */
 function Hero({ time }: { time: string }) {
+  const { user, loading } = useAuth();
+  const startHref = !loading && user ? "/tracker" : "/signup";
+
   return (
     <section className="relative flex-1 flex items-center py-10 md:py-12">
       {/* decorative bubbles — kept off the headline reading path */}
@@ -151,7 +174,7 @@ function Hero({ time }: { time: string }) {
             style={{ animationDelay: "240ms" }}
           >
             <Link
-              href="/signup"
+              href={startHref}
               className="group inline-flex items-center gap-2 rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] px-6 py-3.5 font-medium shadow-[0_10px_30px_-10px_rgba(236,107,14,0.6)] hover:bg-[var(--rt-orange-deep)] transition-all hover:-translate-y-0.5"
             >
               Start tracking free
@@ -481,6 +504,10 @@ function HowItWorks() {
 /*  FINAL CTA                                                    */
 /* ============================================================ */
 function FinalCta() {
+  const { user, loading } = useAuth();
+  const isLoggedIn = !loading && !!user;
+  const startHref = isLoggedIn ? "/tracker" : "/signup";
+
   return (
     <section className="relative min-h-svh flex items-center py-24 md:py-28 overflow-hidden">
       <Bubble className="left-[10%] top-10 h-10 w-10 bg-[var(--rt-orange)] rt-float" />
@@ -521,18 +548,20 @@ function FinalCta() {
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-3">
               <Link
-                href="/signup"
+                href={startHref}
                 className="inline-flex items-center gap-2 rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] px-6 py-3.5 font-medium hover:bg-[var(--rt-orange-deep)] transition-colors"
               >
                 Start tracking free
                 <ArrowRight />
               </Link>
-              <Link
-                href="/signin"
-                className="inline-flex items-center gap-2 rounded-full border border-[var(--rt-cream)]/30 text-[var(--rt-cream)] px-6 py-3.5 font-medium hover:bg-[var(--rt-cream)] hover:text-[var(--rt-ink)] transition-colors"
-              >
-                I have an account
-              </Link>
+              {!isLoggedIn && (
+                <Link
+                  href="/signin"
+                  className="inline-flex items-center gap-2 rounded-full border border-[var(--rt-cream)]/30 text-[var(--rt-cream)] px-6 py-3.5 font-medium hover:bg-[var(--rt-cream)] hover:text-[var(--rt-ink)] transition-colors"
+                >
+                  I have an account
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -545,6 +574,9 @@ function FinalCta() {
 /*  FOOTER                                                       */
 /* ============================================================ */
 function Footer() {
+  const { user, loading } = useAuth();
+  const isLoggedIn = !loading && !!user;
+
   return (
     <footer className="border-t border-[var(--rt-line)] bg-[var(--rt-cream)]">
       <div className="mx-auto max-w-[1400px] px-6 md:px-10 py-10 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -556,7 +588,11 @@ function Footer() {
           <span className="text-[0.85rem]">&mdash; track the rot.</span>
         </div>
         <div className="text-[0.85rem] text-[var(--rt-ink-muted)] flex items-center gap-5">
-          <Link href="/signup" className="hover:text-[var(--rt-orange)]">Sign up</Link>
+          {isLoggedIn ? (
+            <Link href="/tracker" className="hover:text-[var(--rt-orange)]">Tracker</Link>
+          ) : (
+            <Link href="/signup" className="hover:text-[var(--rt-orange)]">Sign up</Link>
+          )}
           <span>&copy; {new Date().getFullYear()}</span>
         </div>
       </div>

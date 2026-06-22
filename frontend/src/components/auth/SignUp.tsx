@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * Sign-up form — creates a Supabase Auth user, then routes to the confirmation splash.
+ *
+ * Layer: frontend auth UI. Data flow: form → supabase.auth.signUp() → Supabase sends
+ * confirmation email → user lands on /signup/confirmation (session may be null until verified).
+ */
+
 import Link from "next/link";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase/client";
@@ -30,7 +37,8 @@ export default function SignUp() {
     if (error) {
       setMessage(error.message);
     } else {
-      setMessage(`Check ${data?.user?.email} for a confirmation link.`);
+      const confirmedEmail = encodeURIComponent(data?.user?.email ?? email);
+      router.push(`/signup/confirmation?email=${confirmedEmail}`);
     }
   };
 
