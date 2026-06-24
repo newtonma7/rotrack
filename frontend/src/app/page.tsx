@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useAuth } from "@/context/AuthProvider";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 
 /* ---------------------------------------------------------------
    rotrack — landing page
-   Layer: frontend marketing route. Auth-aware nav uses AuthProvider
-   (Supabase session) to route logged-in users to /tracker instead of signup.
+   Layer: frontend marketing route. Headlines use font-heading (Figtree bold).
+   Auth-aware nav uses AuthProvider to route logged-in users to /tracker.
    Aesthetic: "Tangerine Studio"
    Warm cream canvas · Asimov orange pops · playful bubbles ·
    chunky display type + clean body sans · subtle grain
@@ -59,7 +59,7 @@ function Nav() {
       <div className="mx-auto max-w-[1400px] px-6 md:px-10 pt-5">
         <nav className="flex items-center justify-between rounded-full bg-[var(--rt-paper)]/30 backdrop-blur-sm border border-[var(--rt-line)]/50 pl-5 pr-2 py-2 shadow-[0_1px_0_rgba(10,10,10,0.02),0_12px_40px_-28px_rgba(10,10,10,0.18)]">
           <Link href="/" className="flex items-center gap-2 group">
-            <span className="font-display text-[1.35rem] leading-none tracking-tight">
+            <span className="font-heading text-[1.35rem] leading-none tracking-tight">
               rotrack
             </span>
           </Link>
@@ -127,46 +127,34 @@ function Hero({ time }: { time: string }) {
   const startHref = !loading && user ? "/tracker" : "/signup";
 
   return (
-    <section className="relative flex-1 flex items-center py-10 md:py-12">
-      {/* decorative bubbles — kept off the headline reading path */}
-      <Bubble className="left-[8%] bottom-[-2%] h-16 w-16 bg-[var(--rt-orange)] rt-float-slow" />
-      <Bubble className="left-[2%] bottom-[38%] h-3 w-3 bg-[var(--rt-ink)] rt-float" />
-      <Bubble className="left-[28%] bottom-[3%] h-5 w-5 bg-[var(--rt-ink)] rt-float-slow" />
-      <Bubble className="right-[44%] top-[14%] h-6 w-6 bg-[var(--rt-ink)] rt-float" />
-      <Bubble className="right-[8%] bottom-[6%] h-20 w-20 border-2 border-[var(--rt-ink)] bg-transparent rt-float-slow" />
-      <Bubble className="right-[3%] top-[34%] h-2.5 w-2.5 bg-[var(--rt-orange)] rt-float" />
+    <section className="relative flex-1 flex w-full items-center min-h-0 overflow-hidden">
+      <HeroBubbles />
 
-      <div className="mx-auto max-w-[1400px] px-6 md:px-10 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-6 items-center">
-        {/* left — copy */}
-        <div className="lg:col-span-7 lg:self-start lg:pt-2 relative z-10">
+      <div className="relative z-10 mx-auto max-w-[1400px] w-full px-6 md:px-10 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-6 items-center min-h-[calc(100svh-5.5rem)]">
+        {/* left — copy, vertically centered in viewport below nav */}
+        <div className="lg:col-span-7 relative flex flex-col justify-center ml-6 md:ml-10 lg:ml-16">
+          <div className="relative isolate rounded-3xl bg-[var(--rt-cream)] px-6 py-10 md:px-10 md:py-12">
           <h1
-            className="rt-rise text-[clamp(3rem,7.5vw,6.8rem)] leading-[0.95] tracking-[-0.035em]"
+            className="rt-rise whitespace-nowrap text-[clamp(3rem,7.5vw,6.8rem)] leading-[0.95] tracking-[-0.035em]"
             style={{
               fontFamily: '"Figtree", ui-sans-serif, system-ui, sans-serif',
               fontWeight: 600,
               animationDelay: "80ms",
             }}
           >
-            track your
-            <br />
+            track your{" "}
             <span className="relative inline-block">
-              <span className="relative z-10 text-[var(--rt-orange)]">rot</span>
+              <span className="relative z-10 text-[var(--rt-orange)]">rot!</span>
               <Underline />
             </span>
-            , own
-            <br />
-            the <span className="italic font-normal">clock</span>
           </h1>
 
           <p
             className="rt-rise mt-8 max-w-xl text-[1.05rem] md:text-[1.15rem] leading-relaxed text-[var(--rt-ink-soft)]"
             style={{ animationDelay: "160ms" }}
           >
-            Rotrack is a playful time-study tool that splits your day into two
-            honest buckets: <b className="text-[var(--rt-ink)]">rot</b> and{" "}
-            <b className="text-[var(--rt-ink)]">work</b>. If you&apos;re not
-            actively working, you&apos;re rotting. Log minutes, watch patterns
-            emerge, reclaim the hours you didn&apos;t know you lost.
+            Rotrack is a study tool that splits your time into two buckets: rot and work.
+            Log minutes, watch patterns emerge, and reclaim time you didn&apos;t know you lost.
           </p>
 
           <div
@@ -186,6 +174,7 @@ function Hero({ time }: { time: string }) {
             >
               See how it works
             </a>
+          </div>
           </div>
 
         </div>
@@ -259,7 +248,7 @@ function HeroGraphic({ time }: { time: string }) {
         <div className="rounded-2xl bg-[var(--rt-ink)] text-[var(--rt-cream)] p-4 w-[210px] shadow-[0_20px_50px_-20px_rgba(10,10,10,0.55)]">
           <div className="flex items-center justify-between">
             <span className="text-[0.7rem] uppercase tracking-widest opacity-70">today&rsquo;s rot</span>
-            <span className="font-display text-[1.6rem] leading-none text-[var(--rt-orange)]">2h 14m</span>
+            <span className="font-heading text-[1.6rem] leading-none text-[var(--rt-orange)]">2h 14m</span>
           </div>
           <div className="mt-3 text-[0.8rem] opacity-80">
             down 38% from Tuesday
@@ -276,12 +265,93 @@ function HeroGraphic({ time }: { time: string }) {
   );
 }
 
-function Bubble({ className = "" }: { className?: string }) {
+function Bubble({
+  className = "",
+  style,
+}: {
+  className?: string;
+  style?: CSSProperties;
+}) {
   return (
     <span
       aria-hidden="true"
       className={`pointer-events-none absolute rounded-full ${className}`}
+      style={style}
     />
+  );
+}
+
+/** Playful circles in the hero — zoned so they never overlap the copy block. */
+function HeroBubbles() {
+  const topBand = [
+    { className: "left-[10%] top-[22%] h-2.5 w-2.5 bg-[var(--rt-ink)] rt-float", delay: "0s" },
+    { className: "left-[28%] top-[48%] h-5 w-5 bg-[var(--rt-orange-soft)]/50 rt-float-slow", delay: "1.4s" },
+    { className: "left-[45%] top-[12%] h-3 w-3 bg-[var(--rt-orange)] rt-drift", delay: "2.1s" },
+    { className: "left-[62%] top-[38%] h-6 w-6 border-2 border-[var(--rt-ink)]/15 bg-transparent rt-float", delay: "0.7s" },
+    { className: "left-[85%] top-[58%] h-4 w-4 bg-[var(--rt-orange)] rt-float-slow", delay: "1.9s" },
+  ] as const;
+
+  const bottomBand = [
+    { className: "left-[8%] top-[35%] h-5 w-5 bg-[var(--rt-ink)] rt-drift", delay: "0.8s" },
+    { className: "left-[32%] top-[18%] h-3 w-3 bg-[var(--rt-orange)] rt-float", delay: "1.6s" },
+    { className: "left-[55%] top-[52%] h-7 w-7 bg-[var(--rt-orange)]/12 rt-float-slow", delay: "2.6s" },
+    { className: "left-[72%] top-[28%] h-2 w-2 bg-[var(--rt-ink)] rt-float", delay: "0.4s" },
+    { className: "left-[90%] top-[62%] h-6 w-6 border-2 border-[var(--rt-orange)]/20 bg-transparent rt-drift", delay: "2.3s" },
+  ] as const;
+
+  const rightPanel = [
+    { className: "left-[12%] top-[10%] h-3 w-3 bg-[var(--rt-orange)] rt-float", delay: "0.5s" },
+    { className: "left-[28%] top-[32%] h-2 w-2 bg-[var(--rt-ink)] rt-drift", delay: "2.0s" },
+    { className: "left-[42%] top-[8%] h-5 w-5 bg-[var(--rt-orange-soft)]/45 rt-float-slow", delay: "1.1s" },
+    { className: "left-[58%] top-[24%] h-10 w-10 border-2 border-dashed border-[var(--rt-orange)]/30 bg-transparent rt-spin-slow", delay: "1.2s" },
+    { className: "left-[72%] top-[42%] h-2.5 w-2.5 bg-[var(--rt-ink)] rt-float", delay: "2.3s" },
+    { className: "left-[86%] top-[14%] h-4 w-4 bg-[var(--rt-orange)] rt-float-slow", delay: "0.9s" },
+    { className: "left-[22%] top-[68%] h-6 w-6 bg-[var(--rt-ink)]/80 rt-drift", delay: "1.7s" },
+    { className: "left-[68%] top-[78%] h-14 w-14 border-2 border-[var(--rt-ink)]/12 bg-transparent rt-float-slow", delay: "2.8s" },
+  ] as const;
+
+  const leftEdge = [
+    { className: "left-[30%] top-[30%] h-2.5 w-2.5 bg-[var(--rt-orange)] rt-drift", delay: "1.0s" },
+    { className: "left-[65%] top-[70%] h-3.5 w-3.5 bg-[var(--rt-orange-soft)] rt-float-slow", delay: "1.5s" },
+  ] as const;
+
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+      {/* Above copy — full width on mobile; left column only on desktop */}
+      <div className="absolute inset-x-0 top-0 h-[26%] lg:right-[46%]">
+        <HeroBubbleZone bubbles={topBand} />
+      </div>
+      {/* Below copy */}
+      <div className="absolute inset-x-0 bottom-0 h-[24%] lg:right-[46%]">
+        <HeroBubbleZone bubbles={bottomBand} />
+      </div>
+      {/* Thin strip along far-left edge (desktop) */}
+      <div className="absolute top-[26%] bottom-[24%] left-0 hidden w-[9%] lg:block">
+        <HeroBubbleZone bubbles={leftEdge} />
+      </div>
+      {/* Right graphic column + overflow */}
+      <div className="absolute inset-y-0 left-[46%] right-0 lg:left-[50%]">
+        <HeroBubbleZone bubbles={rightPanel} />
+      </div>
+    </div>
+  );
+}
+
+function HeroBubbleZone({
+  bubbles,
+}: {
+  bubbles: readonly { className: string; delay: string }[];
+}) {
+  return (
+    <div className="relative h-full w-full">
+      {bubbles.map((bubble, i) => (
+        <Bubble
+          key={i}
+          className={bubble.className}
+          style={{ animationDelay: bubble.delay }}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -331,7 +401,7 @@ function Categories() {
           <span className="inline-block text-[0.8rem] uppercase tracking-[0.2em] text-[var(--rt-orange)] font-medium">
             &sect; 01 &mdash; the two buckets
           </span>
-          <h2 className="mt-4 font-display text-[clamp(2.4rem,5.5vw,4.8rem)] leading-[0.95] tracking-tight">
+          <h2 className="mt-4 font-heading text-[clamp(2.4rem,5.5vw,4.8rem)] leading-[0.95] tracking-tight">
             every minute lands
             <br />
             in <span className="text-[var(--rt-orange)]">one of two</span> places
@@ -376,7 +446,7 @@ function BucketCard({ b, index }: { b: Bucket; index: number }) {
       <div className="relative">
         <div className="flex items-center gap-3">
           <span className={[
-            "font-display text-[1rem] tabular-nums tracking-widest",
+            "font-heading text-[1rem] tabular-nums tracking-widest",
             isWork ? "text-[var(--rt-cream)]/70" : "text-[var(--rt-ink-muted)]",
           ].join(" ")}>
             0{index + 1}
@@ -387,7 +457,7 @@ function BucketCard({ b, index }: { b: Bucket; index: number }) {
           ].join(" ")} />
         </div>
 
-        <h3 className="mt-6 font-display text-[3rem] leading-none tracking-tight">
+        <h3 className="mt-6 font-heading text-[3rem] leading-none tracking-tight">
           {b.label}
         </h3>
         <p className={[
@@ -460,7 +530,7 @@ function HowItWorks() {
             <span className="inline-block text-[0.8rem] uppercase tracking-[0.2em] text-[var(--rt-orange)] font-medium">
               &sect; 02 &mdash; how it works
             </span>
-            <h2 className="mt-4 font-display text-[clamp(2.4rem,5.5vw,4.8rem)] leading-[0.95] tracking-tight">
+            <h2 className="mt-4 font-heading text-[clamp(2.4rem,5.5vw,4.8rem)] leading-[0.95] tracking-tight">
               two taps. one honest picture.
             </h2>
           </div>
@@ -481,7 +551,7 @@ function HowItWorks() {
               ].join(" ")}
             >
               <div className="flex items-baseline gap-4">
-                <span className="font-display text-[3.2rem] leading-none text-[var(--rt-orange)]">
+                <span className="font-heading text-[3.2rem] leading-none text-[var(--rt-orange)]">
                   {s.n}
                 </span>
                 <span className="h-px flex-1 bg-[var(--rt-line)]" />
@@ -537,7 +607,7 @@ function FinalCta() {
             <span className="inline-block text-[0.8rem] uppercase tracking-[0.2em] text-[var(--rt-orange)] font-medium">
               ready when you are
             </span>
-            <h2 className="mt-4 font-display text-[clamp(2.4rem,6vw,5.2rem)] leading-[0.95] tracking-tight">
+            <h2 className="mt-4 font-heading text-[clamp(2.4rem,6vw,5.2rem)] leading-[0.95] tracking-tight">
               stop guessing where
               <br />
               your <span className="text-[var(--rt-orange)]">hours</span> go.
@@ -582,7 +652,7 @@ function Footer() {
       <div className="mx-auto max-w-[1400px] px-6 md:px-10 py-10 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2 text-[var(--rt-ink-soft)]">
           <LogoMark />
-          <span className="font-display text-[1.1rem] tracking-tight text-[var(--rt-ink)]">
+          <span className="font-heading text-[1.1rem] tracking-tight text-[var(--rt-ink)]">
             rotrack
           </span>
           <span className="text-[0.85rem]">&mdash; track the rot.</span>

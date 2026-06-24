@@ -20,7 +20,7 @@ import {
 import { usePageUnloadStop } from "@/hooks/usePageUnloadStop";
 import type { ActivityType, TimeEntry } from "@/types/time-entry";
 
-/** Formats milliseconds since startTime as HH:MM:SS for the Digital-7 display. */
+/** Formats milliseconds since startTime as HH:MM:SS for the tracker display. */
 function formatElapsed(startTime: string): string {
   const start = new Date(startTime).getTime();
   const now = Date.now();

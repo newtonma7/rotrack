@@ -14,22 +14,14 @@
 
 /* ---------------------------------------------------------------
    Typography
-   Display: Migha Black  — chunky, characterful wordmark / headlines
-   Body:    Figtree      — clean geometric sans for UI & prose
-   Mono:    Digital-7    — retained for LED clock display
+   Headings: Figtree bold via font-heading (landing + app UI)
+   Body:     Figtree — clean geometric sans for UI & prose
+   Mono:     Digital-7 — LED clock readouts on landing hero only
 --------------------------------------------------------------- */
 @font-face {
   font-family: "Figtree";
   src: url("/fonts/Figtree-Regular.otf") format("opentype");
   font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Migha";
-  src: url("/fonts/Migha-Black.otf") format("opentype");
-  font-weight: 900;
   font-style: normal;
   font-display: swap;
 }
@@ -105,7 +97,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Migha", "Figtree", sans-serif;
+  --font-heading: "Figtree", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Digital-7", ui-monospace, monospace;
 
   /* Rotrack palette exposed to tailwind */
@@ -226,12 +218,18 @@
 /* ---------------------------------------------------------------
    rotrack landing motion + shape utilities
 --------------------------------------------------------------- */
-@utility font-display {
-  font-family: "Migha", "Figtree", sans-serif;
-  font-weight: 900;
+/* App + landing headings — Figtree bold */
+@utility font-heading {
+  font-family: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 
+@keyframes rt-drift {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  33%      { transform: translate(12px, -14px) rotate(5deg); }
+  66%      { transform: translate(-8px, -22px) rotate(-3deg); }
+}
 @keyframes rt-float {
   0%, 100% { transform: translateY(0) rotate(0deg); }
   50%      { transform: translateY(-18px) rotate(3deg); }
@@ -255,6 +253,7 @@
 
 .rt-float        { animation: rt-float 7s ease-in-out infinite; }
 .rt-float-slow   { animation: rt-float-slow 11s ease-in-out infinite; }
+.rt-drift        { animation: rt-drift 9s ease-in-out infinite; }
 .rt-rise         { animation: rt-rise 900ms cubic-bezier(.2,.7,.2,1) both; }
 .rt-marquee      { animation: rt-marquee 40s linear infinite; }
 .rt-spin-slow    { animation: rt-spin-slow 28s linear infinite; }

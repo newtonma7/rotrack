@@ -9,7 +9,7 @@
  * UX rules enforced here:
  * - Only one bucket active at a time (other button disabled while session runs)
  * - Stop button visible only when a session is open
- * - Digital-7 font on elapsed time (matches landing hero clock aesthetic)
+ * - Figtree on elapsed time (matches app UI; tabular-nums keeps digits from jumping)
  */
 
 import Link from "next/link";
@@ -28,7 +28,7 @@ export function ActiveTracker() {
     <div className="max-w-2xl mx-auto space-y-8">
       <Card className="border-[var(--rt-line)] bg-[var(--rt-paper)] shadow-[0_20px_50px_-20px_rgba(10,10,10,0.15)]">
         <CardHeader>
-          <CardTitle className="font-display text-3xl">Active session</CardTitle>
+          <CardTitle className="font-heading text-3xl">Active session</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="text-center py-8">
@@ -36,8 +36,7 @@ export function ActiveTracker() {
               {isActive ? `tracking ${activeType?.toLowerCase()}` : "no active session"}
             </p>
             <div
-              className="text-[clamp(3rem,10vw,5rem)] leading-none tabular-nums tracking-[0.08em] text-[var(--rt-orange)]"
-              style={{ fontFamily: '"Digital-7", monospace' }}
+              className="font-sans font-bold text-[clamp(3rem,10vw,5rem)] leading-none tabular-nums tracking-[0.08em] text-[var(--rt-orange)]"
             >
               {elapsed}
             </div>
@@ -121,7 +120,7 @@ function ActivityButton({
           : "bg-[var(--rt-cream)] border-[var(--rt-line)] text-[var(--rt-ink)] hover:border-[var(--rt-orange)]",
       ].join(" ")}
     >
-      <span className="font-display text-2xl block">{label}</span>
+      <span className="font-heading text-2xl block">{label}</span>
       <span className={[
         "text-sm mt-1 block",
         active ? "opacity-80" : "text-[var(--rt-ink-muted)]",

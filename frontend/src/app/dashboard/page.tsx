@@ -115,7 +115,7 @@ export default function DashboardPage() {
   return (
     <div className="flex min-h-screen bg-[var(--rt-cream)] text-[var(--rt-ink)]">
       <aside className="w-56 bg-[var(--rt-paper)] border-r border-[var(--rt-line)] p-6 flex flex-col">
-        <Link href="/" className="font-display text-2xl mb-10 text-[var(--rt-ink)] hover:text-[var(--rt-orange)] transition-colors">
+        <Link href="/" className="font-heading text-2xl mb-10 text-[var(--rt-ink)] hover:text-[var(--rt-orange)] transition-colors">
           rotrack
         </Link>
         <nav className="space-y-2 flex-1 mt-6">
@@ -149,7 +149,7 @@ export default function DashboardPage() {
       </aside>
 
       <main className="flex-1 p-8 space-y-8 overflow-y-auto">
-        <h1 className="font-display text-4xl tracking-tight text-[var(--rt-ink)] mb-8">Dashboard</h1>
+        <h1 className="font-heading text-4xl tracking-tight text-[var(--rt-ink)] mb-8">Dashboard</h1>
 
         {loading && (
           <p className="text-[var(--rt-ink-muted)]">Loading stats...</p>
@@ -206,7 +206,7 @@ export default function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="col-span-2 bg-[var(--rt-paper)] border-[var(--rt-line)] text-[var(--rt-ink)]">
             <CardHeader>
-              <CardTitle className="text-2xl font-display">Timeline (Last 7 days)</CardTitle>
+              <CardTitle className="text-2xl font-heading">Timeline (Last 7 days)</CardTitle>
             </CardHeader>
             <CardContent className="pl-2">
               <div className="h-[300px]">
@@ -243,7 +243,7 @@ export default function DashboardPage() {
 
           <Card className="col-span-1 bg-[var(--rt-paper)] border-[var(--rt-line)] text-[var(--rt-ink)]">
             <CardHeader>
-              <CardTitle className="text-2xl font-display">Distribution</CardTitle>
+              <CardTitle className="text-2xl font-heading">Distribution</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col md:flex-row h-[300px]">
@@ -286,7 +286,7 @@ export default function DashboardPage() {
 
         <Card className="bg-[var(--rt-paper)] border-[var(--rt-line)] text-[var(--rt-ink)]">
           <CardHeader>
-            <CardTitle className="text-2xl font-display">Recent Sessions</CardTitle>
+            <CardTitle className="text-2xl font-heading">Recent Sessions</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">

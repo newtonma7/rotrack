@@ -44,12 +44,12 @@ export default function SignUp() {
 
   return (
     <div className="min-h-screen bg-[var(--rt-cream)] flex flex-col items-center justify-center px-6 py-16">
-      <Link href="/" className="font-display text-2xl text-[var(--rt-ink)] mb-8 hover:text-[var(--rt-orange)] transition-colors">
+      <Link href="/" className="font-heading text-2xl text-[var(--rt-ink)] mb-8 hover:text-[var(--rt-orange)] transition-colors">
         rotrack
       </Link>
       <Card className="w-full max-w-md border-[var(--rt-line)] bg-[var(--rt-paper)] shadow-[0_20px_50px_-20px_rgba(10,10,10,0.15)]">
         <CardHeader>
-          <CardTitle className="font-display text-2xl">Sign up</CardTitle>
+          <CardTitle className="font-heading text-2xl">Sign up</CardTitle>
           <CardDescription className="text-[var(--rt-ink-muted)]">
             Start your first honest week of time-logging.
           </CardDescription>

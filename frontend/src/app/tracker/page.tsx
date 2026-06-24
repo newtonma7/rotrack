@@ -16,7 +16,7 @@ export default function TrackerPage() {
     <div className="min-h-screen bg-[var(--rt-cream)] text-[var(--rt-ink)]">
       <header className="border-b border-[var(--rt-line)] bg-[var(--rt-paper)]">
         <div className="mx-auto max-w-4xl px-6 py-5 flex items-center justify-between">
-          <Link href="/" className="font-display text-2xl hover:text-[var(--rt-orange)] transition-colors">
+          <Link href="/" className="font-heading text-2xl hover:text-[var(--rt-orange)] transition-colors">
             rotrack
           </Link>
           <div className="flex items-center gap-4">
