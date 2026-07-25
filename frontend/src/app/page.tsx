@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type CSSProperties } from "react";
 import { useAuth } from "@/context/AuthProvider";
 import { SignOutButton } from "@/components/auth/SignOutButton";
+import { cn } from "@/lib/utils";
 
 /* ---------------------------------------------------------------
    rotrack — landing page
@@ -133,7 +134,7 @@ function Hero({ time }: { time: string }) {
       <div className="relative z-10 mx-auto max-w-[1400px] w-full px-6 md:px-10 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-6 items-center min-h-[calc(100svh-5.5rem)]">
         {/* left — copy, vertically centered in viewport below nav */}
         <div className="lg:col-span-7 relative flex flex-col justify-center ml-6 md:ml-10 lg:ml-16">
-          <div className="relative isolate rounded-3xl bg-[var(--rt-cream)] px-6 py-10 md:px-10 md:py-12">
+          <div className="relative">
           <h1
             className="rt-rise whitespace-nowrap text-[clamp(3rem,7.5vw,6.8rem)] leading-[0.95] tracking-[-0.035em]"
             style={{
@@ -222,12 +223,13 @@ function HeroGraphic({ time }: { time: string }) {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/15" />
       </div>
 
-      {/* floating clock card */}
-      <div className="absolute left-8 sm:left-16 top-6 rotate-[-4deg] rt-float">
+      {/* floating clock card — gentle drift; static tilt stays on the outer shell */}
+      <div className="absolute left-8 sm:left-16 top-6 rotate-[-4deg]">
+        <div className="rt-hero-float">
         <div className="rounded-2xl bg-[var(--rt-paper)] border border-[var(--rt-line)] shadow-[0_20px_50px_-20px_rgba(10,10,10,0.35)] p-4 w-[260px]">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[0.7rem] uppercase tracking-widest text-[var(--rt-ink-muted)]">right now</span>
-            <span className="h-2 w-2 rounded-full bg-[var(--rt-orange)] animate-pulse" />
+            <span className="h-2 w-2 rounded-full bg-[var(--rt-orange)] rt-hero-pulse" />
           </div>
           <div
             className="text-[2.4rem] leading-none text-[var(--rt-orange)] tabular-nums tracking-[0.08em]"
@@ -241,10 +243,12 @@ function HeroGraphic({ time }: { time: string }) {
             <span className="h-1.5 flex-[5] rounded-full bg-[var(--rt-line)]" />
           </div>
         </div>
+        </div>
       </div>
 
       {/* floating bucket chip */}
-      <div className="absolute right-0 sm:right-[-28px] bottom-16 rotate-[5deg] rt-float-slow">
+      <div className="absolute right-0 sm:right-[-28px] bottom-16 rotate-[5deg]">
+        <div className="rt-hero-float-slow">
         <div className="rounded-2xl bg-[var(--rt-ink)] text-[var(--rt-cream)] p-4 w-[210px] shadow-[0_20px_50px_-20px_rgba(10,10,10,0.55)]">
           <div className="flex items-center justify-between">
             <span className="text-[0.7rem] uppercase tracking-widest opacity-70">today&rsquo;s rot</span>
@@ -253,6 +257,7 @@ function HeroGraphic({ time }: { time: string }) {
           <div className="mt-3 text-[0.8rem] opacity-80">
             down 38% from Tuesday
           </div>
+        </div>
         </div>
       </div>
 
@@ -275,79 +280,52 @@ function Bubble({
   return (
     <span
       aria-hidden="true"
-      className={`pointer-events-none absolute rounded-full ${className}`}
+      className={cn("pointer-events-none absolute rounded-full opacity-70", className)}
       style={style}
     />
   );
 }
 
-/** Playful circles in the hero — zoned so they never overlap the copy block. */
+/** Playful circles scattered across the full hero viewport. */
 function HeroBubbles() {
-  const topBand = [
-    { className: "left-[10%] top-[22%] h-2.5 w-2.5 bg-[var(--rt-ink)] rt-float", delay: "0s" },
-    { className: "left-[28%] top-[48%] h-5 w-5 bg-[var(--rt-orange-soft)]/50 rt-float-slow", delay: "1.4s" },
-    { className: "left-[45%] top-[12%] h-3 w-3 bg-[var(--rt-orange)] rt-drift", delay: "2.1s" },
-    { className: "left-[62%] top-[38%] h-6 w-6 border-2 border-[var(--rt-ink)]/15 bg-transparent rt-float", delay: "0.7s" },
-    { className: "left-[85%] top-[58%] h-4 w-4 bg-[var(--rt-orange)] rt-float-slow", delay: "1.9s" },
-  ] as const;
-
-  const bottomBand = [
-    { className: "left-[8%] top-[35%] h-5 w-5 bg-[var(--rt-ink)] rt-drift", delay: "0.8s" },
-    { className: "left-[32%] top-[18%] h-3 w-3 bg-[var(--rt-orange)] rt-float", delay: "1.6s" },
-    { className: "left-[55%] top-[52%] h-7 w-7 bg-[var(--rt-orange)]/12 rt-float-slow", delay: "2.6s" },
-    { className: "left-[72%] top-[28%] h-2 w-2 bg-[var(--rt-ink)] rt-float", delay: "0.4s" },
-    { className: "left-[90%] top-[62%] h-6 w-6 border-2 border-[var(--rt-orange)]/20 bg-transparent rt-drift", delay: "2.3s" },
-  ] as const;
-
-  const rightPanel = [
-    { className: "left-[12%] top-[10%] h-3 w-3 bg-[var(--rt-orange)] rt-float", delay: "0.5s" },
-    { className: "left-[28%] top-[32%] h-2 w-2 bg-[var(--rt-ink)] rt-drift", delay: "2.0s" },
-    { className: "left-[42%] top-[8%] h-5 w-5 bg-[var(--rt-orange-soft)]/45 rt-float-slow", delay: "1.1s" },
-    { className: "left-[58%] top-[24%] h-10 w-10 border-2 border-dashed border-[var(--rt-orange)]/30 bg-transparent rt-spin-slow", delay: "1.2s" },
-    { className: "left-[72%] top-[42%] h-2.5 w-2.5 bg-[var(--rt-ink)] rt-float", delay: "2.3s" },
-    { className: "left-[86%] top-[14%] h-4 w-4 bg-[var(--rt-orange)] rt-float-slow", delay: "0.9s" },
-    { className: "left-[22%] top-[68%] h-6 w-6 bg-[var(--rt-ink)]/80 rt-drift", delay: "1.7s" },
-    { className: "left-[68%] top-[78%] h-14 w-14 border-2 border-[var(--rt-ink)]/12 bg-transparent rt-float-slow", delay: "2.8s" },
-  ] as const;
-
-  const leftEdge = [
-    { className: "left-[30%] top-[30%] h-2.5 w-2.5 bg-[var(--rt-orange)] rt-drift", delay: "1.0s" },
-    { className: "left-[65%] top-[70%] h-3.5 w-3.5 bg-[var(--rt-orange-soft)] rt-float-slow", delay: "1.5s" },
+  const bubbles = [
+    { className: "left-[4%] top-[6%] h-2.5 w-2.5 bg-[var(--rt-ink)] rt-float", delay: "0s" },
+    { className: "left-[14%] top-[22%] h-9 w-9 bg-[var(--rt-orange-soft)]/40 rt-float-slow", delay: "2.3s" },
+    { className: "left-[8%] top-[48%] h-3 w-3 bg-[var(--rt-orange)] rt-drift", delay: "0.7s" },
+    { className: "left-[22%] top-[68%] h-6 w-6 border-2 border-[var(--rt-ink)]/20 bg-transparent rt-float", delay: "1.8s" },
+    { className: "left-[3%] top-[82%] h-16 w-16 bg-[var(--rt-orange)]/15 rt-float-slow", delay: "2.5s" },
+    { className: "left-[18%] top-[88%] h-5 w-5 bg-[var(--rt-ink)] rt-drift", delay: "0.2s" },
+    { className: "left-[31%] top-[12%] h-4 w-4 bg-[var(--rt-orange)] rt-float-slow", delay: "2.9s" },
+    { className: "left-[36%] top-[58%] h-7 w-7 border-2 border-[var(--rt-orange)]/25 bg-transparent rt-float-slow", delay: "2.0s" },
+    { className: "left-[42%] top-[8%] h-3.5 w-3.5 bg-[var(--rt-orange)]/80 rt-drift", delay: "1.5s" },
+    { className: "left-[52%] top-[72%] h-8 w-8 bg-[var(--rt-orange)]/12 rt-drift", delay: "0.9s" },
+    { className: "left-[44%] top-[92%] h-5 w-5 bg-[var(--rt-ink)] rt-float-slow", delay: "1.3s" },
+    { className: "left-[58%] top-[14%] h-6 w-6 bg-[var(--rt-ink)] rt-float", delay: "0.4s" },
+    { className: "left-[62%] top-[44%] h-2.5 w-2.5 bg-[var(--rt-orange)] rt-drift", delay: "3.4s" },
+    { className: "left-[55%] top-[62%] h-3 w-3 bg-[var(--rt-orange-soft)] rt-float-slow", delay: "2.6s" },
+    { className: "left-[68%] top-[6%] h-5 w-5 bg-[var(--rt-orange-soft)] rt-float", delay: "1.7s" },
+    { className: "left-[72%] top-[26%] h-2 w-2 bg-[var(--rt-ink)] rt-drift", delay: "2.1s" },
+    { className: "left-[76%] top-[48%] h-11 w-11 border-2 border-dashed border-[var(--rt-orange)]/35 bg-transparent rt-spin-slow", delay: "0.5s" },
+    { className: "left-[81%] top-[18%] h-4 w-4 bg-[var(--rt-orange)] rt-float-slow", delay: "1.9s" },
+    { className: "left-[86%] top-[36%] h-2.5 w-2.5 bg-[var(--rt-ink)] rt-float", delay: "0.8s" },
+    { className: "left-[90%] top-[58%] h-6 w-6 border border-[var(--rt-orange)] bg-[var(--rt-cream)]/30 rt-drift", delay: "2.4s" },
+    { className: "left-[94%] top-[8%] h-3 w-3 bg-[var(--rt-orange)] rt-float", delay: "1.2s" },
+    { className: "left-[96%] top-[78%] h-20 w-20 border-2 border-[var(--rt-ink)]/15 bg-transparent rt-float-slow", delay: "3.0s" },
+    { className: "left-[88%] top-[88%] h-5 w-5 bg-[var(--rt-orange-soft)]/50 rt-drift", delay: "0.6s" },
+    { className: "left-[64%] top-[82%] h-2 w-2 bg-[var(--rt-ink)] rt-float-slow", delay: "2.8s" },
+    { className: "left-[38%] top-[78%] h-4 w-4 bg-[var(--rt-orange)]/70 rt-float", delay: "1.4s" },
+    { className: "left-[70%] top-[68%] h-3.5 w-3.5 bg-[var(--rt-orange)] rt-float-slow", delay: "0.3s" },
   ] as const;
 
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-      {/* Above copy — full width on mobile; left column only on desktop */}
-      <div className="absolute inset-x-0 top-0 h-[26%] lg:right-[46%]">
-        <HeroBubbleZone bubbles={topBand} />
-      </div>
-      {/* Below copy */}
-      <div className="absolute inset-x-0 bottom-0 h-[24%] lg:right-[46%]">
-        <HeroBubbleZone bubbles={bottomBand} />
-      </div>
-      {/* Thin strip along far-left edge (desktop) */}
-      <div className="absolute top-[26%] bottom-[24%] left-0 hidden w-[9%] lg:block">
-        <HeroBubbleZone bubbles={leftEdge} />
-      </div>
-      {/* Right graphic column + overflow */}
-      <div className="absolute inset-y-0 left-[46%] right-0 lg:left-[50%]">
-        <HeroBubbleZone bubbles={rightPanel} />
-      </div>
-    </div>
-  );
-}
-
-function HeroBubbleZone({
-  bubbles,
-}: {
-  bubbles: readonly { className: string; delay: string }[];
-}) {
-  return (
-    <div className="relative h-full w-full">
+    <div
+      className="pointer-events-none absolute inset-0 overflow-visible"
+      aria-hidden="true"
+    >
       {bubbles.map((bubble, i) => (
         <Bubble
           key={i}
-          className={bubble.className}
+          className={cn(bubble.className, "opacity-10 md:opacity-70")}
           style={{ animationDelay: bubble.delay }}
         />
       ))}
@@ -406,10 +384,6 @@ function Categories() {
             <br />
             in <span className="text-[var(--rt-orange)]">one of two</span> places
           </h2>
-          <p className="mt-6 text-[1.05rem] text-[var(--rt-ink-soft)] max-w-xl">
-            No 40-category tagging system. No guilt-trips. Just a framework
-            honest enough to change your behaviour.
-          </p>
         </div>
 
         <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl">
@@ -512,17 +486,22 @@ function HowItWorks() {
     {
       n: "03",
       t: "Notice, then nudge",
-      d: "Set gentle targets (or don\u2019t). The point isn\u2019t to be a monk &mdash; it\u2019s to see the math, and pick one thing to trade next week.",
+      d: "Set gentle targets (or don\u2019t). The point isn\u2019t to be a monk; it\u2019s to see the math, and pick one thing to trade next week.",
     },
   ];
 
   return (
     <section id="how" className="relative min-h-svh flex items-center py-24 md:py-28 bg-[var(--rt-cream)] overflow-hidden">
       <div className="absolute inset-0 rt-grain opacity-20 pointer-events-none" />
-      <Bubble className="left-[-60px] top-[18%] h-48 w-48 border-2 border-[var(--rt-ink)]/10 rt-float-slow" />
-      <Bubble className="right-[6%] top-[12%] h-4 w-4 bg-[var(--rt-orange)] rt-float" />
-      <Bubble className="right-[18%] bottom-[14%] h-24 w-24 bg-[var(--rt-orange-soft)]/50 rt-float-slow" />
-      <Bubble className="left-[32%] bottom-[6%] h-2.5 w-2.5 bg-[var(--rt-ink)] rt-float" />
+      <Bubble className="left-[-12%] top-[5%] h-40 w-40 border-2 border-[var(--rt-ink)]/10 rt-float-slow" />
+      <Bubble className="right-[-10%] top-[4%] h-36 w-36 bg-[var(--rt-orange-soft)]/35 rt-float-slow" />
+      <Bubble className="left-[4%] top-[52%] h-28 w-28 border-2 border-[var(--rt-ink)]/10 bg-transparent rt-float" />
+      <Bubble className="right-[3%] top-[46%] h-32 w-32 bg-[var(--rt-orange)]/10 rt-drift" />
+      <Bubble className="left-[32%] top-[7%] h-24 w-24 border-2 border-dashed border-[var(--rt-orange)]/20 bg-transparent rt-spin-slow" />
+      <Bubble className="left-[64%] bottom-[5%] h-28 w-28 bg-[var(--rt-orange-soft)]/40 rt-float-slow" />
+      <Bubble className="left-[6%] bottom-[8%] h-24 w-24 border-2 border-dashed border-[var(--rt-orange)]/22 bg-transparent rt-spin-slow" />
+      <Bubble className="left-[20%] top-[82%] h-20 w-20 border-2 border-[var(--rt-ink)]/12 bg-transparent rt-drift" />
+      <Bubble className="right-[36%] top-[14%] h-24 w-24 border-2 border-[var(--rt-ink)]/10 bg-transparent rt-float-slow" />
 
       <div className="relative mx-auto max-w-[1400px] px-6 md:px-10">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
@@ -586,7 +565,7 @@ function FinalCta() {
 
       <div className="mx-auto max-w-[1100px] px-6 md:px-10">
         <div
-          className="relative rounded-[40px] overflow-hidden border border-[var(--rt-ink)] bg-[var(--rt-ink)] text-[var(--rt-cream)] px-8 md:px-16 py-16 md:py-24"
+          className="relative rounded-[40px] overflow-hidden border border-[var(--rt-ink)]/10 bg-[var(--rt-ink)] text-[var(--rt-cream)] px-8 md:px-16 py-16 md:py-24"
         >
           {/* stripe accent using the webp */}
           <div
