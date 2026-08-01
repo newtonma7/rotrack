@@ -1,401 +1,523 @@
-# Role
+# rotrack Development Backlog
 
-You are an expert pair-programming AI and senior full-stack architect. Your goal is to help me build **rotrack**, a web application, by executing the phased plan below. You will write clean, modern, and highly maintainable code following the exact constraints provided.
+**Architecture and contracts:** [`arch.plan.md`](arch.plan.md)
+**Backlog reviewed:** 2026-08-01
+**Current release target:** Production-ready personal timer and dashboard MVP
 
-# Project Context & Core Domain
+## 1. Operating Rules
 
-**rotrack** is a low-friction time-tracking app designed for honest productivity logging.
+### Source of truth
 
-* **The Two-Bucket Rule:** There are ONLY two activities: **Rot** (passive consumption, doomscrolling) and **Work** (intentional focus).
-* **No Stagnant:** The legacy third "stagnant" bucket is deprecated everywhere. If it is not active "Work", it defaults to "Rot". Proactively remove any references to "stagnant" or three-bucket arrays/enums.
-* **Architecture reference:** See [`arch.plan.md`](arch.plan.md) for full system design, API spec, and future features.
+- `arch.plan.md` owns product invariants, architecture, trust boundaries, and API/data contracts.
+- `todo.md` owns sequencing, dependencies, status, acceptance criteria, and verification evidence.
+- Repository source and recorded command output outrank historical completion claims.
+- When implementation reveals a contract conflict, update the architecture decision before building around an assumption.
 
-# Tech Stack & Architecture
+### Orchestration
 
-* **Frontend:** Next.js 16 (App Router), React 19, TypeScript 5 — lives in `frontend/`
-* **Styling:** Tailwind CSS v4 (`@tailwindcss/postcss`) + custom CSS variables (`--rt-*`). Reference [`frontend/DESIGN.md`](frontend/DESIGN.md).
-* **UI Components:** shadcn/ui (new-york style, lucide-react icons, `cn()` in `src/lib/utils.ts`)
-* **Auth:** Supabase Auth (`@supabase/supabase-js`). Sign-in returns to `/`. `/tracker` and `/dashboard` require auth.
-* **Backend:** Spring Boot 3.x REST API — lives in `backend/`
-* **API Security:** Stateless JWT validation via OAuth2 Resource Server (Supabase JWKS)
-* **Database:** Supabase PostgreSQL with Row Level Security (RLS). Migrations in `database/migrations/`
+- The primary agent owns integration, final decisions, and cross-file consistency.
+- Ordinary sub-agents may be used for independent research, audits, tests, and reviews when parallel work is useful.
+- Assign one writer per file or isolated subsystem; parallel agents must not edit overlapping files.
+- The primary agent reviews sub-agent output and repository diffs before accepting changes.
+- User requests and repository instructions override this default orchestration policy.
 
-# UI & Component Constraints
+### Status vocabulary
 
-1. **Tailwind + shadcn ONLY:** No raw CSS or inline styles. Use shadcn for all interactive elements.
-2. **Theming:** Map shadcn CSS variables to `--rt-*` brand tokens in `globals.css`. No legacy `landing-gradient-*` classes.
-3. **Tracker UI:** Use `ActiveTracker` on `/tracker` — not the deleted `Clock3DLED` component. Landing hero clock stays inline in `page.tsx`.
+Use exactly these task states:
 
-# Auto-Stop Edge Case Logic
+- **Not started** — no implementation exists.
+- **In progress** — active work exists but acceptance criteria are incomplete.
+- **Implemented—unverified** — relevant code exists, but required proof is missing or stale.
+- **Blocked** — a named external dependency prevents progress; record the owner and unblock condition.
+- **Verified** — all acceptance criteria passed and evidence is recorded.
 
-* If the user leaves the app (closes tab, minimizes, navigates away), the active timer MUST stop.
-* Implemented via `usePageVisibilityStop` — `visibilitychange` + `fetch(..., { keepalive: true })` to the stop endpoint.
+Only **Verified** satisfies a milestone gate. A file existing or code compiling once is not enough.
 
-# Development Standards
+### Task completion standard
 
-*Persistent process rules also live in [`.cursor/rules/rotrack-dev-standards.mdc`](.cursor/rules/rotrack-dev-standards.mdc).*
+Every completed task must record:
 
-## Learning-mode comments
+1. Deliverable and affected boundary
+2. Dependency status
+3. Acceptance checks, including failure/authorization cases
+4. Automated tests added or updated
+5. Exact verification commands or manual scenario
+6. Evidence: concise output, date, environment, and known limitations
 
-The primary developer is learning the stack. When writing or changing code, add **teachable inline comments** so each file explains itself:
+Do not record secrets, bearer tokens, database passwords, complete environment files, or private note content in evidence.
 
-1. **File header** (2–5 lines): purpose, layer (frontend / API / DB), and main dependencies.
-2. **Block comments** before non-obvious logic: auth, JWT → API, hooks, RLS, timer/auto-stop, enums, state/effects.
-3. Explain **why** and **what breaks if wrong** — not restatements of obvious syntax.
-4. Trace **data flow** across boundaries: `Browser → Next.js → Spring Boot → Supabase Postgres`.
-5. Skip comments on trivial layout or boilerplate shadcn usage.
+### Code and learning standards
 
-## Phase gates (verify before advancing)
+- Add concise teaching comments to materially changed boundary or domain files: authentication, JWT-to-API flow, database authorization, timers, timezones, rich-text persistence, privacy projections, and group roles.
+- Explain why an invariant exists and what fails if it is violated; do not comment trivial syntax or generated shadcn code.
+- Preserve the `ROT | WORK` two-bucket rule across TypeScript, Java, SQL, tests, and documentation.
+- Use Tailwind and shadcn for application controls. Third-party chart/editor APIs may use their required rendering props while respecting design tokens and accessibility.
+- Analyze existing files and dirty state before editing. Never overwrite unrelated user changes.
 
-- **No phase is complete** until that phase's **Exit criteria** below are checked and proof is recorded.
-- **Proof format** (append under the phase): commands run, HTTP status/body snippets, routes clicked, or known blockers.
-- Before starting phase *N+1*, confirm phase *N* exit criteria are all `[x]` or explicitly deferred with reason.
-- Every finished task should include: learning comments in touched files + verification from the current phase exit list.
+## 2. Current Truth
 
----
+| Area | State | Evidence / gap |
+|---|---|---|
+| Architecture/backlog rewrite | **Verified** | Reconciled and validated against repository source on 2026-08-01 |
+| Frontend routes and auth UI | **Implemented—unverified** | Source exists; sign-in currently redirects to `/dashboard`; no current build proof |
+| Tracker start/restore/stop UI | **Implemented—unverified** | Source exists; live API flow is unproven |
+| Automatic unload stop | **Implemented—unverified** | Legacy behavior exists but conflicts with the target and is scheduled for removal |
+| Dashboard UI and API call | **Implemented—unverified** | Fixed server-time buckets are incorrect target behavior |
+| Spring Boot API scaffold | **Implemented—unverified** | Core source exists; source test tree is absent |
+| Initial database migration | **Implemented—unverified** | SQL exists but is reportedly unapplied and lacks required hardening |
+| Supabase development integration | **Not started** | No recorded migration, RLS, or two-user proof |
+| Automated test suites | **Not started** | No current frontend/backend source tests |
+| CI and deployment | **Not started** | No pipeline, Dockerfile, staging evidence, or rollback runbook |
+| Notes, logs, friends, groups | **Not started** | Architecture defined; implementation follows the core MVP |
 
-# Progress Summary
+### Baseline evidence captured during the 2026-08-01 audit
 
-| Phase | Focus | Status |
-|-------|-------|--------|
-| 0 | Foundation & cleanup | **Done** |
-| 1 | Backend & database genesis | **Scaffolded** — code exists; migration not yet applied to Supabase |
-| 2 | MVP frontend integration | **Done** — needs live API + DB to verify end-to-end |
-| 3 | Ops, env & integration hardening | **Next** |
-| 4 | Full API & data model (arch.plan MVP gap) | Not started |
-| 5 | Frontend polish & component architecture | Not started |
-| 6 | Future product features | Not started |
-| 7 | Testing | Not started |
-| 8 | Deployment & CI/CD | Not started |
-| 9 | Documentation & observability | Not started |
+- Current tools: Node `v24.18.0`, npm `11.16.0`, Maven `3.9.12`, Java runtime `25.0.3`; the backend targets Java 21.
+- `frontend/package-lock.json` exists, but `frontend/node_modules` is absent.
+- `npm run lint` could not start because `eslint` was not installed. Historical frontend build checkmarks are therefore unverified.
+- `backend/target/**` is committed and already dirty; it includes stale test output even though no backend test source exists.
+- The root README is the default create-next-app document and does not describe the repository.
 
----
+## 3. Milestone 0 — Truthful, Reproducible Baseline
 
-# Execution Plan (The Backlog)
+**Goal:** Make the repository safe to develop and make all progress claims reproducible.
+**Gate:** All tasks below are **Verified** before core correctness work is called complete.
 
-Ask which Phase or Task to start with. When executing a task, analyze relevant files first, confirm approach, then code.
+### M0.1 — Reconcile architecture and backlog
 
-Reference: [`arch.plan.md`](arch.plan.md) — sections *Implementation Approach*, *API Design*, *Future Extension Tables*, *Testing Strategy*, *Deployment Strategy*.
+**Status:** Verified
+**Dependencies:** None
 
----
+**Deliverable**
 
-## Phase 0: Foundation & Cleanup — DONE
+- Rewrite `arch.plan.md` as the current/target architecture and contract source of truth.
+- Rewrite `todo.md` as this dependency-ordered, evidence-driven backlog.
+- Lock explicit-session behavior, no automatic stopping, backend-owned data access, private social projections, Tiptap notes, daily logs, friends, presence, and groups.
 
-- [x] **Task 0.1: Two-Bucket Purge**
-  - Removed stagnant from `page.tsx`, `dashboard/page.tsx`, `DESIGN.md`, `arch.plan.md`
-  - Enum is `ROT | WORK` only
-- [x] **Task 0.2: Consolidate Styling**
-  - Dashboard, auth, tracker migrated to light Tangerine Studio (`--rt-*`)
-  - Removed `landing-gradient-*` from `globals.css`
-- [x] **Task 0.3: Auth UI Refactor**
-  - shadcn `Input`, `Label`, `Button`, `Card` on sign-in/sign-up
-  - Sign-in redirects to `/` (landing stays public)
-  - Route guards on `/dashboard` and `/tracker` via layout files
-- [x] **Task 0.4: Legacy Removal**
-  - Deleted: `Clock3DLED.tsx`, `/timing`, `/home`, `/aboutus`, empty `architecture.md`
-  - Removed unused Three.js dependencies
-  - Removed About links from landing nav/footer
+**Acceptance and verification**
 
-**Phase 0 exit criteria** *(retroactive — confirm if revisiting)*
+- All referenced current files/routes/endpoints exist or are clearly labeled target/future.
+- No target requirement says idle time automatically becomes Rot or that hiding/leaving stops a timer.
+- No executable task contains unresolved technology or hosting alternatives.
+- Targeted searches confirm the only legacy-bucket mention is the architecture's explicit invalidation rule, and find no obsolete visibility-stop hook names or unresolved “tool A or tool B” instructions.
+- Review links and the core endpoint list against source.
 
-- [x] No `stagnant` / three-bucket references in app code or design docs
-- [x] `npm run build` passes in `frontend/`
-- [x] Routes: `/`, `/signin`, `/signup`, `/dashboard`, `/tracker` (no `/home`, `/timing`, `/aboutus`)
-- [ ] Learning comments added to key files touched in Phase 0 (ongoing as we revisit code)
+**Evidence — 2026-08-01 / local workspace**
 
-**Proof log:**
+- `git diff --check -- arch.plan.md todo.md` passed.
+- Local Markdown links between `arch.plan.md` and `todo.md` resolve.
+- Current routes, dependencies, migration, and controller mappings were cross-checked against repository source.
+- Stale-target searches found only intentional current-state or explicit invalidation references.
+- Independent architecture, backlog, and contract reviews were reconciled into the final documents.
 
-- _(add notes when re-verifying)_
+### M0.2 — Remove generated artifacts from version control
 
----
+**Status:** Not started
+**Dependencies:** M0.1
 
-## Phase 1: Backend & Database Genesis — SCAFFOLDED
+**Deliverable**
 
-- [x] **Task 1.1: Database Schema & RLS (migration file)**
-  - `database/migrations/001_initial_schema.sql` — `users`, `time_entries`, `ROT|WORK` enum, RLS, auth signup trigger
-  - [ ] **1.1b: Apply migration to Supabase project** (run SQL in Supabase dashboard or CLI)
-- [x] **Task 1.2: Spring Boot Setup**
-  - `backend/` initialized with JWT validation via Supabase JWKS, CORS, `application.yml`
-- [x] **Task 1.3: Core API Endpoints (MVP subset)**
-  - `POST /time-entries/start`, `PUT /time-entries/{id}/stop`, `PUT /time-entries/active/stop`
-  - `GET /time-entries/active`, `GET /dashboard/stats`, `GET /health`
+- Add `backend/target/` to `.gitignore`.
+- Remove already tracked target files from the Git index without deleting unrelated source or user work.
+- Remove `backend/stuff.txt` only after inspecting it and confirming it is disposable.
 
-**Phase 1 exit criteria**
+**Acceptance and verification**
 
-- [x] Migration SQL exists at `database/migrations/001_initial_schema.sql`
-- [x] Spring Boot project compiles (when Java 21 + Maven available)
-- [ ] Migration **applied** to Supabase dev project
-- [ ] `GET http://localhost:8080/api/v1/health` returns `{"status":"ok"}` with backend running
-- [ ] Learning comments on `SecurityConfig`, `TimeEntryService`, and controllers explain JWT + session flow
+- `git ls-files backend/target` returns no files.
+- A Maven build may recreate `backend/target/` without changing `git status`.
+- Existing dirty artifacts are handled deliberately and their ownership is not overwritten silently.
 
-**Proof log:**
+**Evidence:** Record `git status --short` before and after cleanup.
 
-- _(fill after Phase 3 backend wiring)_
+### M0.3 — Create the development runbook
 
----
+**Status:** Not started
+**Dependencies:** M0.1
 
-## Phase 2: Core MVP Frontend Integration — DONE
+**Deliverable**
 
-- [x] **Task 2.1: API Client**
-  - `frontend/src/lib/api.ts` — dynamic Supabase JWT, typed responses
-  - `frontend/src/types/time-entry.ts`
-  - `frontend/.env.example` with `NEXT_PUBLIC_API_URL`
-- [x] **Task 2.2: Tracker Route**
-  - `/tracker` with `ActiveTracker` component + `useTimeTracking` hook
-  - Legacy `/timing` and `/home` removed
-- [x] **Task 2.3: Auto-Stop Hook**
-  - `frontend/src/hooks/usePageVisibilityStop.ts`
-- [x] **Task 2.4: Dashboard Wiring**
-  - `/dashboard` fetches from `GET /dashboard/stats` with graceful empty-state fallback
+- Replace the root README with repository purpose, directory map, prerequisites, Supabase setup, environment-variable names, install/run/test commands, and troubleshooting.
+- Explain how environment variables enter Spring: shell/IDE/container injection, not implicit `.env` loading.
+- Add exact frontend, backend, and combined local URLs without printing secret values.
 
-**Phase 2 exit criteria**
+**Acceptance and verification**
 
-- [x] `frontend/src/lib/api.ts`, hooks, `/tracker`, `/dashboard` exist
-- [x] `npm run build` passes
-- [ ] Live API connected: start/stop session updates dashboard stats (depends on Phase 3)
-- [ ] Auto-stop observed in Network tab when tab hidden
-- [x] Learning comments on `api.ts`, `useTimeTracking`, `usePageVisibilityStop`, `ActiveTracker`, `types/time-entry.ts`, dashboard fetch, route layouts
+- A new developer can start from a clean clone using only the README plus access to a Supabase development project.
+- `.env.example` files contain every required variable and no secret defaults.
+- Runbook commands match package scripts, Maven configuration, and `/api/v1` paths.
 
-**Proof log:**
+**Evidence:** Record a clean-clone or temporary-directory walkthrough.
 
-- _(fill after Phase 3 E2E smoke test)_
+### M0.4 — Pin and verify toolchains
 
----
+**Status:** Not started
+**Dependencies:** M0.3
 
-## Phase 3: Ops, Environment & Integration Hardening — NEXT
+**Deliverable**
 
-*Aligns with arch.plan § Implementation Approach → Integration + Development environment*
+- Pin a supported Node LTS release and Java 21 using repository-visible version files or documented tooling.
+- Install frontend dependencies with `npm ci`.
+- Establish baseline scripts for lint, typecheck, unit tests, and build.
 
-- [ ] **Task 3.1: Supabase Project Wiring**
-  - Apply `001_initial_schema.sql` to dev Supabase project
-  - Verify RLS: users can only read/write own rows
-  - Confirm auth signup trigger creates `public.users` row
-- [ ] **Task 3.2: Backend Environment**
-  - Configure `DATABASE_URL`, `SUPABASE_JWKS_URI`, `SUPABASE_ISSUER_URI` per `backend/.env.example`
-  - Install Java 21 + Maven; verify `mvn spring-boot:run` starts on `:8080`
-- [ ] **Task 3.3: Frontend Environment**
-  - Set `NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1` in `frontend/.env.local`
-  - Verify fonts in `public/fonts/` and hero webp in `public/`
-- [ ] **Task 3.4: End-to-End Smoke Test**
-  - Sign up → sign in → start Work session on `/tracker` → stop → see stats on `/dashboard`
-  - Verify auto-stop fires when tab is hidden
-  - Fix any CORS, JWT issuer, or enum mapping issues discovered
+**Acceptance and verification**
 
-**Phase 3 exit criteria** *(required before Phase 4)*
+- `npm ci`, `npm run lint`, `npm test`, and `npm run build` run deterministically.
+- `mvn test` and `mvn package` run using Java 21.
+- Failures are fixed or recorded as explicit blockers; they are not converted into checkmarks.
 
-- [ ] `001_initial_schema.sql` applied; new signup creates `public.users` row
-- [ ] RLS verified: user A cannot read user B's `time_entries`
-- [ ] Backend runs locally with valid env; health check passes
-- [ ] Frontend `.env.local` has Supabase + `NEXT_PUBLIC_API_URL`
-- [ ] E2E: sign up → sign in → `/tracker` start WORK → stop → `/dashboard` shows non-empty stats
-- [ ] Tab hide triggers stop request (`keepalive` PUT) with 2xx response
-- [ ] Phase 1 & 2 exit criteria marked complete with proof logs below
-- [ ] Learning comments added/updated on integration touchpoints (`api.ts`, auth layouts, backend service layer)
+**Evidence:** Record versions, commands, exit codes, and test counts.
 
-**Proof log:**
+## 4. Milestone 1 — Secure and Correct Timer MVP
 
+**Goal:** Correct the current implementation before applying its baseline migration remotely.
+**Dependencies:** Milestone 0
+**Gate:** Migration, timer lifecycle, dashboard, security, and automated tests are all **Verified**.
+
+### M1.1 — Harden the initial schema before application
+
+**Status:** Not started
+
+**Deliverable**
+
+- Amend the unapplied development baseline or add the next ordered migration if any environment has already applied `001`.
+- Enforce one active entry per user with a partial unique index.
+- Add `(user_id, start_time)` reporting index and timestamp-based constraints.
+- Define timestamps as duration source of truth; plan removal of transitional `duration_minutes`.
+
+**Acceptance and verification**
+
+- Concurrent inserts cannot create two `end_time IS NULL` rows for one user.
+- Invalid ranges are rejected by PostgreSQL.
+- Migration applies cleanly to an empty development database and has a documented path for any already-migrated environment.
+- Repository integration tests cover the constraints.
+
+**Evidence:** Migration command, schema/index inspection, and test result.
+
+### M1.2 — Harden JWT authentication and API errors
+
+**Status:** Not started
+
+**Deliverable**
+
+- Validate issuer, audience, time claims, accepted asymmetric signing algorithm, and UUID `sub`.
+- Disable legacy symmetric fallback in production.
+- Return the documented error shape for auth, validation, malformed JSON, missing resources, conflicts, and unexpected errors.
+- Scope every repository access using the authenticated UUID and never accept client `user_id`.
+
+**Acceptance and verification**
+
+- Missing, expired, wrong-issuer/audience, bad-signature, and non-UUID-subject tokens return stable `401` responses.
+- User A receives `404` when requesting User B's resource.
+- Validation returns field-level errors; internal exceptions do not leak details.
+- Security/controller tests cover success and failure cases.
+
+**Evidence:** MockMvc test names/counts and redacted curl examples.
+
+### M1.3 — Implement the explicit session lifecycle
+
+**Status:** Not started
+
+**Deliverable**
+
+- Remove `usePageUnloadStop`, `stopActiveSessionBeacon`, related keepalive behavior, and auto-stop UI copy.
+- Preserve active sessions across reload, navigation, tab changes, minimization, and browser closure.
+- Make session start concurrency-safe and stop idempotent.
+- Migrate the frontend to the ID-based stop endpoint and retire `/time-entries/active/stop` after compatibility tests pass.
+
+**Acceptance and verification**
+
+- A started session remains active after route navigation and a browser close/reopen.
+- Reload restores the original ID and start timestamp.
+- A concurrent second start returns `409 ACTIVE_SESSION_EXISTS` and leaves one row.
+- Repeated stop requests return the unchanged entry and original end time.
+- Start accepts only `WORK` or `ROT`; idle time creates no row.
+
+**Evidence:** Service/controller tests, component tests, and a manual browser lifecycle script.
+
+### M1.4 — Correct dashboard time semantics
+
+**Status:** Not started
+
+**Deliverable**
+
+- Implement validated range and IANA timezone inputs for `/dashboard/stats`.
+- Return daily buckets and totals using timestamp-derived seconds.
+- Clip sessions to `[start, end)`, split across local days, handle DST, and exclude active sessions from completed totals.
+- Update frontend types and charts to the documented contract.
+
+**Acceptance and verification**
+
+- Empty ranges return zero totals and complete empty-state UI.
+- Cross-midnight, cross-range, and DST-transition fixtures produce correct buckets.
+- No logic uses the server's system timezone or fixed 08:00–16:00 hours.
+- Productivity score matches the documented formula.
+
+**Evidence:** Unit fixture table, API snapshot, frontend component test, and manual chart check.
+
+### M1.5 — Establish the MVP automated test suite
+
+**Status:** Not started
+
+**Deliverable**
+
+- Backend service, security/controller, repository, and migration tests for M1.1–M1.4.
+- Frontend API-client, tracker, and dashboard tests using Vitest/React Testing Library.
+- Playwright skeleton for the authenticated critical path, with external-auth setup documented.
+
+**Acceptance and verification**
+
+- Backend and frontend suites fail if ownership, one-active-session, idempotency, or dashboard bucketing regresses.
+- Tests do not rely on tracked build artifacts or production credentials.
+- Exact commands are ready for CI.
+
+**Evidence:** Commands, pass counts, duration, and any quarantined external test with owner/reason.
+
+## 5. Milestone 2 — Secure Local Supabase Integration
+
+**Goal:** Prove the hardened MVP against a real development project.
+**Dependencies:** Milestone 1
+**Gate:** Signup, API ownership, RLS boundary, tracker, and dashboard pass with two users.
+
+### M2.1 — Apply and verify the development migration
+
+**Status:** Not started
+
+- Apply reviewed migrations to the Supabase development project.
+- Verify the signup trigger creates `public.users`.
+- Verify Data API RLS separately: each user can access only owned rows.
+- Verify the Spring application role has only required table DML grants plus the documented RLS-bypass behavior, and that Spring authorization is enforced by ownership-scoped application queries.
+
+**Evidence:** Redacted migration/version output and two-user isolation matrix.
+
+### M2.2 — Make local startup deterministic
+
+**Status:** Not started
+
+- Configure redacted frontend/backend environment templates, CORS origins, JWT issuer/JWKS/audience, and TLS JDBC settings.
+- Start backend and frontend using the runbook.
+- Confirm liveness independently from database readiness.
+
+**Evidence:** Startup commands, health bodies/statuses, and configuration-name checklist without values.
+
+### M2.3 — Complete the local critical-path test
+
+**Status:** Not started
+
+- User A signs up/signs in, starts Work, navigates/reloads, restores, explicitly stops, and sees dashboard totals.
+- User B cannot read, stop, or aggregate User A's session.
+- Repeat with Rot and verify it remains private to the owner.
+- Confirm closing the app does not stop an active session.
+
+**Evidence:** Playwright result where feasible plus a concise manual route/API log.
+
+## 6. Milestone 3 — CI, Staging, and MVP Release
+
+**Goal:** Ship the personal tracker/dashboard safely.
+**Dependencies:** Milestone 2
+
+### M3.1 — Pull-request CI
+
+**Status:** Not started
+
+- Run frontend install/lint/typecheck/test/build, backend test/package, migration validation, and secret scanning.
+- Cache dependencies without caching generated source artifacts into Git.
+- Require green checks before merge.
+
+**Evidence:** Link a passing pipeline and a deliberately observed failing check.
+
+### M3.2 — Containerize and deploy staging
+
+**Status:** Not started
+
+- Build a non-root Spring Boot container with liveness/readiness checks.
+- Deploy frontend to Vercel, API to ECS Fargate, and use a separate Supabase staging project.
+- Configure secrets, TLS, restricted CORS, structured logs, and database connection limits.
+
+**Evidence:** Image digest, staging URLs, health results, and redacted configuration checklist.
+
+### M3.3 — Release safeguards
+
+**Status:** Not started
+
+- Run the critical Playwright flow and documented manual health smoke against staging.
+- Document database-first migration order, application rollback, and incident contacts.
+- Add API/frontend error monitoring and alerts for health, latency, error rate, and connection exhaustion.
+
+**Evidence:** Smoke result, rollback rehearsal, dashboards/alert identifiers.
+
+**MVP release gate**
+
+- Milestones 0–3 are fully **Verified**.
+- No open critical/high security or data-integrity defect.
+- Explicit stop and session restoration behavior match UI copy and documentation.
+- Production promotion is approved from a passing staging artifact.
+
+## 7. Milestone 4 — History, Timezone, and Privacy Preferences
+
+**Goal:** Deliver prerequisites for logs and social features as complete vertical slices.
+**Dependencies:** MVP release
+
+### M4.1 — Time-entry history and manual corrections
+
+**Status:** Not started
+
+- Add owned list/create/update/delete APIs with cursor pagination and deterministic reverse-chronological ordering.
+- Reject overlapping completed entries and edits that conflict with an active entry; enforce completed-range overlap protection at the database boundary as well as in user-facing validation.
+- Add accessible history/editor UI with validation and confirmation for deletion.
+- Cover ownership, overlap, boundaries, empty state, and error recovery.
+
+### M4.2 — Profile and preferences
+
+**Status:** Not started
+
+- Add `user_preferences`, owned API, and `/settings` UI.
+- Validate IANA timezone and optional daily Work goal.
+- Add `share_study_summary` and `share_active_study_status`, both `false` by default.
+- Changing timezone affects future calendar rendering without rewriting stored UTC instants.
+
+### M4.3 — OpenAPI and typed client generation policy
+
+**Status:** Not started
+
+- Publish the implemented API contract and stable error codes.
+- Generate frontend DTO types from OpenAPI while keeping the authenticated native-`fetch` wrapper hand-written.
+- Add contract-drift validation to CI.
+
+**Milestone gate:** History, overlap protection, timezone preferences, and private-default sharing flags are **Verified**.
+
+## 8. Milestone 5 — WYSIWYG Notes and Daily Study Logs
+
+**Goal:** Add private study context beside the timer and a trustworthy daily record.
+**Dependencies:** Milestone 4
+
+### M5.1 — Notes data and API
+
+**Status:** Not started
+
+- Add owned `notes` migration/API with optional time-entry link, Tiptap JSON, derived plain text, size limits, and optimistic version.
+- Use `ON DELETE SET NULL` for a deleted linked session so the user's note survives.
+- Enforce at the database boundary that a note can link only to a session owned by the same user.
+- Validate supported nodes/marks and safe link protocols; never accept arbitrary executable HTML.
+- Test ownership, missing link, deleted session, version conflict, malformed document, and size limit.
+
+### M5.2 — Timer-side WYSIWYG editor
+
+**Status:** Not started
+
+- Add a Tiptap StarterKit client component beside the timer with the formatting set defined in `arch.plan.md`.
+- Allow standalone notes and optional attachment to the active/completed session.
+- Autosave after about 750 ms and show saving/saved/conflict/offline-error states without losing local edits.
+- Add keyboard navigation, accessible toolbar labels, responsive layout, and reload restoration tests.
+
+### M5.3 — Generated daily logs and reflection
+
+**Status:** Not started
+
+- Add one owned reflection per local date and generate totals/timeline/session-note references from time entries.
+- Build daily and calendar views; generated statistics are read-only.
+- Reuse the safe rich-text document contract for reflections.
+- Test empty days, cross-midnight/DST sessions, timezone changes, version conflicts, and privacy.
+
+**Milestone gate:** Notes and reflections survive reloads, generated totals match authoritative entries, and cross-user/private-content tests pass.
+
+## 9. Milestone 6 — Friends, Privacy, and Active Study Presence
+
+**Goal:** Let users connect and see opted-in study progress without exposing sensitive behavior.
+**Dependencies:** Milestone 4; may run after or independently from Milestone 5
+
+### M6.1 — Friendship lifecycle and blocking
+
+**Status:** Not started
+
+- Add canonical mutual friendship/request storage with `PENDING` and `ACCEPTED` states plus a separate directional user-block table.
+- Add unique case-normalized public handles and rate-limited handle search with a three-character minimum; never search or expose email addresses.
+- Implement search/request/list/accept/decline/cancel/remove/block/unblock APIs and UI.
+- Reject self, duplicate, and reversed duplicate requests.
+- Blocking deletes friendship/direct-invitation state, prevents new direct requests, and suppresses pairwise activity visibility.
+- Test both sides of every transition, authorization, enumeration resistance, and concurrent requests.
+
+### M6.2 — Privacy-safe study summaries
+
+**Status:** Not started
+
+- Expose Work totals and study-day streak only when `share_study_summary` is enabled; do not expose goal progress until the goals feature defines its sharing contract.
+- Build explicit projection DTOs; never serialize time-entry, note, reflection, or persistence entities directly.
+- Ensure Rot totals, raw sessions, exact timestamps, note titles/content, and reflections never appear in responses or logs.
+- Add allow/deny matrix tests for friend state, sharing preference, block state, and unrelated users.
+
+### M6.3 — Active-study presence
+
+**Status:** Not started
+
+- Derive boolean `studying` only from an active `WORK` entry and `share_active_study_status=true`.
+- Poll every 30 seconds only while the social screen is visible; stop on hide/unmount and refresh immediately after a local start/stop.
+- Do not expose Rot activity, session labels, start timestamps, or attached note data.
+- Test polling cleanup, stale UI recovery, opt-out, friendship removal, and block behavior.
+
+**Milestone gate:** The privacy matrix passes and captured social payloads contain no forbidden fields.
+
+## 10. Milestone 7 — Private Study Groups
+
+**Goal:** Let friends form private groups and view permitted study summaries/presence.
+**Dependencies:** Milestone 6
+
+### M7.1 — Group, invitation, and membership model
+
+**Status:** Not started
+
+- Add private groups, invitation state, memberships, and `OWNER | ADMIN | MEMBER` roles.
+- Limit initial invitations to accepted friends.
+- Require ownership transfer before owner departure; enforce role transitions server-side.
+- Unfriending and blocking retain third-party group membership/ownership. Blocking suppresses direct interaction and pairwise activity/presence while preserving the minimum membership/role metadata required for administration.
+- Test invitation races, duplicate membership, last-owner protection, removal, leaving, and block behavior.
+
+### M7.2 — Group management UI
+
+**Status:** Not started
+
+- Build group list/detail/create/edit/invite/member-management flows with role-aware controls.
+- Provide explicit empty, pending, unauthorized, removed, archived, and error states.
+- Verify keyboard navigation, responsive behavior, and stale-membership refresh.
+
+### M7.3 — Group summaries and presence
+
+**Status:** Not started
+
+- Show opted-in member Work summaries, boolean active-study presence, and privacy-safe aggregate Work totals/streaks.
+- Never include member Rot, raw sessions, timestamps, notes, or reflections.
+- Poll presence at the same 30-second cadence and pause while hidden.
+- Test group role plus privacy preference combinations and payload field allowlists.
+
+**Milestone gate:** Membership authorization, role transitions, blocking, and privacy-safe aggregate tests are **Verified**.
+
+## 11. Independent Future Epics
+
+These items do not block the timer MVP, notes/logs, or first social release. Each requires discovery and its own architecture/API/data/privacy/test plan before implementation.
+
+- Goal CRUD and goal-progress UX beyond the simple daily Work preference
+- Group challenges and competitions
+- Notifications and milestone reminders
+- Advanced weekly/monthly analytics and pattern insights
+- CSV/PDF export
+- Collaborative or shared notes
+- Search across private notes and logs
+- Offline note editing and conflict reconciliation beyond optimistic concurrency
+
+## 12. Evidence Template
+
+Append evidence beneath the completed task; do not create unsupported global checkmarks.
+
+```md
+**Evidence — YYYY-MM-DD / environment**
+
+- Commands: `...`
+- Result: exit code, test count, or relevant status/body summary
+- Manual scenario: routes/actions and observed outcome
+- Security/privacy cases: identities and allow/deny result, with tokens redacted
+- Known limitations/blockers: owner and unblock condition
+- Commit/PR/deployment reference: ...
 ```
-# Example — replace with real output
-# curl http://localhost:8080/api/v1/health
-# npm run build (frontend)
-# mvn spring-boot:run (backend)
-# Steps: ...
-```
 
----
+## 13. Next Action
 
-## Phase 4: Full API & Data Model — arch.plan MVP gaps
-
-*Aligns with arch.plan § API Design + Database Schema (user_preferences)*
-
-- [ ] **Task 4.1: user_preferences Table**
-  - Migration: `timezone`, `daily_goal_hours`, RLS policies
-  - Spring entity + repository
-- [ ] **Task 4.2: Time Entry CRUD (full)**
-  - `GET /time-entries` — paginated, filtered by date range and activity type
-  - `POST /time-entries` — manual entry with start/end
-  - `GET /time-entries/{id}`, `PUT /time-entries/{id}`, `DELETE /time-entries/{id}`
-- [ ] **Task 4.3: User Profile & Preferences API**
-  - `GET/PUT /user/profile`, `GET/PUT /user/preferences`
-  - `UserController`, `UserService`
-- [ ] **Task 4.4: Extended Dashboard Endpoints**
-  - `GET /dashboard/summary` — current day/week snapshot
-  - `GET /dashboard/trends` — time series with `granularity` param (day/week/month)
-  - Query param support on `/dashboard/stats` (`startDate`, `endDate`, `granularity`)
-- [ ] **Task 4.5: API Documentation**
-  - SpringDoc OpenAPI (Swagger UI) per arch.plan § Technology Stack
-
-**Phase 4 exit criteria** *(required before Phase 5)*
-
-- [ ] `user_preferences` migration applied; CRUD works via API
-- [ ] Full time-entry CRUD tested with Postman/curl (list, create, update, delete)
-- [ ] Profile + preferences endpoints return/update correct user data
-- [ ] `/dashboard/summary` and `/dashboard/trends` return expected shapes for frontend
-- [ ] Swagger UI loads and documents all public endpoints
-- [ ] Learning comments on new entities, controllers, and DTOs
-
-**Proof log:**
-
-- _(curl examples, Swagger URL, migration version)_
-
----
-
-## Phase 5: Frontend Polish & Component Architecture
-
-*Aligns with arch.plan § Frontend Component Architecture + Component Hierarchy*
-
-- [ ] **Task 5.1: Extract Dashboard Components**
-  - `components/dashboard/TimeChart.tsx`, `ActivitySummary.tsx`, `WeeklyStats.tsx`
-  - Refactor `dashboard/page.tsx` into composed components
-- [ ] **Task 5.2: Extract Tracker Components**
-  - `ActivityTimer.tsx`, `ActivityButtons.tsx`, `RecentEntriesList.tsx`
-  - `TimeLogEditor.tsx` — modal/form for editing past entries
-- [ ] **Task 5.3: Server State Caching**
-  - Add React Query (or SWR) for dashboard stats and active session
-  - Loading skeletons and optimistic updates on start/stop
-- [ ] **Task 5.4: Settings Page**
-  - Wire sidebar Settings nav to `/settings`
-  - Profile edit + preferences (timezone, daily goal) via user API
-- [ ] **Task 5.5: Form Validation**
-  - React Hook Form + Zod on auth, time log editor, settings forms
-- [ ] **Task 5.6: Auth Hardening (optional)**
-  - Evaluate `@supabase/ssr` + middleware for cookie-based session
-  - Email confirmation UX polish
-
-**Phase 5 exit criteria** *(required before Phase 6)*
-
-- [ ] Dashboard and tracker decomposed into named components per arch.plan hierarchy
-- [ ] React Query (or SWR) caches dashboard + active session; no duplicate fetches on navigation
-- [ ] `/settings` edits profile/preferences end-to-end
-- [ ] Forms use Zod validation with clear error messages
-- [ ] `npm run build` passes; manual UX pass on tracker, dashboard, settings, auth
-- [ ] Learning comments on extracted components and query hooks
-
-**Proof log:**
-
-- _(component list, settings flow steps)_
-
----
-
-## Phase 6: Future Product Features
-
-*Aligns with arch.plan § Future Extension Tables + Phase 2: Future Features*
-
-- [ ] **Task 6.1: Goal Tracking**
-  - `goals` table migration (title, target_hours, target_date, activity_type, status)
-  - Goal CRUD API + UI; progress toward daily/weekly targets
-  - Optional milestone notifications
-- [ ] **Task 6.2: Study Groups**
-  - `study_groups`, `study_group_members` tables
-  - Group management UI; aggregated stats (privacy-preserving, no individual entry access)
-  - Group challenges / competitions
-- [ ] **Task 6.3: Advanced Analytics**
-  - Weekly/monthly reports; productivity insights; pattern analysis
-  - Export (CSV, PDF)
-  - Dashboard date-range picker wired to API query params
-
-**Phase 6 exit criteria** *(required before Phase 7)*
-
-- [ ] Each shipped feature (goals / groups / analytics) has migration + API + UI + manual test script
-- [ ] Study group stats do not leak individual entries (privacy check documented)
-- [ ] Export produces valid CSV/PDF for sample account
-- [ ] Learning comments on new domain logic (goals, aggregation, export)
-
-**Proof log:**
-
-- _(feature checklist per 6.1–6.3)_
-
----
-
-## Phase 7: Testing
-
-*Aligns with arch.plan § Testing Strategy*
-
-- [ ] **Task 7.1: Backend Tests**
-  - JUnit 5 unit tests for `TimeEntryService`
-  - MockMvc controller tests; `@DataJpaTest` for repositories
-  - TestContainers for integration tests (optional)
-- [ ] **Task 7.2: Frontend Tests**
-  - Jest + React Testing Library for `ActiveTracker`, auth forms
-  - Integration tests for API client
-- [ ] **Task 7.3: E2E Tests (optional)**
-  - Playwright or Cypress: sign-in → track → dashboard flow
-- [ ] **Task 7.4: Migration Tests**
-  - Verify schema constraints, foreign keys, RLS policy behavior
-
-**Phase 7 exit criteria** *(required before Phase 8)*
-
-- [ ] Backend test suite passes (`mvn test`)
-- [ ] Frontend unit tests pass (`npm test` or documented test command)
-- [ ] CI runs lint + tests on PR (local dry-run acceptable before pipeline exists)
-- [ ] RLS / constraint tests documented or automated
-- [ ] Optional E2E: sign-in → track → dashboard green in Playwright/Cypress
-
-**Proof log:**
-
-- _(test commands + pass counts)_
-
----
-
-## Phase 8: Deployment & CI/CD
-
-*Aligns with arch.plan § Deployment Strategy + Infrastructure*
-
-- [ ] **Task 8.1: Containerize Backend**
-  - Dockerfile for Spring Boot; health check on `/api/v1/health`
-- [ ] **Task 8.2: Frontend Deployment**
-  - Deploy Next.js to Vercel (or AWS Amplify per arch.plan)
-  - Configure production env vars (Supabase, API URL)
-- [ ] **Task 8.3: Backend Deployment**
-  - AWS ECS Fargate or EC2 (per arch.plan); staging + production Supabase projects
-- [ ] **Task 8.4: CI/CD Pipeline**
-  - GitHub Actions: lint, test, build frontend + backend on PR
-  - Automated deploy to staging on merge
-- [ ] **Task 8.5: Production Hardening**
-  - HTTPS enforcement, rate limiting, secrets management
-  - CORS locked to production frontend domain
-
-**Phase 8 exit criteria** *(required before Phase 9)*
-
-- [ ] Staging URLs live for frontend + backend; health check public
-- [ ] Production env vars set (no secrets in repo)
-- [ ] CI/CD deploys staging on merge; rollback path documented
-- [ ] Smoke test passes against staging (same script as Phase 3 E2E)
-- [ ] HTTPS + CORS verified from production frontend origin
-
-**Proof log:**
-
-- _(staging URLs, deploy command, smoke result)_
-
----
-
-## Phase 9: Documentation & Observability
-
-*Aligns with arch.plan § Documentation + Monitoring and Observability*
-
-- [ ] **Task 9.1: Project README**
-  - Replace default create-next-app README with monorepo setup guide
-  - Root README linking `frontend/`, `backend/`, `database/`
-- [ ] **Task 9.2: API & Code Docs**
-  - Swagger UI live; Javadoc on services; JSDoc on shared frontend utilities
-- [ ] **Task 9.3: Observability**
-  - Structured logging (Logback backend); error tracking (Sentry or similar)
-  - Optional APM; Supabase dashboard monitoring for DB
-- [ ] **Task 9.4: User Guide**
-  - Short end-user doc: two buckets, tracker, dashboard, auto-stop behavior
-
-**Phase 9 exit criteria** *(project MVP documentation complete)*
-
-- [ ] Root `README.md` documents full local setup (frontend + backend + Supabase)
-- [ ] Swagger/OpenAPI published; new dev can call APIs without reading source
-- [ ] Error tracking or structured logs confirmed in staging/prod
-- [ ] User guide covers two-bucket model, tracker, dashboard, auto-stop
-- [ ] `todo.md` progress table reflects final phase status with proof links
-
-**Proof log:**
-
-- _(README sections, doc URLs)_
-
----
-
-**Cursor:** Phases 0–2 are implemented in code. Follow **Development Standards** (learning comments + phase gates). Start with **Phase 3** unless directed otherwise. Do not advance past a phase until its exit criteria are checked and proof is logged.
+Finish and verify **M0.1**, then complete repository hygiene and the runbook in **M0.2–M0.4**. Do not apply the remote development migration until **M1.1** resolves the active-session race and reporting indexes.

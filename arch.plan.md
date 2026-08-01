@@ -1,579 +1,357 @@
----
-name: Productivity Tracker Architecture
-overview: ""
-todos: []
----
+# rotrack Architecture
 
-# Productivity Tracking Application - Architecture Plan
+**Status:** Living architecture and contract document
+**Last reviewed:** 2026-08-01
+**Delivery backlog:** [`todo.md`](todo.md)
 
-## System Architecture Overview
+## 1. Purpose and Product Boundaries
 
-The application follows a **three-tier architecture** with clear separation of concerns:
+rotrack is a low-friction study and productivity tracker. Its first production release focuses on reliable authentication, explicit time tracking, and a useful personal dashboard. Notes, daily logs, friends, presence, and study groups are planned product slices built after the core tracker is production-ready.
 
-```
-┌─────────────────┐
-│   Next.js UI    │ (Frontend - Client)
-└────────┬────────┘
-         │ HTTPS/REST
-         │ (JWT Token)
-┌────────▼────────┐
-│  Spring Boot    │ (Backend - Business Logic)
-│     API         │
-└────────┬────────┘
-         │ JDBC
-┌────────▼────────┐
-│  Supabase       │ (Database + Auth)
-│  PostgreSQL     │
-└─────────────────┘
-```
+### Core domain rules
 
-**Key Design Decisions:**
+1. There are exactly two activity types: `WORK` and `ROT`. `STAGNANT` and other buckets are invalid everywhere.
+2. Tracking is explicit. Time is recorded only after the user starts a Work or Rot session; idle time is untracked and is not inferred as Rot.
+3. A user may have at most one active session.
+4. A session remains active until the user explicitly stops it. Closing, hiding, minimizing, or navigating away from the app does not stop it.
+5. Returning to the app restores the original active session, regardless of its age, until the user stops it.
+6. Timestamps are authoritative. Clients never submit calculated duration or a `user_id`.
+7. Completed entries must not overlap for the same user. This rule becomes user-facing when manual entry editing is added.
+8. Notes, daily reflections, Rot activity, and raw session history are private unless a later architecture decision explicitly introduces sharing.
 
-- **Next.js App Router**: Modern React patterns, SSR/SSG for better performance
-- **Spring Boot**: Robust REST API with dependency injection, transaction management
-- **Supabase Auth + PostgreSQL**: Managed authentication and database reduce operational overhead
-- **JWT Token Validation**: Stateless authentication, Spring validates tokens from Supabase
-- **Hybrid Time Tracking**: Real-time tracking with historical edit capabilities
+### MVP and non-goals
 
-## Project Structure
+The production MVP includes:
 
-```
+- Supabase email/password authentication
+- Protected tracker and dashboard routes
+- Start, restore, and explicitly stop Work or Rot sessions
+- A personal seven-day dashboard
+- Ownership isolation, automated tests, CI, and a staging deployment
 
-rotrack2/my-app/
+The MVP does not include manual-entry CRUD, settings, notes, daily logs, friends, groups, notifications, exports, or automatic timer stopping.
 
-├── frontend/              # Next.js 16 Application
-│   ├── src/
-│   │   ├── app/          # App Router pages
-│   │   │   ├── (auth)/   # Auth route group
-│   │   │   │   ├── login/
-│   │   │   │   └── signup/
-│   │   │   ├── dashboard/
-│   │   │   │   ├── page.tsx
-│   │   │   │   └── layout.tsx
-│   │   │   ├── tracker/
-│   │   │   │   └── page.tsx
-│   │   │   └── layout.tsx
-│   │   ├── components/   # React components
-│   │   │   ├── ui/       # Reusable UI (buttons, cards, inputs)
-│   │   │   ├── tracker/  # Time tracker components
-│   │   │   │   ├── TimeTracker.tsx
-│   │   │   │   ├── ActivityTimer.tsx
-│   │   │   │   └── TimeLogEditor.tsx
-│   │   │   ├── dashboard/ # Dashboard visualization components
-│   │   │   │   ├── TimeChart.tsx
-│   │   │   │   ├── ActivitySummary.tsx
-│   │   │   │   └── WeeklyStats.tsx
-│   │   ├── lib/          # Utility functions
-│   │   │   ├── supabase.ts    # Supabase client
-│   │   │   ├── api.ts         # API client for Spring backend
-│   │   │   └── utils.ts       # Helper functions
-│   │   ├── types/        # TypeScript type definitions
-│   │   │   ├── time-entry.ts
-│   │   │   └── user.ts
-│   │   └── hooks/        # Custom React hooks
-│   │       ├── useAuth.ts
-│   │       └── useTimeTracking.ts
-│   ├── public/           # Static assets
-│   └── package.json
-│
-├── backend/              # Spring Boot Application
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── java/
-│   │   │   │   └── com/
-│   │   │   │       └── rotrack/
-│   │   │   │           ├── RotrackApplication.java
-│   │   │   │           ├── config/
-│   │   │   │           │   ├── SecurityConfig.java
-│   │   │   │           │   ├── WebConfig.java
-│   │   │   │           │   └── DatabaseConfig.java
-│   │   │   │           ├── controller/
-│   │   │   │           │   ├── TimeEntryController.java
-│   │   │   │           │   ├── UserController.java
-│   │   │   │           │   └── DashboardController.java
-│   │   │   │           ├── service/
-│   │   │   │           │   ├── TimeEntryService.java
-│   │   │   │           │   ├── UserService.java
-│   │   │   │           │   ├── AuthService.java
-│   │   │   │           │   └── DashboardService.java
-│   │   │   │           ├── repository/
-│   │   │   │           │   ├── TimeEntryRepository.java
-│   │   │   │           │   └── UserRepository.java
-│   │   │   │           ├── model/
-│   │   │   │           │   ├── TimeEntry.java
-│   │   │   │           │   ├── User.java
-│   │   │   │           │   └── ActivityType.java
-│   │   │   │           ├── dto/
-│   │   │   │           │   ├── TimeEntryDTO.java
-│   │   │   │           │   └── DashboardStatsDTO.java
-│   │   │   │           └── exception/
-│   │   │   │               └── GlobalExceptionHandler.java
-│   │   │   └── resources/
-│   │   │       ├── application.properties
-│   │   │       └── application.yml
-│   │   └── test/
-│   ├── pom.xml           # Maven dependencies
-│   └── README.md
-│
-└── database/             # Database migration scripts
-    ├── schema.sql
-    └── migrations/
+## 2. Current Repository State
+
+This section describes what exists in source control today. It is not a completion claim; verification status and evidence live in [`todo.md`](todo.md).
+
+### Frontend
+
+- Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4, shadcn/ui primitives, Recharts, and `@supabase/supabase-js`
+- Routes: `/`, `/signin`, `/signup`, `/signup/confirmation`, `/tracker`, `/dashboard`
+- Client-side Supabase session context and protected-route layouts
+- API client using native `fetch` and Supabase bearer tokens
+- Tracker UI with start, active-session restore, elapsed display, and explicit stop
+- Dashboard using `GET /api/v1/dashboard/stats`
+- A legacy `usePageUnloadStop` hook and keepalive stop request still exist and must be removed because they conflict with the explicit-stop rule
+
+### Backend and database
+
+- Spring Boot 3.4, Java 21 target, Maven, Spring Web, JPA, OAuth2 Resource Server, validation, and PostgreSQL
+- Implemented endpoints: health, start session, get active session, two stop variants, and dashboard stats
+- Supabase migration defining `users`, `time_entries`, the `ROT|WORK` enum, ownership RLS policies, and signup profile creation
+- No source-controlled backend or frontend tests currently exist
+
+### Known baseline problems
+
+- `backend/target/**` is tracked and generated artifacts are dirty.
+- The root README is still a create-next-app template.
+- Frontend dependencies are not installed in the current environment, so historical build claims are unverified.
+- Spring JDBC does not propagate the user JWT into PostgreSQL; current RLS policies are not the backend authorization boundary.
+- The service-level check for one active session is race-prone without a database constraint.
+- Dashboard bucketing currently depends on the server timezone, uses fixed daytime hours, and assigns a full session to its start hour.
+- Authentication, validation, and unexpected errors do not yet share one stable response contract.
+
+## 3. Target System Architecture
+
+```text
+Browser / Next.js
+  |-- Supabase Auth SDK ----------> Supabase Auth
+  |       receives user JWT
+  |
+  `-- HTTPS + Bearer JWT ---------> Spring Boot API
+                                     |-- validates JWT and ownership
+                                     |-- applies domain rules
+                                     `-- TLS JDBC ------------------> Supabase PostgreSQL
 ```
 
-## Database Schema Design
+### Trust boundaries
 
-The application uses Supabase PostgreSQL. Schema leverages Supabase Auth for user management.
+- The browser uses Supabase directly only for authentication.
+- Spring Boot is the sole application-data API. The frontend does not query application tables through the Supabase Data API.
+- Spring derives the user UUID from the validated JWT `sub` claim. Request bodies and query parameters never select the acting user.
+- Every repository read and mutation is scoped by that UUID, including lookup by resource ID.
+- PostgreSQL uses a dedicated, TLS-enabled Spring application role with only required DML grants and no schema-management privileges. That role is explicitly allowed to bypass RLS for the granted application tables because Spring cannot supply `auth.uid()` through pooled JDBC requests. Supabase RLS remains enabled for browser/Data API access; Spring's mandatory ownership-scoped queries are its authorization boundary.
+- Any future direct database access requires a new architecture decision and two-user RLS tests before release.
 
-### Core Tables
+### Fixed technology choices
 
-**users** (extends Supabase auth.users)
+| Concern | Decision |
+|---|---|
+| Frontend | Next.js App Router, React, TypeScript |
+| UI | Tailwind CSS 4 and shadcn/ui; Recharts for charts |
+| HTTP | Native `fetch` through one typed API client |
+| Client server-state | TanStack Query when shared caching is introduced |
+| Authentication | Supabase Auth browser client |
+| Backend | Java 21, Spring Boot, Spring MVC, Spring Data JPA |
+| JWT validation | Spring Security OAuth2 Resource Server |
+| Database | Supabase PostgreSQL |
+| Migrations | Ordered SQL migrations applied with the Supabase CLI |
+| Backend tests | JUnit 5, MockMvc, repository integration tests |
+| Frontend tests | Vitest and React Testing Library |
+| Browser tests | Playwright |
+| Hosting | Vercel frontend, AWS ECS Fargate backend, Supabase Auth/PostgreSQL |
 
-- `id` (UUID, primary key, references auth.users.id)
-- `email` (text, unique)
-- `username` (text, unique)
-- `created_at` (timestamp)
-- `updated_at` (timestamp)
-- Indexes: `idx_users_email`, `idx_users_username`
+## 4. Core Data and Time Model
 
-**time_entries**
+### MVP tables
 
-- `id` (UUID, primary key, default gen_random_uuid())
-- `user_id` (UUID, foreign key to users.id, NOT NULL)
-- `activity_type` (enum: 'ROT', 'WORK', NOT NULL)
-- `start_time` (timestamp, NOT NULL)
-- `end_time` (timestamp, nullable for active sessions)
-- `duration_minutes` (integer, calculated)
-- `notes` (text, nullable)
-- `created_at` (timestamp, default now())
-- `updated_at` (timestamp, default now())
-- Constraints: `end_time > start_time`, `duration_minutes >= 0`
-- Indexes: `idx_time_entries_user_id`, `idx_time_entries_start_time`, `idx_time_entries_activity_type`
+#### `users`
 
-**user_preferences**
+- `id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE`
+- `email TEXT UNIQUE NOT NULL`
+- `username TEXT UNIQUE NULL`
+- `created_at TIMESTAMPTZ NOT NULL`
+- `updated_at TIMESTAMPTZ NOT NULL`
 
-- `id` (UUID, primary key)
-- `user_id` (UUID, foreign key to users.id, unique)
-- `timezone` (text, default 'UTC')
-- `daily_goal_hours` (numeric, nullable)
-- `created_at` (timestamp)
-- `updated_at` (timestamp)
+#### `time_entries`
 
-### Future Extension Tables (for Phase 2)
+- `id UUID PRIMARY KEY`
+- `user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE`
+- `activity_type activity_type NOT NULL` where the enum is only `ROT | WORK`
+- `start_time TIMESTAMPTZ NOT NULL`
+- `end_time TIMESTAMPTZ NULL`; `NULL` means active
+- `notes TEXT NULL` as a short session label until rich-text notes ship
+- audit timestamps
 
-**goals**
+Required invariants and indexes:
 
-- `id` (UUID, primary key)
-- `user_id` (UUID, foreign key to users.id)
-- `title` (text)
-- `target_hours` (numeric)
-- `target_date` (date)
-- `activity_type` (enum)
-- `status` (enum: 'ACTIVE', 'COMPLETED', 'ARCHIVED')
-- `created_at` (timestamp)
+- `end_time IS NULL OR end_time > start_time`
+- Partial unique index on `user_id WHERE end_time IS NULL`
+- Composite reporting index on `(user_id, start_time)`
+- Timestamps, not a client-writable duration field, are the source of truth. Duration is derived from `end_time - start_time` for reads and aggregation.
 
-**study_groups**
+If the existing `duration_minutes` column is retained temporarily, the API must ignore client values and treat it as transitional derived data. A migration must remove it after all queries derive duration from timestamps.
 
-- `id` (UUID, primary key)
-- `name` (text)
-- `description` (text, nullable)
-- `created_by` (UUID, foreign key to users.id)
-- `created_at` (timestamp)
+### Time semantics
 
-**study_group_members**
+- Persist and exchange ISO-8601 UTC instants.
+- Reporting ranges are half-open: `[start, end)`.
+- Calendar boundaries use a validated IANA timezone.
+- Before preferences exist, the frontend sends the browser IANA timezone for dashboard requests.
+- The default dashboard range is the previous seven local calendar days including today.
+- Dashboard requests are capped at 366 local days; larger analytics jobs require a separate export/reporting design.
+- Sessions spanning a reporting boundary are clipped to the range and split across daily buckets.
+- Active sessions are shown separately and excluded from completed totals.
+- Daylight-saving transitions follow the selected timezone rather than assuming every day is 24 hours.
 
-- `group_id` (UUID, foreign key to study_groups.id)
-- `user_id` (UUID, foreign key to users.id)
-- `role` (enum: 'ADMIN', 'MEMBER')
-- `joined_at` (timestamp)
-- Primary key: (group_id, user_id)
+## 5. Authentication and Security
 
-**Row Level Security (RLS) Policies:**
+1. Supabase authenticates the user and returns an access token.
+2. The API client attaches `Authorization: Bearer <token>`.
+3. Spring validates signature, issuer, expiry/not-before, expected audience, and the accepted asymmetric signing algorithms.
+4. Spring rejects a missing or non-UUID `sub` as `401`, before controller logic.
+5. Controllers pass only the authenticated UUID to services; services use ownership-scoped repository methods.
 
-- Users can only read/write their own time entries
-- Users can only read/write their own preferences
-- Study group members can view aggregated stats (no individual entry access)
+Production requirements:
 
-## API Design
+- No permissive HS256 fallback in the production profile.
+- CORS allows only configured frontend origins and required methods/headers.
+- Secrets are injected by the runtime and never stored in committed `.env` files.
+- All public traffic and JDBC connections use TLS.
+- Authentication failures return `401`; authenticated ownership failures use `404` to avoid resource enumeration; authorization-policy failures use `403`.
+- Notes and other rich content are schema-validated and rendered from trusted document nodes, not arbitrary executable HTML.
+- Rate limiting is required before public production launch on authentication-adjacent and mutation endpoints.
 
-### Authentication Flow
+## 6. Core API Contract
 
-1. User authenticates via Supabase Auth (frontend)
-2. Supabase returns JWT token
-3. Frontend stores token (httpOnly cookie or localStorage)
-4. Frontend sends token in Authorization header: `Bearer <token>`
-5. Spring Boot validates token with Supabase public key
-6. Spring Boot extracts user_id from token claims
-7. All subsequent requests include token for authorization
+**Base path:** `/api/v1`
+**Content type:** `application/json`
+**Timestamps:** ISO-8601 UTC strings
 
-### REST API Endpoints
+### Endpoints
 
-**Base URL:** `http://localhost:8080/api/v1`
+| Method and path | Auth | Behavior |
+|---|---:|---|
+| `GET /health` | No | Liveness response; must not require the database |
+| `POST /time-entries/start` | Yes | Starts one session; returns `201`; concurrent/duplicate active start returns `409` |
+| `GET /time-entries/active` | Yes | Returns the active owned entry or `null` |
+| `PUT /time-entries/{id}/stop` | Yes | Stops the owned entry; repeated calls return the unchanged stopped resource |
+| `GET /dashboard/stats` | Yes | Returns personal totals and daily buckets for a validated range/timezone |
 
-**Authentication**
+`PUT /time-entries/active/stop` is a transitional compatibility endpoint. The frontend should use the ID-based stop endpoint; remove the compatibility endpoint after callers and tests no longer depend on it.
 
-- `GET /health` - Health check (public)
-- `POST /auth/validate` - Validate JWT token (internal)
+### Core shapes
 
-**Time Entries**
+```ts
+type ActivityType = "WORK" | "ROT";
 
-- `GET /time-entries` - Get user's time entries (paginated, filtered by date range)
-  - Query params: `startDate`, `endDate`, `activityType`, `page`, `size`
-- `POST /time-entries` - Create new time entry
-  - Body: `{ activityType, startTime, endTime?, notes? }`
-- `GET /time-entries/{id}` - Get specific time entry
-- `PUT /time-entries/{id}` - Update time entry
-- `DELETE /time-entries/{id}` - Delete time entry
-- `POST /time-entries/start` - Start new active session
-  - Body: `{ activityType, notes? }`
-- `PUT /time-entries/{id}/stop` - Stop active session
-- `GET /time-entries/active` - Get user's currently active session
+type TimeEntry = {
+  id: string;
+  activityType: ActivityType;
+  startTime: string;
+  endTime: string | null;
+  durationSeconds: number | null;
+  notes: string | null;
+};
 
-**Dashboard Statistics**
+type DashboardStats = {
+  range: { start: string; end: string; timeZone: string };
+  totalSeconds: Record<ActivityType, number>;
+  daily: Array<{ localDate: string; workSeconds: number; rotSeconds: number }>;
+  recentSessions: TimeEntry[];
+  productivityScore: number;
+};
+```
 
-- `GET /dashboard/stats` - Get aggregated statistics
-  - Query params: `startDate`, `endDate`, `granularity` (day/week/month)
-  - Returns: Total hours per activity type, daily/weekly breakdowns, trends
-- `GET /dashboard/summary` - Get current day/week summary
-- `GET /dashboard/trends` - Get time series data for charts
+`productivityScore` is `WORK / (WORK + ROT) * 100`, rounded to the nearest integer, and is `0` when no completed time exists.
 
-**User Management**
-
-- `GET /user/profile` - Get user profile
-- `PUT /user/profile` - Update user profile
-- `GET /user/preferences` - Get user preferences
-- `PUT /user/preferences` - Update user preferences
-
-### Response Format
-
-All responses follow standard REST conventions:
+### Error shape
 
 ```json
 {
-  "data": {...},
-  "message": "Success",
-  "timestamp": "2024-01-01T00:00:00Z"
+  "error": {
+    "code": "ACTIVE_SESSION_EXISTS",
+    "message": "An active session already exists",
+    "fieldErrors": {}
+  },
+  "timestamp": "2026-08-01T12:00:00Z",
+  "path": "/api/v1/time-entries/start"
 }
 ```
 
-Error responses:
-
-```json
-{
-  "error": "Error message",
-  "code": "ERROR_CODE",
-  "timestamp": "2024-01-01T00:00:00Z"
-}
-```
-
-## Frontend Component Architecture
-
-### Page Components
-
-**Login/Signup Pages** (`app/(auth)/login`, `app/(auth)/signup`)
-
-- Use Supabase Auth client directly
-- Handle email/password authentication
-- Redirect to dashboard on success
-- Store session token
-
-**Dashboard Page** (`app/dashboard/page.tsx`)
-
-- Fetches statistics from Spring backend
-- Displays time charts (using Chart.js or Recharts)
-- Shows daily/weekly summaries
-- Activity type breakdown visualization
-
-**Tracker Page** (`app/tracker/page.tsx`)
-
-- Main time tracking interface
-- Two activity type buttons (ROT, Work)
-- Active timer display
-- Recent entries list
-- Edit/delete functionality
-
-### Component Hierarchy
-
-```
-Dashboard
-├── WeeklyStats (aggregate view)
-├── TimeChart (line/bar chart)
-└── ActivitySummary (pie chart, totals)
-
-Tracker
-├── TimeTracker (container)
-│   ├── ActivityTimer (active session display)
-│   ├── ActivityButtons (start/stop controls)
-│   └── RecentEntriesList (time entry list)
-└── TimeLogEditor (modal/form for editing)
-
-Shared UI Components
-├── Button
-├── Card
-├── Input
-├── Modal
-└── LoadingSpinner
-```
-
-### State Management
-
-- **Authentication**: React Context (`AuthContext`) with Supabase session
-- **Time Tracking**: React hooks (`useTimeTracking`) with local state + API calls
-- **Dashboard Data**: React Query or SWR for server state caching
-- **Form State**: React Hook Form for complex forms
-
-## Technology Stack Details
-
-### Frontend
-
-- **Framework**: Next.js 16 (App Router)
-- **Language**: TypeScript 5
-- **Styling**: Tailwind CSS 4
-- **Charts**: Recharts or Chart.js
-- **HTTP Client**: Axios or fetch API
-- **State Management**: React Context + React Query
-- **Auth Client**: @supabase/supabase-js
-- **Form Handling**: React Hook Form + Zod validation
-
-### Backend
-
-- **Framework**: Spring Boot 3.x
-- **Language**: Java 17+
-- **Build Tool**: Maven
-- **Database Driver**: PostgreSQL JDBC Driver
-- **JWT Validation**: jjwt or Spring Security with Supabase JWT
-- **API Documentation**: SpringDoc OpenAPI (Swagger)
-- **Validation**: Bean Validation (JSR-303)
-
-### Database
-
-- **Provider**: Supabase (Managed PostgreSQL)
-- **Version**: PostgreSQL 15+
-- **Migrations**: Supabase migrations or Flyway
-- **Connection Pooling**: HikariCP (Spring Boot default)
-
-### Infrastructure (Future AWS Deployment)
-
-- **Frontend Hosting**: AWS Amplify or S3 + CloudFront
-- **Backend Hosting**: AWS ECS (Fargate) or EC2
-- **Database**: Supabase (managed) or AWS RDS PostgreSQL
-- **API Gateway**: AWS API Gateway (optional)
-- **Container Orchestration**: Docker + ECS or EKS
-
-## Data Flow Diagrams
-
-### Time Entry Creation Flow
-
-```
-User clicks "Start Working"
-    ↓
-Frontend: ActivityTimer component
-    ↓
-Frontend: POST /api/time-entries/start
-    ↓
-Spring Boot: Validate JWT token
-    ↓
-Spring Boot: Extract user_id from token
-    ↓
-Spring Boot: Create TimeEntry (startTime = now, endTime = null)
-    ↓
-Spring Boot: Save to PostgreSQL
-    ↓
-Spring Boot: Return TimeEntryDTO
-    ↓
-Frontend: Update UI with active session
-```
-
-### Dashboard Data Retrieval Flow
-
-```
-User navigates to Dashboard
-    ↓
-Frontend: Dashboard page loads
-    ↓
-Frontend: GET /api/dashboard/stats?startDate=X&endDate=Y
-    ↓
-Spring Boot: Validate JWT token
-    ↓
-Spring Boot: Query PostgreSQL (aggregate time_entries)
-    ↓
-PostgreSQL: Return aggregated results
-    ↓
-Spring Boot: Transform to DashboardStatsDTO
-    ↓
-Frontend: Render charts with Recharts
-```
-
-### Authentication Flow
-
-```
-User submits login form
-    ↓
-Frontend: Supabase Auth signInWithPassword()
-    ↓
-Supabase: Validate credentials
-    ↓
-Supabase: Generate JWT token
-    ↓
-Frontend: Store token + session
-    ↓
-Frontend: Redirect to dashboard
-    ↓
-Frontend: Include token in API requests (Authorization header)
-    ↓
-Spring Boot: Validate token on each request
-```
-
-## Implementation Approach
-
-### Phase 1: Core Features (MVP)
-
-1. **Database Setup**
-
-   - Create Supabase project
-   - Run schema.sql migrations
-   - Set up RLS policies
-
-2. **Spring Boot Backend**
-
-   - Initialize Spring Boot project (Spring Initializr)
-   - Configure PostgreSQL connection
-   - Implement JWT validation filter
-   - Create TimeEntry entity and repository
-   - Implement REST controllers
-   - Add exception handling
-
-3. **Next.js Frontend**
-
-   - Set up Supabase client
-   - Create authentication pages
-   - Implement API client utilities
-   - Build tracker page with timer
-   - Build dashboard page with basic charts
-   - Add routing and protected routes
-
-4. **Integration**
-
-   - Connect frontend to backend API
-   - Test end-to-end flows
-   - Add error handling
-   - Implement loading states
-
-### Phase 2: Future Features
-
-1. **Goal Tracking**
-
-   - Add goals table
-   - Create goal management UI
-   - Track progress toward goals
-   - Notifications for goal milestones
-
-2. **Study Groups**
-
-   - Add study_groups tables
-   - Create group management UI
-   - Shared statistics (aggregated, privacy-preserving)
-   - Group challenges and competitions
-
-3. **Advanced Analytics**
-
-   - Weekly/monthly reports
-   - Productivity insights
-   - Time pattern analysis
-   - Export functionality (CSV, PDF)
-
-## Scalability Considerations
-
-### Database
-
-- Indexes on frequently queried columns (user_id, start_time, activity_type)
-- Partitioning time_entries table by date (if volume grows)
-- Connection pooling (HikariCP default 10 connections)
-- Read replicas for analytics queries (future)
-
-### Backend
-
-- Stateless API design (enables horizontal scaling)
-- Caching layer (Redis) for dashboard stats (future)
-- Async processing for heavy aggregations (future)
-- Rate limiting on API endpoints
-
-### Frontend
-
-- Static page generation where possible (Next.js SSG)
-- Client-side caching (React Query)
-- Code splitting and lazy loading
-- CDN for static assets (AWS CloudFront)
-
-## Security Considerations
-
-1. **Authentication**: Supabase handles password hashing, token generation
-2. **Authorization**: JWT token validation on every request
-3. **SQL Injection**: Use parameterized queries (JPA/Hibernate)
-4. **XSS Protection**: React escapes by default, validate inputs
-5. **CORS**: Configure Spring Boot CORS for frontend domain only
-6. **Rate Limiting**: Implement on API endpoints
-7. **Environment Variables**: Store secrets in .env (not committed)
-8. **HTTPS**: Enforce HTTPS in production
-9. **RLS Policies**: Row-level security in PostgreSQL
-10. **Input Validation**: Validate all inputs on backend
-
-## Deployment Strategy
-
-### Development
-
-- Local development: Frontend (localhost:3000), Backend (localhost:8080)
-- Use Supabase development project
-- Hot reload for both frontend and backend
-
-### Staging
-
-- Deploy frontend to Vercel (or AWS Amplify)
-- Deploy backend to AWS ECS (or EC2)
-- Use Supabase staging project
-- Environment variables configured in hosting platform
-
-### Production
-
-- Frontend: AWS Amplify or S3 + CloudFront
-- Backend: AWS ECS Fargate (containerized) or EC2
-- Database: Supabase (managed) or AWS RDS
-- CI/CD: GitHub Actions or AWS CodePipeline
-- Monitoring: CloudWatch logs and metrics
-- SSL/TLS: AWS Certificate Manager
-
-## Testing Strategy
-
-### Frontend
-
-- Unit tests: Jest + React Testing Library
-- Component tests: Test user interactions
-- Integration tests: Test API integration
-- E2E tests: Playwright or Cypress (optional)
-
-### Backend
-
-- Unit tests: JUnit 5
-- Integration tests: Spring Boot Test with TestContainers
-- API tests: MockMvc for controller testing
-- Repository tests: @DataJpaTest
-
-### Database
-
-- Migration tests: Verify schema changes
-- Data integrity tests: Foreign keys, constraints
-
-## Monitoring and Observability
-
-- **Logging**: Structured logging (Logback in Spring Boot, console.log in Next.js)
-- **Error Tracking**: Sentry or similar
-- **Performance Monitoring**: Application Performance Monitoring (APM) tool
-- **Database Monitoring**: Supabase dashboard or CloudWatch
-- **User Analytics**: Optional Google Analytics or privacy-focused alternative
-
-## Documentation
-
-- **API Documentation**: SpringDoc OpenAPI (Swagger UI)
-- **Code Comments**: Javadoc for Java, JSDoc for TypeScript
-- **README Files**: Setup instructions for frontend and backend
-- **Architecture Diagrams**: Keep diagrams updated as system evolves
-- **User Guide**: Document key features for end users
+Framework authentication, JSON parsing, validation, domain conflicts, missing resources, and unexpected failures must use this shape. Internal details and stack traces are never returned.
+
+## 7. Frontend Architecture
+
+- Public routes: landing, sign-in, sign-up, confirmation.
+- Protected routes: tracker, dashboard, and future settings, notes/logs, friends, and groups.
+- After sign-in, redirect to the originally requested protected route when present; otherwise redirect to `/dashboard`.
+- `AuthProvider` owns the Supabase browser session. The API client obtains/refreshes its bearer token and normalizes errors.
+- `useTimeTracking` owns tracker orchestration. Timer display is client-derived, but the API remains authoritative.
+- There is no unload or visibility auto-stop hook.
+- Interactive application controls use shadcn primitives. Third-party chart/editor internals may use their required APIs while honoring rotrack design tokens and accessibility.
+- Loading, empty, error, and retry states are explicit on every data-driven route.
+
+## 8. Future Product Systems
+
+Future systems are separate vertical slices. Their migrations, API contracts, UI, authorization, and tests ship together.
+
+### 8.1 Preferences prerequisite
+
+`user_preferences` stores:
+
+- `user_id` as the unique owner key
+- `timezone` as a validated IANA identifier
+- optional daily Work goal
+- `share_study_summary BOOLEAN NOT NULL DEFAULT false`
+- `share_active_study_status BOOLEAN NOT NULL DEFAULT false`
+- audit timestamps
+
+All sharing is opt-in and private by default.
+
+### 8.2 WYSIWYG notes
+
+Use Tiptap StarterKit in a client-only editor embedded beside the timer. Persist versioned Tiptap/ProseMirror JSON rather than arbitrary HTML.
+
+`notes` contains:
+
+- `id`, `user_id`, optional `time_entry_id`
+- title, limited to 120 characters
+- versioned `content_json`, limited to 256 KiB serialized
+- derived `content_text` for search and previews
+- `content_schema_version`
+- optimistic-lock `version`
+- audit timestamps
+
+Behavior:
+
+- A note is a standalone document that can optionally link to one session.
+- A session can have multiple notes.
+- A database constraint/trigger enforces that a linked session has the same owner as the note; deleting a session detaches the note with `ON DELETE SET NULL`.
+- Initial formatting: headings, paragraphs, bold, italic, lists, block quotes, links, undo, and redo.
+- Autosave after approximately 750 ms of inactivity and display `Saving`, `Saved`, and `Conflict` states.
+- The API validates document structure, supported nodes/marks, link protocols, and size.
+- Notes remain private and never appear in social or group projections.
+
+### 8.3 Daily study logs
+
+One daily log exists per user and local calendar date.
+
+- Timer totals, timeline, sessions, and linked-note references are generated from authoritative time entries.
+- The user may add a private rich-text reflection stored as versioned document JSON.
+- Generated statistics cannot be manually edited or duplicated into a mutable summary table.
+- Calendar boundaries use the user's saved IANA timezone.
+- Changing timezone re-buckets generated study statistics; an existing reflection remains attached to the local-date label under which the user created it.
+- The UI provides daily and calendar views.
+
+### 8.4 Friendships and presence
+
+Friendships are mutual and use `PENDING` and `ACCEPTED` states. Store one canonical ordered user pair, the requester, and enforce pair uniqueness. Store blocks separately as directional `(blocker_id, blocked_id)` records so a user can block someone without an existing friendship.
+
+- Friend discovery uses a unique case-normalized public handle. Search requires at least three characters, returns a small rate-limited result set, and never searches or exposes email addresses.
+- Users cannot friend themselves.
+- Duplicate and reversed requests are rejected.
+- Blocking deletes pending/accepted friendship state and pairwise invitations, prevents new direct interaction, and suppresses pairwise activity/presence projections.
+- Shared study summaries contain only opted-in Work totals and study-day streak. Goal progress may be added only after the goals feature defines its own sharing contract.
+- Rot totals, raw sessions, timestamps, notes, and reflections are never shared.
+- Active presence is a derived boolean: `studying=true` only when an opted-in user has an active `WORK` session.
+- Social screens poll an authenticated presence projection every 30 seconds while visible and stop polling when hidden or unmounted.
+
+### 8.5 Study groups
+
+Groups are private and invitation-only.
+
+- Roles: `OWNER`, `ADMIN`, `MEMBER`.
+- Invitations have explicit pending/accepted/declined/cancelled/expired lifecycle state, with at most one live invitation per group/invitee.
+- Owners update/archive the group, manage members/admins, and transfer ownership.
+- Admins invite and remove members but cannot remove the owner or transfer ownership.
+- Initial invitations can be sent only to accepted friends.
+- Ending a friendship or blocking does not silently rewrite third-party group membership or ownership. A block suppresses direct interaction and pairwise activity/presence inside the group; the minimum membership/role metadata needed for group administration remains visible.
+- Group views show opted-in Work summaries, aggregate Work totals/streaks, and boolean active-study presence.
+- Backend services produce explicit privacy-safe projections. Database entities are never serialized directly.
+
+### Future API areas
+
+- `/friends` and `/friend-requests`: list, request, accept, decline, cancel, remove, block, unblock
+- `/social/summaries` and `/social/presence`: privacy-filtered friend/group projections
+- `/groups`, `/groups/{id}/invitations`, `/groups/{id}/members`, `/groups/{id}/summary`
+- `/notes`: owned CRUD with session/date filters and optimistic version checks
+- `/daily-logs/{localDate}`: generated study data plus owned reflection updates
+
+Detailed OpenAPI schemas are written immediately before each vertical slice and become the executable contract for that slice. Frontend DTO types are generated from OpenAPI; the authenticated native-`fetch` wrapper remains hand-written.
+
+## 9. Quality, Delivery, and Operations
+
+### Required tests by boundary
+
+- Domain/service: one-active-session rule, idempotent stop, ownership, range clipping, bucket splitting, DST behavior
+- Controller/security: JWT claims, `401/403/404/409`, validation, stable errors
+- Database: constraints, indexes, migrations, signup trigger, and two-user RLS behavior for the Data API boundary
+- Frontend: tracker restoration, explicit stop, dashboard states, note autosave/conflict, privacy controls
+- Browser: sign-up/sign-in, start/reload/stop/dashboard; later note/log and social/group critical flows
+- Privacy: shared projections never contain Rot, notes, reflections, or raw sessions
+
+Tests are delivered with each feature; testing is not a cleanup phase.
+
+### CI and deployment
+
+- Pull requests run frontend lint/typecheck/tests/build, backend tests/package, migration checks, and secret scanning.
+- Staging deploys the frontend to Vercel and the containerized backend to ECS Fargate against a separate Supabase project.
+- Production promotion requires staging smoke evidence and a documented rollback.
+- Apply database migrations before application versions that depend on them; migrations must be backward-compatible during rollout.
+
+### Observability
+
+- Structured backend logs include request/correlation ID, route, status, latency, and safe user/resource identifiers.
+- Never log bearer tokens, note content, reflections, or credentials.
+- Monitor API error rate/latency, ECS health, database connections, migration status, and frontend exceptions.
+- Health endpoints distinguish liveness from dependency readiness before ECS rollout.
+
+## 10. Architecture Change Rules
+
+- `arch.plan.md` owns product invariants, architecture, trust boundaries, and contracts.
+- `todo.md` owns ordering, status, dependencies, acceptance criteria, and evidence.
+- A task is not verified merely because code exists.
+- Changes to sharing, timer lifecycle, trust boundaries, or stored rich-text formats require an explicit architecture update and migration/compatibility plan.
+- Unresolved alternatives belong in a dated decision task, not as “A or B” instructions inside executable work.
