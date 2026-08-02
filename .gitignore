@@ -60,3 +60,4 @@ frontend/out/
 frontend/.vercel/
 
 backend/secrets/*
+backend/target/
