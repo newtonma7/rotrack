@@ -1,36 +1,169 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# rotrack
 
-## Getting Started
+rotrack is a personal study and productivity tracker. The MVP records explicit `WORK` and `ROT` sessions, authenticates with Supabase, and displays a private seven-day dashboard.
 
-First, run the development server:
+## Source of truth
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Read these before changing the repository:
+
+- [`arch.plan.md`](arch.plan.md) — product invariants, architecture, security boundaries, and API/data contracts.
+- [`todo.md`](todo.md) — dependency order, acceptance criteria, status, and verification evidence.
+- [`frontend/DESIGN.md`](frontend/DESIGN.md) — frontend visual and interaction design.
+- [`AGENTS.md`](AGENTS.md) — repository-specific development instructions.
+
+The root README is a setup guide, not a substitute for those documents. Source code and recorded command output outrank stale documentation.
+
+## Repository layout
+
+```text
+frontend/                 Next.js App Router application
+backend/                  Spring Boot REST API
+database/migrations/      Ordered Supabase PostgreSQL migrations
+arch.plan.md              Architecture and contracts
+todo.md                   Delivery backlog and evidence
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The runtime data flow is:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```text
+Browser → Supabase Auth
+Browser → Spring Boot API with a Supabase bearer JWT
+Spring Boot API → Supabase PostgreSQL
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The frontend uses Supabase for authentication only. Application data goes through the API client in `frontend/src/lib/api.ts`.
 
-## Learn More
+## Prerequisites
 
-To learn more about Next.js, take a look at the following resources:
+- Node.js and npm
+- Java 21 or newer, with the backend targeting Java 21
+- Maven 3.9+
+- A Supabase development project with access to its PostgreSQL database and JWT configuration
+- A shell or IDE that can provide environment variables to Spring Boot
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Tool versions are not pinned in the repository yet; pinning and deterministic baseline scripts are tracked in `todo.md` (M0.4).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## First-time setup
 
-## Deploy on Vercel
+### 1. Apply the database migration
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Apply the SQL files in [`database/migrations/`](database/migrations/) to a development Supabase project using the Supabase CLI or SQL editor. Start with `001_initial_schema.sql` and apply migrations in filename order.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The backend uses `spring.jpa.hibernate.ddl-auto=validate`; it validates an existing schema and does not create or update tables for you.
+
+### 2. Configure the frontend
+
+```bash
+cp frontend/.env.example frontend/.env.local
+```
+
+Set these values in `frontend/.env.local`:
+
+```text
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_KEY=your-anon-key
+NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+```
+
+`NEXT_PUBLIC_*` values are embedded in browser code. They may contain public URLs/keys, but must not contain database passwords or other secrets.
+
+### 3. Configure the backend
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+Fill in the values from your Supabase project. Spring Boot does not automatically read `.env` files. Before starting it, export the variables in your shell or configure them in your IDE/container. For a shell session:
+
+```bash
+set -a
+source backend/.env
+set +a
+```
+
+The backend variables are documented in [`backend/.env.example`](backend/.env.example): database connection, Supabase issuer/JWKS URLs, CORS origins, and port.
+
+Never commit populated `.env` files or include their values in issue/PR evidence.
+
+## Run locally
+
+Start the backend in one terminal:
+
+```bash
+cd backend
+set -a && source .env && set +a
+mvn spring-boot:run
+```
+
+Start the frontend in another terminal:
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+Open <http://localhost:3000>. The API listens on <http://localhost:8080> by default. Check API liveness with:
+
+```bash
+curl http://localhost:8080/api/v1/health
+```
+
+Expected response:
+
+```json
+{"status":"ok"}
+```
+
+## Validation commands
+
+Run frontend commands from `frontend/`:
+
+```bash
+npm run lint
+npx tsc --noEmit
+npm run build
+```
+
+Run backend commands from `backend/`:
+
+```bash
+mvn test
+mvn package
+```
+
+There is currently no frontend test script or source-controlled frontend test suite, and no backend source test suite. Do not report tests, typechecking, builds, migrations, or browser flows as passing unless they were actually run. Behavior changes must add tests as part of the same change.
+
+## Current API surface
+
+All paths use the `/api/v1` prefix. Authenticated endpoints require `Authorization: Bearer <supabase-jwt>`.
+
+- `GET /health` — unauthenticated liveness check
+- `POST /time-entries/start` — start a `WORK` or `ROT` session
+- `GET /time-entries/active` — get the authenticated user's active session
+- `PUT /time-entries/{id}/stop` — stop an owned session by ID
+- `PUT /time-entries/active/stop` — transitional active-session stop endpoint
+- `GET /dashboard/stats` — get dashboard aggregates
+
+The backend derives the acting user from the validated JWT subject. Clients must not send a `user_id`.
+
+## Working conventions
+
+- Read `arch.plan.md` before changing timer lifecycle, authentication, authorization, migrations, timezones, or privacy behavior.
+- Tracking is intended to be explicit: sessions remain active until explicitly stopped, and the server's timestamps are authoritative. The current unload-stop implementation is legacy and is scheduled for removal.
+- Preserve the two activity buckets: `WORK` and `ROT`.
+- Keep frontend App Router code under `frontend/src/app`, feature components under `frontend/src/components`, hooks under `frontend/src/hooks`, API/auth code under `frontend/src/lib`, and types under `frontend/src/types`.
+- Read `frontend/DESIGN.md` before UI work. Preserve the Tangerine Studio tokens, typography, accessibility, restrained motion, and no-stock-imagery rule.
+- Keep backend layers under `com.rotrack`: controllers, services, repositories, models, DTOs, configuration, and exceptions.
+- Scope every backend read and mutation to the authenticated user. Never log tokens, credentials, private notes, or reflections.
+
+## Known limitations
+
+The repository is still working toward the production-ready MVP. In particular:
+
+- The initial migration needs the hardening described in M1.1, including the one-active-session constraint and reporting indexes.
+- Automated frontend/backend tests, CI, staging, and deployment are not complete.
+- The current implementation contains legacy unload-stop behavior that conflicts with the explicit-session architecture target.
+- Dashboard timezone and range behavior is still being corrected under M1.4.
+
+Track these items in [`todo.md`](todo.md) rather than treating existing source or old build output as verification evidence.
