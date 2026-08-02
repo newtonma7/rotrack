@@ -16,8 +16,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTimeTracking } from "@/hooks/useTimeTracking";
-import type { ActivityType } from "@/types/time-entry";
-
 export function ActiveTracker() {
   const { activeEntry, elapsed, loading, error, start, stop } = useTimeTracking();
 

@@ -28,6 +28,10 @@ public class TimeEntry {
     @Column(name = "end_time")
     private Instant endTime;
 
+    /**
+     * Transitional schema field. Duration is derived from start/end timestamps;
+     * application behavior must never treat this stored value as authoritative.
+     */
     @Column(name = "duration_minutes")
     private Integer durationMinutes;
 

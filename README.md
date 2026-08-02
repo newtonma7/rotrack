@@ -36,12 +36,12 @@ The frontend uses Supabase for authentication only. Application data goes throug
 ## Prerequisites
 
 - Node.js and npm
-- Java 21 or newer, with the backend targeting Java 21
+- Java 21, as selected by `.java-version`
 - Maven 3.9+
 - A Supabase development project with access to its PostgreSQL database and JWT configuration
 - A shell or IDE that can provide environment variables to Spring Boot
 
-Tool versions are not pinned in the repository yet; pinning and deterministic baseline scripts are tracked in `todo.md` (M0.4).
+The repository pins Node with `.nvmrc` and Java with `.java-version`. Activate those versions with your version manager before running the commands below.
 
 ## First-time setup
 
@@ -121,7 +121,8 @@ Run frontend commands from `frontend/`:
 
 ```bash
 npm run lint
-npx tsc --noEmit
+npm run typecheck
+npm test
 npm run build
 ```
 
@@ -132,7 +133,7 @@ mvn test
 mvn package
 ```
 
-There is currently no frontend test script or source-controlled frontend test suite, and no backend source test suite. Do not report tests, typechecking, builds, migrations, or browser flows as passing unless they were actually run. Behavior changes must add tests as part of the same change.
+The frontend now has a minimal Vitest baseline; broader frontend coverage and the backend source test suite are still tracked in `todo.md`. Do not report tests, typechecking, builds, migrations, or browser flows as passing unless they were actually run. Behavior changes must add tests as part of the same change.
 
 ## Current API surface
 

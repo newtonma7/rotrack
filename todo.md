@@ -150,7 +150,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 ### M0.4 — Pin and verify toolchains
 
-**Status:** Not started
+**Status:** Verified
 **Dependencies:** M0.3
 
 **Deliverable**
@@ -165,7 +165,13 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - `mvn test` and `mvn package` run using Java 21.
 - Failures are fixed or recorded as explicit blockers; they are not converted into checkmarks.
 
-**Evidence:** Record versions, commands, exit codes, and test counts.
+**Evidence — 2026-08-02 / local workspace**
+
+- Toolchain pins: Node `24.18.0` in `.nvmrc`; Java `21` in `.java-version`; Maven `3.9.12`.
+- Frontend: `npm ci`, `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` passed. Vitest reported 1 test passed.
+- Backend: `mvn test` and `mvn package` passed under Temurin Java `21.0.12`; Maven reported no source tests yet.
+- Added the initial Vitest runner/configuration and a focused `cn` utility test. Broader frontend and backend coverage remains part of M1.5.
+- `npm install` reports 11 dependency audit findings and pending install-script approvals; these are recorded for follow-up rather than hidden.
 
 ## 4. Milestone 1 — Secure and Correct Timer MVP
 
@@ -175,7 +181,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 ### M1.1 — Harden the initial schema before application
 
-**Status:** Not started
+**Status:** Verified
 
 **Deliverable**
 
@@ -191,7 +197,14 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - Migration applies cleanly to an empty development database and has a documented path for any already-migrated environment.
 - Repository integration tests cover the constraints.
 
-**Evidence:** Migration command, schema/index inspection, and test result.
+**Evidence — 2026-08-02 / local workspace**
+
+- The configured Supabase development database already had `001_initial_schema.sql` applied, so hardening was added as ordered migration `002_harden_time_entries.sql`.
+- Applied `002_harden_time_entries.sql` through Supabase CLI direct database mode using the transaction pooler; catalog inspection confirmed `idx_time_entries_one_active_per_user` is partial on `end_time IS NULL` and `idx_time_entries_user_start_time` covers `(user_id, start_time)`.
+- A rollback-cleanup SQL probe confirmed duplicate active inserts fail while active rows for different users remain allowed; an invalid timestamp range failed its check constraint.
+- A timestamp-arithmetic probe inserted `duration_minutes = 999` for a one-hour entry and confirmed the derived duration is 60 minutes; probe rows were removed and the final probe count was zero.
+- Backend aggregation and DTO mapping derive duration from `start_time`/`end_time`; the transitional column is not authoritative.
+- Failing-first tests were added for the migration contract and active-session duration behavior. `mvn test` and `mvn package` pass under Temurin Java `21.0.12` with 2 tests passing.
 
 ### M1.2 — Harden JWT authentication and API errors
 

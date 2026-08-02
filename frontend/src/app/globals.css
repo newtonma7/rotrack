@@ -1,9 +1,5 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-/* Figtree at extra weights is loaded via <link> in layout.tsx,
-   because CSS @import rules must precede all other rules and
-   `@import "tailwindcss"` expands inline ahead of this file. */
-
 /* Don't scan markdown (docs, READMEs, design system) for Tailwind classes.
    Placeholder/wildcard examples in those files (e.g. bg-[var(--rt-*)])
    would otherwise be emitted as invalid CSS. */

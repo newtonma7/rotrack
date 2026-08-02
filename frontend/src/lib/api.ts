@@ -87,7 +87,7 @@ export async function startSession(
   });
 }
 
-/** Stop a specific session by id — backend sets end_time and computes duration_minutes. */
+/** Stop a specific session by id — backend sets end_time; duration is derived from timestamps. */
 export async function stopSession(entryId: string): Promise<TimeEntry> {
   return apiFetch<TimeEntry>(`/time-entries/${entryId}/stop`, {
     method: "PUT",

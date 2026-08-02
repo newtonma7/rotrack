@@ -20,15 +20,16 @@ public interface TimeEntryRepository extends JpaRepository<TimeEntry, UUID> {
             java.time.Instant end
     );
 
-    @Query("""
-            SELECT t.activityType, COALESCE(SUM(t.durationMinutes), 0)
-            FROM TimeEntry t
-            WHERE t.userId = :userId
-              AND t.endTime IS NOT NULL
-              AND t.startTime >= :start
-              AND t.startTime < :end
-            GROUP BY t.activityType
-            """)
+    @Query(value = """
+            SELECT activity_type,
+                   COALESCE(SUM(FLOOR(EXTRACT(EPOCH FROM (end_time - start_time)) / 60))::bigint, 0)
+            FROM time_entries
+            WHERE user_id = :userId
+              AND end_time IS NOT NULL
+              AND start_time >= :start
+              AND start_time < :end
+            GROUP BY activity_type
+            """, nativeQuery = true)
     List<Object[]> sumDurationByActivityType(
             @Param("userId") UUID userId,
             @Param("start") java.time.Instant start,

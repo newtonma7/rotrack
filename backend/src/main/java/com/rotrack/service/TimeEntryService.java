@@ -55,7 +55,6 @@ public class TimeEntryService {
 
         Instant endTime = Instant.now();
         entry.setEndTime(endTime);
-        entry.setDurationMinutes((int) Duration.between(entry.getStartTime(), endTime).toMinutes());
         return toDto(timeEntryRepository.save(entry));
     }
 
@@ -81,8 +80,10 @@ public class TimeEntryService {
         totals.put(ActivityType.ROT, 0);
 
         for (Object[] row : timeEntryRepository.sumDurationByActivityType(userId, start, end)) {
-            ActivityType type = (ActivityType) row[0];
-            Long minutes = (Long) row[1];
+            ActivityType type = row[0] instanceof ActivityType activityType
+                    ? activityType
+                    : ActivityType.valueOf(row[0].toString());
+            Number minutes = (Number) row[1];
             totals.put(type, minutes.intValue());
         }
 
@@ -107,7 +108,8 @@ public class TimeEntryService {
         }
 
         for (TimeEntry entry : entries) {
-            if (entry.getDurationMinutes() == null) {
+            Integer durationMinutes = durationMinutes(entry);
+            if (durationMinutes == null) {
                 continue;
             }
             int hour = entry.getStartTime().atZone(ZoneId.systemDefault()).getHour();
@@ -116,9 +118,9 @@ public class TimeEntryService {
             }
             int[] bucket = hourly.get(hour);
             if (entry.getActivityType() == ActivityType.WORK) {
-                bucket[0] += entry.getDurationMinutes();
+                bucket[0] += durationMinutes;
             } else {
-                bucket[1] += entry.getDurationMinutes();
+                bucket[1] += durationMinutes;
             }
         }
 
@@ -136,7 +138,7 @@ public class TimeEntryService {
                 .sorted((a, b) -> b.getEndTime().compareTo(a.getEndTime()))
                 .limit(10)
                 .map(entry -> {
-                    String duration = entry.getDurationMinutes() + "m";
+                    String duration = durationMinutes(entry) + "m";
                     String label = entry.getNotes() != null && !entry.getNotes().isBlank()
                             ? entry.getNotes()
                             : entry.getActivityType().name().toLowerCase();
@@ -164,13 +166,20 @@ public class TimeEntryService {
         return instant.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MMM d"));
     }
 
+    private Integer durationMinutes(TimeEntry entry) {
+        if (entry.getEndTime() == null) {
+            return null;
+        }
+        return Math.toIntExact(Duration.between(entry.getStartTime(), entry.getEndTime()).toMinutes());
+    }
+
     private TimeEntryDTO toDto(TimeEntry entry) {
         return new TimeEntryDTO(
                 entry.getId(),
                 entry.getActivityType(),
                 entry.getStartTime(),
                 entry.getEndTime(),
-                entry.getDurationMinutes(),
+                durationMinutes(entry),
                 entry.getNotes()
         );
     }

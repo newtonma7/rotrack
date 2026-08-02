@@ -40,7 +40,8 @@ cd frontend
 npm ci
 npm run dev                 # http://localhost:3000
 npm run lint
-npx tsc --noEmit
+npm run typecheck
+npm test
 npm run build
 
 # backend
@@ -50,9 +51,9 @@ mvn test
 mvn package
 ```
 
-Frontend environment: copy `frontend/.env.example` and provide `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_KEY`, and `NEXT_PUBLIC_API_URL`. Backend environment is injected through the shell/IDE/container, not implicitly loaded from `.env`; configure the variables in `backend/.env.example`. Backend startup needs Java 21+, Maven 3.9+, a configured Supabase PostgreSQL database, and applied migrations. The unauthenticated liveness endpoint is `GET /api/v1/health`.
+Frontend environment: copy `frontend/.env.example` and provide `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_KEY`, and `NEXT_PUBLIC_API_URL`. Backend environment is injected through the shell/IDE/container, not implicitly loaded from `.env`; configure the variables in `backend/.env.example`. Backend startup needs Java 21, Maven 3.9+, a configured Supabase PostgreSQL database, and applied migrations. The unauthenticated liveness endpoint is `GET /api/v1/health`.
 
-There is currently no frontend test script or source-controlled frontend test suite, and no backend source tests. Behavior changes must add tests as part of the change rather than treating testing as cleanup. Do not claim tests, typechecking, builds, migrations, or browser flows passed without running them.
+The frontend has a minimal Vitest baseline; broader frontend coverage and backend source tests are still being established. Behavior changes must add tests as part of the change rather than treating testing as cleanup. Do not claim tests, typechecking, builds, migrations, or browser flows passed without running them.
 
 ## Change and validation workflow
 
