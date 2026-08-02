@@ -112,7 +112,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 ### M0.2 — Remove generated artifacts from version control
 
-**Status:** Not started
+**Status:** Verified
 **Dependencies:** M0.1
 
 **Deliverable**
@@ -127,11 +127,15 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - A Maven build may recreate `backend/target/` without changing `git status`.
 - Existing dirty artifacts are handled deliberately and their ownership is not overwritten silently.
 
-**Evidence:** Record `git status --short` before and after cleanup.
+**Evidence — 2026-08-02 / local workspace**
+
+- Added `backend/target/` to `.gitignore` and removed 24 tracked generated files from Git while preserving local build output.
+- Inspected and removed the empty disposable `backend/stuff.txt`.
+- Verified `git ls-files backend/target` returns no files and `git diff --check` passes after cleanup.
 
 ### M0.3 — Create the development runbook
 
-**Status:** Not started
+**Status:** Implemented—unverified
 **Dependencies:** M0.1
 
 **Deliverable**
@@ -146,7 +150,11 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - `.env.example` files contain every required variable and no secret defaults.
 - Runbook commands match package scripts, Maven configuration, and `/api/v1` paths.
 
-**Evidence:** Record a clean-clone or temporary-directory walkthrough.
+**Evidence — 2026-08-02 / local workspace**
+
+- Replaced the create-next-app README with repository setup, Supabase configuration, environment handling, run commands, API routes, conventions, and known limitations.
+- Verified README links, package scripts, Maven/API mappings, and `git diff --check`.
+- A clean-clone walkthrough has not yet been recorded; keep this task unverified until one is completed.
 
 ### M0.4 — Pin and verify toolchains
 
@@ -208,7 +216,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 ### M1.2 — Harden JWT authentication and API errors
 
-**Status:** Not started
+**Status:** Verified
 
 **Deliverable**
 
@@ -224,7 +232,14 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - Validation returns field-level errors; internal exceptions do not leak details.
 - Security/controller tests cover success and failure cases.
 
-**Evidence:** MockMvc test names/counts and redacted curl examples.
+**Evidence — 2026-08-02 / local workspace**
+
+- Implemented asymmetric ES256/JWKS validation with issuer, time, audience, and UUID `sub` validators; removed the legacy HS256 fallback.
+- Added structured `401/403` security responses, validation/malformed-JSON/constraint/unexpected error handling, domain conflict/not-found exceptions, and frontend structured API error parsing.
+- Added MockMvc security/controller tests and a frontend API-error parser test.
+- Backend `mvn test` and `mvn package` pass under Temurin Java `21.0.12` with 15 tests passing; frontend lint, typecheck, test, and build also pass.
+- A live Spring Boot probe against the configured Supabase database confirmed `/health` is public and missing/invalid bearer requests return stable JSON `401` envelopes with path and error codes.
+- A real Supabase-signed valid token, bad-signature token, and two-user authenticated API isolation flow remain untested; those belong to the authenticated integration flow in M2.2–M2.3.
 
 ### M1.3 — Implement the explicit session lifecycle
 

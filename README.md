@@ -81,7 +81,7 @@ source backend/.env
 set +a
 ```
 
-The backend variables are documented in [`backend/.env.example`](backend/.env.example): database connection, Supabase issuer/JWKS URLs, CORS origins, and port.
+The backend variables are documented in [`backend/.env.example`](backend/.env.example): database connection, Supabase issuer/JWKS URLs, JWT audience, CORS origins, and port.
 
 Never commit populated `.env` files or include their values in issue/PR evidence.
 

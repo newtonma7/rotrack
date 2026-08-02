@@ -1,6 +1,6 @@
 # Learning review
 
-Use these questions to review the completed baseline phases.
+Use these questions to review the completed baseline phases and understand the implementation decisions.
 
 ## M0.2 — Repository hygiene
 

@@ -4,6 +4,8 @@ import com.rotrack.dto.DashboardStatsDTO;
 import com.rotrack.dto.RecentSessionDTO;
 import com.rotrack.dto.TimelinePointDTO;
 import com.rotrack.dto.TimeEntryDTO;
+import com.rotrack.exception.ConflictException;
+import com.rotrack.exception.ResourceNotFoundException;
 import com.rotrack.model.ActivityType;
 import com.rotrack.model.TimeEntry;
 import com.rotrack.repository.TimeEntryRepository;
@@ -17,6 +19,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,7 +36,10 @@ public class TimeEntryService {
     public TimeEntryDTO startSession(UUID userId, ActivityType activityType, String notes) {
         timeEntryRepository.findFirstByUserIdAndEndTimeIsNullOrderByStartTimeDesc(userId)
                 .ifPresent(active -> {
-                    throw new IllegalStateException("An active session already exists");
+                    throw new ConflictException(
+                            "ACTIVE_SESSION_EXISTS",
+                            "An active session already exists"
+                    );
                 });
 
         TimeEntry entry = new TimeEntry();
@@ -41,28 +47,30 @@ public class TimeEntryService {
         entry.setActivityType(activityType);
         entry.setStartTime(Instant.now());
         entry.setNotes(notes);
-        return toDto(timeEntryRepository.save(entry));
+        try {
+            // The partial unique index is the final race-safe authority when two starts
+            // pass the read check at the same time; translate its failure into the API contract.
+            return toDto(timeEntryRepository.saveAndFlush(entry));
+        } catch (DataIntegrityViolationException exception) {
+            throw new ConflictException(
+                    "ACTIVE_SESSION_EXISTS",
+                    "An active session already exists"
+            );
+        }
     }
 
     @Transactional
     public TimeEntryDTO stopSession(UUID userId, UUID entryId) {
         TimeEntry entry = timeEntryRepository.findByIdAndUserId(entryId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("Time entry not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Time entry not found"));
 
-        if (entry.getEndTime() != null) {
-            throw new IllegalStateException("Session is already stopped");
+        if (entry.getEndTime() == null) {
+            entry.setEndTime(Instant.now());
+            return toDto(timeEntryRepository.save(entry));
         }
 
-        Instant endTime = Instant.now();
-        entry.setEndTime(endTime);
-        return toDto(timeEntryRepository.save(entry));
-    }
-
-    @Transactional
-    public TimeEntryDTO stopActiveSession(UUID userId) {
-        TimeEntry entry = timeEntryRepository.findFirstByUserIdAndEndTimeIsNullOrderByStartTimeDesc(userId)
-                .orElseThrow(() -> new IllegalStateException("No active session found"));
-        return stopSession(userId, entry.getId());
+        // Retries return the persisted resource, preserving the original server timestamp.
+        return toDto(entry);
     }
 
     public TimeEntryDTO getActiveSession(UUID userId) {

@@ -8,6 +8,7 @@
  */
 
 import { supabase } from "@/lib/supabase/client";
+import { parseApiErrorResponse } from "@/lib/api-errors";
 import type {
   ActivityType,
   ApiResponse,
@@ -69,7 +70,7 @@ async function apiFetch<T>(
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    throw new Error(body.error ?? `Request failed (${response.status})`);
+    throw parseApiErrorResponse(body, response.status);
   }
 
   const json = (await response.json()) as ApiResponse<T>;
@@ -94,13 +95,6 @@ export async function stopSession(entryId: string): Promise<TimeEntry> {
   });
 }
 
-/** Convenience stop when you don't have the id handy (not used by auto-stop hook). */
-export async function stopActiveSession(): Promise<TimeEntry> {
-  return apiFetch<TimeEntry>("/time-entries/active/stop", {
-    method: "PUT",
-  });
-}
-
 /** Returns the user's open session, or null if none — used to restore UI on page load. */
 export async function getActiveSession(): Promise<TimeEntry | null> {
   return apiFetch<TimeEntry | null>("/time-entries/active");
@@ -109,25 +103,4 @@ export async function getActiveSession(): Promise<TimeEntry | null> {
 /** Weekly rot/work aggregates for the dashboard charts and score cards. */
 export async function getDashboardStats(): Promise<DashboardStats> {
   return apiFetch<DashboardStats>("/dashboard/stats");
-}
-
-/**
- * Fire-and-forget stop for tab-close / page-unload scenarios.
- *
- * Uses `keepalive: true` so the browser may complete the request after the page unloads.
- * We cannot use sendBeacon here because it cannot send Authorization headers.
- * Triggered by pagehide (tab close), not visibilitychange (tab switch).
- * If this fails silently, the session may stay "open" in the DB until the user returns.
- */
-export async function stopActiveSessionBeacon(entryId: string): Promise<void> {
-  const token = await getAuthToken();
-  if (!token) return;
-
-  const url = `${API_BASE}/time-entries/${entryId}/stop`;
-
-  await fetch(url, {
-    method: "PUT",
-    headers: { Authorization: `Bearer ${token}` },
-    keepalive: true,
-  });
 }
