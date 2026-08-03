@@ -17,7 +17,6 @@ import {
   startSession,
   stopSession,
 } from "@/lib/api";
-import { usePageUnloadStop } from "@/hooks/usePageUnloadStop";
 import type { ActivityType, TimeEntry } from "@/types/time-entry";
 
 /** Formats milliseconds since startTime as HH:MM:SS for the tracker display. */
@@ -38,9 +37,6 @@ export function useTimeTracking() {
   const [elapsed, setElapsed] = useState("00:00:00");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Register auto-stop on tab close (not tab switch) whenever we have an open session id.
-  usePageUnloadStop(activeEntry?.id ?? null);
 
   const refreshActive = useCallback(async () => {
     try {

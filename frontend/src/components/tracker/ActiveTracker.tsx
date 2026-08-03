@@ -78,7 +78,7 @@ export function ActiveTracker() {
       </Card>
 
       <p className="text-center text-sm text-[var(--rt-ink-muted)]">
-        Sessions keep running when you switch tabs; they auto-stop when you close this tab.{" "}
+        Sessions keep running across tabs, navigation, reloads, and browser closure until you stop them explicitly.{" "}
         <Link href="/dashboard" className="text-[var(--rt-orange)] hover:underline">
           View dashboard
         </Link>

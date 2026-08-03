@@ -243,7 +243,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 ### M1.3 — Implement the explicit session lifecycle
 
-**Status:** Not started
+**Status:** Verified
 
 **Deliverable**
 
@@ -260,7 +260,16 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - Repeated stop requests return the unchanged entry and original end time.
 - Start accepts only `WORK` or `ROT`; idle time creates no row.
 
-**Evidence:** Service/controller tests, component tests, and a manual browser lifecycle script.
+**Evidence — 2026-08-02 / local workspace**
+
+- Removed the unload hook, keepalive stop request, legacy active-stop client/server endpoint, and contradictory auto-stop copy; the tracker now uses the ID-based stop path only.
+- Added frontend hook/API tests for active-session restoration, explicit ID-based stop, successful state clearing, and absence of an unload handler.
+- Added backend service tests for unchanged repeated-stop responses and database-conflict translation to `ACTIVE_SESSION_EXISTS`; the controller suite covers ID-based stop responses. The partial unique index remains the database race authority.
+- `JAVA_HOME=/home/newton/.local/jdk-21.0.12+8 PATH="$JAVA_HOME/bin:$PATH" mvn clean package` passed with 18 tests; `cd frontend && npm test` passed with 7 tests, and frontend lint, typecheck, and build passed.
+- `git diff --check` passed and lifecycle searches found no production unload/keepalive implementation.
+- Authenticated `agent-browser` verification used profile `rotrack-test` against isolated frontend/API ports 3001/8081. Work remained active through tracker → dashboard → tracker navigation, reload, and a browser close/reopen using browser restore; the reopened tracker displayed the same active session until explicit stop.
+- Two simultaneous authenticated Work starts returned one `200` and one `409 ACTIVE_SESSION_EXISTS`; the active-session lookup matched the one successful entry, which was then explicitly stopped. ROT also started and stopped successfully. Two stops against the same entry both returned `200` with the identical server `endTime` and duration.
+- `/api/v1/health` returned `200`, and unauthenticated `/time-entries/active` returned the structured `401` envelope. The pre-existing Spring process on 8080 was identified and deliberately stopped after the isolated API hit Supabase's session-pool client limit.
 
 ### M1.4 — Correct dashboard time semantics
 

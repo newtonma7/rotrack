@@ -143,7 +143,6 @@ All paths use the `/api/v1` prefix. Authenticated endpoints require `Authorizati
 - `POST /time-entries/start` — start a `WORK` or `ROT` session
 - `GET /time-entries/active` — get the authenticated user's active session
 - `PUT /time-entries/{id}/stop` — stop an owned session by ID
-- `PUT /time-entries/active/stop` — transitional active-session stop endpoint
 - `GET /dashboard/stats` — get dashboard aggregates
 
 The backend derives the acting user from the validated JWT subject. Clients must not send a `user_id`.
@@ -151,7 +150,7 @@ The backend derives the acting user from the validated JWT subject. Clients must
 ## Working conventions
 
 - Read `arch.plan.md` before changing timer lifecycle, authentication, authorization, migrations, timezones, or privacy behavior.
-- Tracking is intended to be explicit: sessions remain active until explicitly stopped, and the server's timestamps are authoritative. The current unload-stop implementation is legacy and is scheduled for removal.
+- Tracking is explicit: sessions remain active across browser lifecycle events until explicitly stopped, and the server's timestamps are authoritative.
 - Preserve the two activity buckets: `WORK` and `ROT`.
 - Keep frontend App Router code under `frontend/src/app`, feature components under `frontend/src/components`, hooks under `frontend/src/hooks`, API/auth code under `frontend/src/lib`, and types under `frontend/src/types`.
 - Read `frontend/DESIGN.md` before UI work. Preserve the Tangerine Studio tokens, typography, accessibility, restrained motion, and no-stock-imagery rule.
@@ -164,7 +163,6 @@ The repository is still working toward the production-ready MVP. In particular:
 
 - The initial migration needs the hardening described in M1.1, including the one-active-session constraint and reporting indexes.
 - Automated frontend/backend tests, CI, staging, and deployment are not complete.
-- The current implementation contains legacy unload-stop behavior that conflicts with the explicit-session architecture target.
 - Dashboard timezone and range behavior is still being corrected under M1.4.
 
 Track these items in [`todo.md`](todo.md) rather than treating existing source or old build output as verification evidence.

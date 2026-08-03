@@ -51,12 +51,6 @@ public class TimeEntryController {
         return ApiResponse.success(timeEntryService.stopSession(userId, id));
     }
 
-    @PutMapping("/time-entries/active/stop")
-    public ApiResponse<TimeEntryDTO> stopActiveSession(@AuthenticationPrincipal Jwt jwt) {
-        UUID userId = UUID.fromString(jwt.getSubject());
-        return ApiResponse.success(timeEntryService.stopActiveSession(userId));
-    }
-
     @GetMapping("/time-entries/active")
     public ApiResponse<TimeEntryDTO> getActiveSession(@AuthenticationPrincipal Jwt jwt) {
         UUID userId = UUID.fromString(jwt.getSubject());

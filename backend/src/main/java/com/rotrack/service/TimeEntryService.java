@@ -52,10 +52,13 @@ public class TimeEntryService {
             // pass the read check at the same time; translate its failure into the API contract.
             return toDto(timeEntryRepository.saveAndFlush(entry));
         } catch (DataIntegrityViolationException exception) {
-            throw new ConflictException(
-                    "ACTIVE_SESSION_EXISTS",
-                    "An active session already exists"
-            );
+            if (isActiveSessionConstraint(exception)) {
+                throw new ConflictException(
+                        "ACTIVE_SESSION_EXISTS",
+                        "An active session already exists"
+                );
+            }
+            throw exception;
         }
     }
 
@@ -172,6 +175,11 @@ public class TimeEntryService {
             return hours + " hours ago";
         }
         return instant.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MMM d"));
+    }
+
+    private boolean isActiveSessionConstraint(DataIntegrityViolationException exception) {
+        String message = exception.getMostSpecificCause().getMessage();
+        return message != null && message.contains("idx_time_entries_one_active_per_user");
     }
 
     private Integer durationMinutes(TimeEntry entry) {

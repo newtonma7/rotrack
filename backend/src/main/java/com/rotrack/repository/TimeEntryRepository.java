@@ -4,12 +4,19 @@ import com.rotrack.model.TimeEntry;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface TimeEntryRepository extends JpaRepository<TimeEntry, UUID> {
 
+    /**
+     * Serialize stop requests for one entry so a retry cannot replace the first
+     * server-assigned end timestamp with a later one.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<TimeEntry> findByIdAndUserId(UUID id, UUID userId);
 
     Optional<TimeEntry> findFirstByUserIdAndEndTimeIsNullOrderByStartTimeDesc(UUID userId);

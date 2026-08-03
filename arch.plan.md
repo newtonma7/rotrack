@@ -41,9 +41,8 @@ This section describes what exists in source control today. It is not a completi
 - Routes: `/`, `/signin`, `/signup`, `/signup/confirmation`, `/tracker`, `/dashboard`
 - Client-side Supabase session context and protected-route layouts
 - API client using native `fetch` and Supabase bearer tokens
-- Tracker UI with start, active-session restore, elapsed display, and explicit stop
+- Tracker UI with start, active-session restore, elapsed display, and explicit stop; sessions remain active across reload, navigation, tab changes, minimization, and browser closure until explicitly stopped
 - Dashboard using `GET /api/v1/dashboard/stats`
-- A legacy `usePageUnloadStop` hook and keepalive stop request still exist and must be removed because they conflict with the explicit-stop rule
 
 ### Backend and database
 
@@ -179,7 +178,7 @@ Production requirements:
 | `PUT /time-entries/{id}/stop` | Yes | Stops the owned entry; repeated calls return the unchanged stopped resource |
 | `GET /dashboard/stats` | Yes | Returns personal totals and daily buckets for a validated range/timezone |
 
-`PUT /time-entries/active/stop` is a transitional compatibility endpoint. The frontend should use the ID-based stop endpoint; remove the compatibility endpoint after callers and tests no longer depend on it.
+The frontend and API use `PUT /time-entries/{id}/stop`; the former active-stop compatibility endpoint has been retired after the ID-based path became the only caller contract.
 
 ### Core shapes
 

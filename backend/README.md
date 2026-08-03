@@ -24,7 +24,6 @@ Health check: `GET http://localhost:8080/api/v1/health`
 
 - `POST /api/v1/time-entries/start` — start session `{ "activityType": "WORK" | "ROT" }`
 - `PUT /api/v1/time-entries/{id}/stop` — stop session
-- `PUT /api/v1/time-entries/active/stop` — stop active session
 - `GET /api/v1/time-entries/active` — get active session
 - `GET /api/v1/dashboard/stats` — weekly aggregates
 

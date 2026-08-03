@@ -33,3 +33,19 @@ Use these questions to review the completed baseline phases and understand the i
 2. Why is a text-based migration test weaker than executing SQL against PostgreSQL?
 3. What migration strategy is needed when the original baseline has already been applied remotely?
 4. Which completed-session tests prove that stale `duration_minutes` cannot affect API or dashboard output?
+
+## M1.2 — Authentication and API errors
+
+1. Why should the server validate JWT issuer, audience, time claims, and UUID `sub` instead of trusting a decoded token?
+2. Why was the HS256 fallback removed, and how would keeping it expand the trust boundary?
+3. What is the difference between authentication (`401`) and authorization (`403`), and why should resource ownership failures often appear as `404`?
+4. Why is a stable error envelope more useful to the frontend than arbitrary exception strings?
+5. What does `GlobalExceptionHandler` centralize, and what security risk does its generic fallback reduce?
+6. Why do unit and MockMvc tests not replace testing with a real Supabase-signed token and two users?
+
+## M1.3 — Explicit session lifecycle
+
+1. Why must the server persist the active session instead of relying on a browser timer?
+2. Why does a partial unique index remain necessary when the service already checks for an active session?
+3. How does returning an already-stopped entry make retries safe without changing its authoritative end time?
+4. Why is a page-unload request unreliable and incompatible with explicit stop semantics?

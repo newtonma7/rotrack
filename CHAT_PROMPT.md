@@ -22,7 +22,7 @@ Workspace: `rotrack2/my-app/`
 ## Domain rules
 
 - Only **Rot** and **Work**. If not actively working → Rot.
-- **Auto-stop:** closing the tracker tab stops the active session (`pagehide` → `stopActiveSessionBeacon()`). Switching tabs does **not** stop the timer. In-app navigation (tracker ↔ dashboard) does **not** auto-stop.
+- **Explicit stop:** sessions continue across tab switches, navigation, reloads, minimization, and browser closure until the user explicitly stops them.
 - **Auth:** Supabase email/password. Sign-in → `/`. `/tracker` and `/dashboard` gated via layout files. Landing stays public.
 
 ## Data flow
@@ -35,7 +35,6 @@ Browser → Next.js → `frontend/src/lib/api.ts` (Bearer JWT from Supabase) →
 |------|------|
 | API client + JWT | `frontend/src/lib/api.ts` |
 | Tracker state | `frontend/src/hooks/useTimeTracking.ts` |
-| Tab-close auto-stop | `frontend/src/hooks/usePageUnloadStop.ts` |
 | Tracker UI | `frontend/src/components/tracker/ActiveTracker.tsx` |
 | Sign out | `frontend/src/components/auth/SignOutButton.tsx` |
 | Dashboard | `frontend/src/app/dashboard/page.tsx` |
