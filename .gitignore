@@ -61,3 +61,6 @@ frontend/.vercel/
 
 backend/secrets/*
 backend/target/
+frontend/playwright-report/
+frontend/test-results/
+.pi-subagents
