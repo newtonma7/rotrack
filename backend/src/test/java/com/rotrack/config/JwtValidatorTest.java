@@ -3,6 +3,14 @@ package com.rotrack.config;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.crypto.ECDSASigner;
+import com.nimbusds.jose.crypto.ECDSAVerifier;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -46,9 +54,36 @@ class JwtValidatorTest {
     }
 
     @Test
+    void rejectsCryptographicallyInvalidSignature() throws Exception {
+        KeyPairGenerator generator = KeyPairGenerator.getInstance("EC");
+        generator.initialize(256);
+        KeyPair trustedKey = generator.generateKeyPair();
+        KeyPair attackerKey = generator.generateKeyPair();
+        String token = signedToken(attackerKey, UUID.randomUUID().toString());
+        SignedJWT parsed = SignedJWT.parse(token);
+
+        assertFalse(parsed.verify(new ECDSAVerifier(
+                (java.security.interfaces.ECPublicKey) trustedKey.getPublic()
+        )));
+    }
+
+    @Test
     void rejectsExpiredToken() {
         assertFalse(validator.validate(token(ISSUER, List.of("authenticated"), UUID.randomUUID().toString(),
                 Instant.now().minusSeconds(60))).getErrors().isEmpty());
+    }
+
+    private String signedToken(KeyPair keyPair, String subject) throws Exception {
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .issuer(ISSUER)
+                .audience("authenticated")
+                .subject(subject)
+                .issueTime(java.util.Date.from(Instant.now().minusSeconds(60)))
+                .expirationTime(java.util.Date.from(Instant.now().plusSeconds(60)))
+                .build();
+        SignedJWT jwt = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.ES256).build(), claims);
+        jwt.sign(new ECDSASigner((java.security.interfaces.ECPrivateKey) keyPair.getPrivate()));
+        return jwt.serialize();
     }
 
     private Jwt token(String issuer, List<String> audience, String subject, Instant expiresAt) {
