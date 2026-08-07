@@ -349,7 +349,7 @@ const BUCKETS: Bucket[] = [
     key: "rot",
     label: "Rot",
     tagline: "The scroll. The spiral.",
-    body: "Time that quietly disappears. Autoplay feeds, 2 a.m. reddit, tab-flipping, waiting-to-start. If you&apos;re not in active work, it&apos;s rot. Log it without guilt &mdash; just see it.",
+    body: "Time you choose to label as rot. Autoplay feeds, 2 a.m. reddit, tab-flipping, waiting-to-start. Log it without guilt &mdash; just see it.",
     examples: ["tiktok", "reddit hole", "youtube autoplay", "doomscroll"],
   },
   {
@@ -481,7 +481,7 @@ function HowItWorks() {
     {
       n: "02",
       t: "Let the week shape up",
-      d: "Rotrack quietly stitches your taps into a week-view. Orange for rot, ink for work. Patterns surface on their own.",
+      d: "Rotrack quietly stitches your taps into a week-view. Orange for work, ink for rot. Patterns surface on their own.",
     },
     {
       n: "03",

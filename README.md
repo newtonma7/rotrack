@@ -133,19 +133,19 @@ mvn test
 mvn package
 ```
 
-The frontend now has a minimal Vitest baseline; broader frontend coverage and the backend source test suite are still tracked in `todo.md`. Do not report tests, typechecking, builds, migrations, or browser flows as passing unless they were actually run. Behavior changes must add tests as part of the same change.
+The repository has focused Vitest and JUnit suites for the timer, API/security boundaries, and dashboard semantics. Database-backed migration/repository checks and authenticated browser coverage require explicit local development setup and remain open. Do not report tests, typechecking, builds, migrations, or browser flows as passing unless they were actually run. Behavior changes must add tests as part of the same change.
 
 ## Current API surface
 
 All paths use the `/api/v1` prefix. Authenticated endpoints require `Authorization: Bearer <supabase-jwt>`.
 
 - `GET /health` — unauthenticated liveness check
-- `POST /time-entries/start` — start a `WORK` or `ROT` session
+- `POST /time-entries/start` — start a `WORK` or `ROT` session (`201 Created`)
 - `GET /time-entries/active` — get the authenticated user's active session
 - `PUT /time-entries/{id}/stop` — stop an owned session by ID
-- `GET /dashboard/stats` — get dashboard aggregates
+- `GET /dashboard/stats?timeZone=Area%2FCity` — get timestamp-derived totals and daily buckets; optional paired `start`/`end` ISO local dates define a half-open range
 
-The backend derives the acting user from the validated JWT subject. Clients must not send a `user_id`.
+The backend derives the acting user from the validated JWT subject. Clients must not send a `user_id`. Dashboard responses use seconds and UTC range instants while daily bucket labels remain local dates in the requested IANA timezone.
 
 ## Working conventions
 
@@ -161,8 +161,8 @@ The backend derives the acting user from the validated JWT subject. Clients must
 
 The repository is still working toward the production-ready MVP. In particular:
 
-- The initial migration needs the hardening described in M1.1, including the one-active-session constraint and reporting indexes.
-- Automated frontend/backend tests, CI, staging, and deployment are not complete.
-- Dashboard timezone and range behavior is still being corrected under M1.4.
+- Migration hardening exists, but repeatable PostgreSQL-backed migration/constraint tests and current remote catalog evidence are still missing.
+- Real Supabase-signed JWT, two-user ownership/RLS, and application-role grant proof remain incomplete.
+- Test coverage is focused rather than complete; PostgreSQL integration, Playwright, CI, staging, readiness, and deployment work remain open.
 
 Track these items in [`todo.md`](todo.md) rather than treating existing source or old build output as verification evidence.

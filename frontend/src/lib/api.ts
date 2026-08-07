@@ -13,6 +13,7 @@ import type {
   ActivityType,
   ApiResponse,
   DashboardStats,
+  DashboardStatsQuery,
   TimeEntry,
 } from "@/types/time-entry";
 
@@ -100,7 +101,12 @@ export async function getActiveSession(): Promise<TimeEntry | null> {
   return apiFetch<TimeEntry | null>("/time-entries/active");
 }
 
-/** Weekly rot/work aggregates for the dashboard charts and score cards. */
-export async function getDashboardStats(): Promise<DashboardStats> {
-  return apiFetch<DashboardStats>("/dashboard/stats");
+/** Timestamp-derived dashboard aggregates in the user's IANA timezone. */
+export async function getDashboardStats(
+  query: DashboardStatsQuery,
+): Promise<DashboardStats> {
+  const search = new URLSearchParams({ timeZone: query.timeZone });
+  if (query.start) search.set("start", query.start);
+  if (query.end) search.set("end", query.end);
+  return apiFetch<DashboardStats>(`/dashboard/stats?${search.toString()}`);
 }

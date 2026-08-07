@@ -3,7 +3,7 @@
 /**
  * Main tracker UI — the core product surface on `/tracker`.
  *
- * Two-bucket rule: only Work and Rot buttons. If you're not in Work, you're in Rot.
+ * Two-bucket rule: only Work and Rot buttons. Both buckets are explicit; idle time is untracked.
  * This component is presentational; all timer/API logic lives in useTimeTracking().
  *
  * UX rules enforced here:
@@ -52,7 +52,7 @@ export function ActiveTracker() {
             />
             <ActivityButton
               label="Rot"
-              description="Everything else"
+              description="Explicitly tracked time"
               active={activeType === "ROT"}
               disabled={loading || (isActive && activeType !== "ROT")}
               onClick={() => start("ROT")}
@@ -114,7 +114,7 @@ function ActivityButton({
         active
           ? isWork
             ? "bg-[var(--rt-ink)] text-[var(--rt-cream)] border-[var(--rt-ink)]"
-            : "bg-[#A90C0C] text-white border-[#A90C0C]"
+            : "bg-[var(--rt-ink-soft)] text-[var(--rt-cream)] border-[var(--rt-ink-soft)]"
           : "bg-[var(--rt-cream)] border-[var(--rt-line)] text-[var(--rt-ink)] hover:border-[var(--rt-orange)]",
       ].join(" ")}
     >

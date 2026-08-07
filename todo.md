@@ -1,7 +1,7 @@
 # rotrack Development Backlog
 
 **Architecture and contracts:** [`arch.plan.md`](arch.plan.md)
-**Backlog reviewed:** 2026-08-01
+**Backlog reviewed:** 2026-08-07
 **Current release target:** Production-ready personal timer and dashboard MVP
 
 ## 1. Operating Rules
@@ -58,19 +58,28 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 | Area | State | Evidence / gap |
 |---|---|---|
-| Architecture/backlog rewrite | **Verified** | Reconciled and validated against repository source on 2026-08-01 |
-| Frontend routes and auth UI | **Implemented—unverified** | Source exists; sign-in currently redirects to `/dashboard`; no current build proof |
-| Tracker start/restore/stop UI | **Implemented—unverified** | Source exists; live API flow is unproven |
-| Automatic unload stop | **Implemented—unverified** | Legacy behavior exists but conflicts with the target and is scheduled for removal |
-| Dashboard UI and API call | **Implemented—unverified** | Fixed server-time buckets are incorrect target behavior |
-| Spring Boot API scaffold | **Implemented—unverified** | Core source exists; source test tree is absent |
-| Initial database migration | **Implemented—unverified** | SQL exists but is reportedly unapplied and lacks required hardening |
-| Supabase development integration | **Not started** | No recorded migration, RLS, or two-user proof |
-| Automated test suites | **Not started** | No current frontend/backend source tests |
-| CI and deployment | **Not started** | No pipeline, Dockerfile, staging evidence, or rollback runbook |
-| Notes, logs, friends, groups | **Not started** | Architecture defined; implementation follows the core MVP |
+| Documentation currency | **Verified** | M0.5 reconciles current source, API status/DTO contracts, tests, migrations, and remaining integration gaps across architecture, README, and backlog. |
+| Frontend routes and auth UI | **Implemented—unverified** | Source, configuration, and a static production build exist; a current authenticated sign-in/sign-up flow has not been re-run. |
+| Tracker start/restore/stop UI | **Verified** | M1.3 source, unit tests, and recorded authenticated browser/API evidence cover explicit start, restore, and stop behavior. |
+| Automatic unload stopping | **Verified** | M1.3 removed production unload/keepalive handling; source search finds only the negative unit test. |
+| Dashboard UI and API | **Verified** | M1.4 replaces fixed server-time/minute timelines with validated IANA-zone ranges, timestamp-derived seconds, local daily buckets, tested DST/clipping, and explicit UI states. |
+| Spring Boot API core | **In progress** | Security, timer lifecycle, and dashboard source/tests exist; live JWT/two-user ownership proof remains incomplete. Session creation now returns the documented `201`. |
+| Initial schema hardening | **Implemented—unverified** | `002_harden_time_entries.sql` contains the required indexes, but the tracked migration test only inspects SQL text rather than a PostgreSQL database. |
+| Supabase development integration | **In progress** | Historical migration/liveness/authenticated-lifecycle evidence exists; signup, RLS, application-role, and two-user proof remain incomplete. |
+| Automated test suites | **In progress** | Six frontend test files run 11 tests; six backend test classes run 33 tests. Live database, real JWT/two-user, and authenticated browser execution remain open. |
+| CI and deployment | **Not started** | No tracked pipeline, Dockerfile, staging evidence, or rollback runbook. |
+| Notes, logs, friends, groups | **Not started** | Architecture defined; implementation follows the core MVP. |
 
-### Baseline evidence captured during the 2026-08-01 audit
+### Current audit — 2026-08-07 / local workspace
+
+- Audited `main` at `2fc7cff` (the pre-change HEAD) from a clean worktree before this documentation change.
+- Node `v24.18.0`, npm `11.16.0`, Maven `3.9.12`, and Temurin Java `21.0.12` were available; Java 21 was selected explicitly for Maven.
+- `cd frontend && npm ci && npm run lint && npm run typecheck && npm test && npm run build` passed; the current Vitest suite reports 11 passing tests.
+- `cd backend && export JAVA_HOME=/home/newton/.local/jdk-21.0.12+8 && export PATH="$JAVA_HOME/bin:$PATH" && mvn test && mvn package` passed with 33 tests; no database-backed check was run.
+- `git diff --check` passed and `git ls-files backend/target` returned no files. `npm ci` still reports 11 dependency audit findings and two pending install-script approvals; no automatic remediation was applied.
+- No remote database, RLS, or two-user scenario was re-run in this audit. Dated remote evidence below remains historical until re-attested.
+
+### Historical baseline evidence captured during the 2026-08-01 audit
 
 - Current tools: Node `v24.18.0`, npm `11.16.0`, Maven `3.9.12`, Java runtime `25.0.3`; the backend targets Java 21.
 - `frontend/package-lock.json` exists, but `frontend/node_modules` is absent.
@@ -159,7 +168,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 ### M0.4 — Pin and verify toolchains
 
 **Status:** Verified
-**Dependencies:** M0.3
+**Dependencies:** M0.3 implementation (the clean-clone verification remains open)
 
 **Deliverable**
 
@@ -181,6 +190,33 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - Added the initial Vitest runner/configuration and a focused `cn` utility test. Broader frontend and backend coverage remains part of M1.5.
 - `npm install` reports 11 dependency audit findings and pending install-script approvals; these are recorded for follow-up rather than hidden.
 
+**Revalidation — 2026-08-06 / local workspace**
+
+- A fresh `npm ci`, frontend lint/typecheck/test/build, and backend `mvn test`/`mvn package` under Temurin Java `21.0.12` passed. The current suites report 11 frontend and 33 backend tests; no database-backed check was run.
+
+### M0.5 — Reconcile current-state documentation
+
+**Status:** Verified
+**Dependencies:** None
+
+**Deliverable**
+
+- Refresh `arch.plan.md` current-state sections and README known limitations to match the checked-in M1.1–M1.3 source without weakening target invariants.
+- Resolve the documented `POST /time-entries/start` `201` response versus the controller's actual `200` response through an explicit contract/implementation decision and matching test.
+
+**Acceptance and verification**
+
+- Current-state documentation accurately names the single ID-based stop endpoint, tracked tests, migration hardening, generated-artifact state, and remaining gaps.
+- README limitations distinguish historical evidence from unresolved migration/RLS, dashboard, test, CI, and deployment work.
+- The chosen start-response status is consistent across architecture, controller, tests, frontend assumptions, and evidence.
+
+**Evidence — 2026-08-06 / local workspace**
+
+- Reconciled `arch.plan.md` and README current-state/limitation sections with the single ID-based stop endpoint, migration hardening, source-controlled tests, dashboard contract, and remaining database/JWT/two-user/CI gaps.
+- Kept the architecture's `201 Created` decision and added `@ResponseStatus(HttpStatus.CREATED)` plus a failing-first MockMvc status test.
+- Updated the shared time-entry DTO from transitional `durationMinutes` to timestamp-derived `durationSeconds` across Java, TypeScript, and tests.
+- `mvn clean package`, frontend lint/typecheck/test/build, contract searches, and `git diff --check` passed; current suites report 33 backend and 11 frontend tests.
+
 ## 4. Milestone 1 — Secure and Correct Timer MVP
 
 **Goal:** Correct the current implementation before applying its baseline migration remotely.
@@ -189,7 +225,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 ### M1.1 — Harden the initial schema before application
 
-**Status:** Verified
+**Status:** Implemented—unverified
 
 **Deliverable**
 
@@ -214,9 +250,14 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - Backend aggregation and DTO mapping derive duration from `start_time`/`end_time`; the transitional column is not authoritative.
 - Failing-first tests were added for the migration contract and active-session duration behavior. `mvn test` and `mvn package` pass under Temurin Java `21.0.12` with 2 tests passing.
 
+**Current gap — 2026-08-06 / repository audit**
+
+- No repeatable PostgreSQL-backed migration check is included in this M0.5/M1.4 change; the tracked migration test inspects SQL source only and does not prove applied indexes, RLS, or application-role grants.
+- The historical remote application/catalog/probe results remain un-attested in this review. Keep this task unverified until full migration/repository coverage and repeatable redacted verification satisfy its acceptance criteria.
+
 ### M1.2 — Harden JWT authentication and API errors
 
-**Status:** Verified
+**Status:** Implemented—unverified
 
 **Deliverable**
 
@@ -240,6 +281,11 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - Backend `mvn test` and `mvn package` pass under Temurin Java `21.0.12` with 15 tests passing; frontend lint, typecheck, test, and build also pass.
 - A live Spring Boot probe against the configured Supabase database confirmed `/health` is public and missing/invalid bearer requests return stable JSON `401` envelopes with path and error codes.
 - A real Supabase-signed valid token, bad-signature token, and two-user authenticated API isolation flow remain untested; those belong to the authenticated integration flow in M2.2–M2.3.
+
+**Current gap — 2026-08-06 / repository audit**
+
+- Unit validators cover issuer, audience, time, and UUID-subject claims, and MockMvc covers a decoder failure. A real Supabase-issued token test remains open.
+- Keep this task unverified until real Supabase JWT and two-user ownership scenarios have stable, redacted evidence.
 
 ### M1.3 — Implement the explicit session lifecycle
 
@@ -268,12 +314,12 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - `JAVA_HOME=/home/newton/.local/jdk-21.0.12+8 PATH="$JAVA_HOME/bin:$PATH" mvn clean package` passed with 18 tests; `cd frontend && npm test` passed with 7 tests, and frontend lint, typecheck, and build passed.
 - `git diff --check` passed and lifecycle searches found no production unload/keepalive implementation.
 - Authenticated `agent-browser` verification used profile `rotrack-test` against isolated frontend/API ports 3001/8081. Work remained active through tracker → dashboard → tracker navigation, reload, and a browser close/reopen using browser restore; the reopened tracker displayed the same active session until explicit stop.
-- Two simultaneous authenticated Work starts returned one `200` and one `409 ACTIVE_SESSION_EXISTS`; the active-session lookup matched the one successful entry, which was then explicitly stopped. ROT also started and stopped successfully. Two stops against the same entry both returned `200` with the identical server `endTime` and duration.
+- Two simultaneous authenticated Work starts returned one success and one `409 ACTIVE_SESSION_EXISTS`; the active-session lookup matched the one successful entry, which was then explicitly stopped. ROT also started and stopped successfully. Two stops against the same entry both returned `200` with the identical server `endTime` and duration. (The historical success response preceded M0.5's correction to `201`.)
 - `/api/v1/health` returned `200`, and unauthenticated `/time-entries/active` returned the structured `401` envelope. The pre-existing Spring process on 8080 was identified and deliberately stopped after the isolated API hit Supabase's session-pool client limit.
 
 ### M1.4 — Correct dashboard time semantics
 
-**Status:** Not started
+**Status:** Verified
 
 **Deliverable**
 
@@ -289,11 +335,18 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - No logic uses the server's system timezone or fixed 08:00–16:00 hours.
 - Productivity score matches the documented formula.
 
-**Evidence:** Unit fixture table, API snapshot, frontend component test, and manual chart check.
+**Evidence — 2026-08-07 / local workspace**
+
+- Added a dedicated dashboard service with an injected UTC clock and ownership-scoped overlap query. Service fixtures cover empty defaults, range clipping, cross-midnight splitting, active-session exclusion, productivity rounding, and New York 23-hour/25-hour DST days.
+- Added MockMvc coverage for authenticated query binding, the UTC-instant/local-date response contract, and stable missing-parameter errors. The API requires an IANA `timeZone`; optional paired `start`/`end` dates are end-exclusive and capped at 366 days.
+- Replaced minute/hour timeline DTOs with `range`, `totalSeconds`, complete daily buckets, full recent-session DTOs, and `productivityScore`; the frontend API test proves timezone/date query encoding.
+- Rebuilt the dashboard with seconds-based cards, Work/Rot daily bars, responsive distribution/recent-session panels, and distinct loading, empty, error, retry, and populated states. Vitest component tests cover those states and the accessible daily-data table.
+- The final clean package passed with 33 backend tests; frontend lint, typecheck, 11 tests, and production build passed. Searches found no dashboard `ZoneId.systemDefault`, fixed-hour, legacy timeline, or minute-total logic.
+- Manual chart inspection used a temporary non-production fixture route that was removed immediately afterward. `agent-browser` screenshots at 1440×1000 and 390×844 confirmed daily bars, seconds-derived labels, Tangerine Studio colors/type, and responsive stacking (`/tmp/rotrack-m14-dashboard-desktop.png`, `/tmp/rotrack-m14-dashboard-mobile.png`). Authenticated live-data browser proof remains part of M2.3, not this deterministic chart check.
 
 ### M1.5 — Establish the MVP automated test suite
 
-**Status:** Not started
+**Status:** In progress
 
 **Deliverable**
 
@@ -307,7 +360,11 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - Tests do not rely on tracked build artifacts or production credentials.
 - Exact commands are ready for CI.
 
-**Evidence:** Commands, pass counts, duration, and any quarantined external test with owner/reason.
+**Evidence — 2026-08-07 / local workspace**
+
+- Tracked coverage includes six frontend test files (11 Vitest tests) and six backend test classes (33 JUnit tests), including dashboard range/DST fixtures, HTTP binding, typed client queries, UI loading/empty/error/retry/populated states, and ownership boundaries.
+- Frontend lint/typecheck/test/build and backend `mvn clean package` pass under the pinned toolchains. Real PostgreSQL, Supabase JWT, RLS, two-user ownership, and authenticated browser proof remain unverified.
+- The existing migration test inspects SQL source rather than applying migrations; the Playwright skeleton remains a future M1.5 task and no authenticated storage state is committed.
 
 ## 5. Milestone 2 — Secure Local Supabase Integration
 
@@ -317,35 +374,50 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 ### M2.1 — Apply and verify the development migration
 
-**Status:** Not started
+**Status:** In progress
 
 - Apply reviewed migrations to the Supabase development project.
 - Verify the signup trigger creates `public.users`.
 - Verify Data API RLS separately: each user can access only owned rows.
 - Verify the Spring application role has only required table DML grants plus the documented RLS-bypass behavior, and that Spring authorization is enforced by ownership-scoped application queries.
 
-**Evidence:** Redacted migration/version output and two-user isolation matrix.
+**Current state — 2026-08-06 / repository audit**
+
+- `001_initial_schema.sql` contains the signup trigger and Data API RLS policies; `002_harden_time_entries.sql` contains the hardening indexes. M1.1's historical evidence records applying `002` to development.
+- This audit did not re-attest the remote migration version, signup trigger, RLS matrix, application-role grants, or RLS-bypass configuration.
+
+**Remaining evidence:** Redacted migration/version output and two-user isolation matrix.
 
 ### M2.2 — Make local startup deterministic
 
-**Status:** Not started
+**Status:** In progress
 
 - Configure redacted frontend/backend environment templates, CORS origins, JWT issuer/JWKS/audience, and TLS JDBC settings.
 - Start backend and frontend using the runbook.
 - Confirm liveness independently from database readiness.
 
-**Evidence:** Startup commands, health bodies/statuses, and configuration-name checklist without values.
+**Current state — 2026-08-06 / repository audit**
+
+- README startup commands, both `.env.example` files, CORS/JWT configuration, and the unauthenticated liveness endpoint exist. M1.2–M1.3 contain historical live startup/liveness evidence.
+- A clean environment startup has not been re-run in this audit. The backend template does not explicitly document TLS JDBC parameters, and no separate readiness endpoint exists.
+
+**Remaining evidence:** Startup commands, health bodies/statuses, and configuration-name checklist without values.
 
 ### M2.3 — Complete the local critical-path test
 
-**Status:** Not started
+**Status:** In progress
 
 - User A signs up/signs in, starts Work, navigates/reloads, restores, explicitly stops, and sees dashboard totals.
 - User B cannot read, stop, or aggregate User A's session.
 - Repeat with Rot and verify it remains private to the owner.
 - Confirm closing the app does not stop an active session.
 
-**Evidence:** Playwright result where feasible plus a concise manual route/API log.
+**Current state — 2026-08-06 / repository audit**
+
+- M1.3 records authenticated navigation/reload/close-reopen, Work/Rot start-stop, and unauthenticated failure probes. That is partial evidence for this flow.
+- No authenticated browser harness or storage state is committed, and there is still no recorded two-user ownership/RLS/dashboard-total scenario. M1.4's deterministic dashboard contract is implemented; this task still needs live authenticated verification against it.
+
+**Remaining evidence:** Playwright result where feasible plus a concise manual route/API log.
 
 ## 6. Milestone 3 — CI, Staging, and MVP Release
 
@@ -557,4 +629,4 @@ Append evidence beneath the completed task; do not create unsupported global che
 
 ## 13. Next Action
 
-Finish and verify **M0.1**, then complete repository hygiene and the runbook in **M0.2–M0.4**. Do not apply the remote development migration until **M1.1** resolves the active-session race and reporting indexes.
+Continue **M1.5** with PostgreSQL-backed migration/repository tests, cryptographic JWT and two-user ownership coverage, and the Playwright skeleton. Use that evidence to close M1.1 and M1.2 before beginning the M2 gate.

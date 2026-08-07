@@ -1,13 +1,13 @@
 package com.rotrack.controller;
 
 import com.rotrack.dto.ApiResponse;
-import com.rotrack.dto.DashboardStatsDTO;
 import com.rotrack.dto.StartSessionRequest;
 import com.rotrack.dto.TimeEntryDTO;
 import com.rotrack.service.TimeEntryService;
 import jakarta.validation.Valid;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -34,6 +35,7 @@ public class TimeEntryController {
     }
 
     @PostMapping("/time-entries/start")
+    @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<TimeEntryDTO> startSession(
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody StartSessionRequest request

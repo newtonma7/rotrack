@@ -17,14 +17,14 @@ const activeEntry: TimeEntry = {
   activityType: "WORK",
   startTime: "2026-01-01T10:00:00Z",
   endTime: null,
-  durationMinutes: null,
+  durationSeconds: null,
   notes: null,
 };
 
 const stoppedEntry: TimeEntry = {
   ...activeEntry,
   endTime: "2026-01-01T11:00:00Z",
-  durationMinutes: 60,
+  durationSeconds: 3600,
 };
 
 describe("useTimeTracking", () => {

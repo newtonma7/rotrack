@@ -108,7 +108,7 @@ class TimeEntryControllerSecurityTest {
                 ActivityType.WORK,
                 Instant.parse("2026-01-01T10:00:00Z"),
                 Instant.parse("2026-01-01T11:00:00Z"),
-                60,
+                3600L,
                 null
         );
         when(timeEntryService.stopSession(userId, entryId)).thenReturn(stopped);
@@ -118,7 +118,7 @@ class TimeEntryControllerSecurityTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(entryId.toString()))
                 .andExpect(jsonPath("$.data.endTime").value("2026-01-01T11:00:00Z"))
-                .andExpect(jsonPath("$.data.durationMinutes").value(60));
+                .andExpect(jsonPath("$.data.durationSeconds").value(3600));
     }
 
     @Test
@@ -133,6 +133,28 @@ class TimeEntryControllerSecurityTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("NOT_FOUND"))
                 .andExpect(jsonPath("$.path").value("/api/v1/time-entries/" + entryId + "/stop"));
+    }
+
+    @Test
+    void startingSessionReturnsCreated() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID entryId = UUID.randomUUID();
+        TimeEntryDTO started = new TimeEntryDTO(
+                entryId,
+                ActivityType.WORK,
+                Instant.parse("2026-01-01T10:00:00Z"),
+                null,
+                null,
+                null
+        );
+        when(timeEntryService.startSession(userId, ActivityType.WORK, null)).thenReturn(started);
+
+        mockMvc.perform(post("/api/v1/time-entries/start")
+                        .with(jwt().jwt(jwt -> jwt.subject(userId.toString()).audience(List.of("authenticated"))))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"activityType\":\"WORK\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.id").value(entryId.toString()));
     }
 
     @Test

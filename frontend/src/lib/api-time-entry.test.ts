@@ -25,7 +25,7 @@ describe("time-entry API", () => {
         activityType: "WORK",
         startTime: "2026-01-01T10:00:00Z",
         endTime: "2026-01-01T11:00:00Z",
-        durationMinutes: 60,
+        durationSeconds: 3600,
         notes: null,
       },
     };

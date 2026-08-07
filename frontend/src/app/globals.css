@@ -10,14 +10,23 @@
 
 /* ---------------------------------------------------------------
    Typography
-   Headings: Figtree bold via font-heading (landing + app UI)
+   Display:  Migha Black via font-display
+   Headings: Figtree bold via font-heading (legacy app UI)
    Body:     Figtree — clean geometric sans for UI & prose
-   Mono:     Digital-7 — LED clock readouts on landing hero only
+   Mono:     Digital-7 — LED clock readouts only
 --------------------------------------------------------------- */
 @font-face {
   font-family: "Figtree";
   src: url("/fonts/Figtree-Regular.otf") format("opentype");
   font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Migha";
+  src: url("/fonts/Migha-Black.otf") format("opentype");
+  font-weight: 900;
   font-style: normal;
   font-display: swap;
 }
@@ -94,6 +103,7 @@
   --color-foreground: var(--foreground);
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
   --font-heading: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Migha", "Figtree", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Digital-7", ui-monospace, monospace;
 
   /* Rotrack palette exposed to tailwind */
@@ -214,7 +224,13 @@
 /* ---------------------------------------------------------------
    rotrack landing motion + shape utilities
 --------------------------------------------------------------- */
-/* App + landing headings — Figtree bold */
+/* Display moments use Migha Black; legacy app headings retain Figtree. */
+@utility font-display {
+  font-family: "Migha", "Figtree", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
 @utility font-heading {
   font-family: "Figtree", ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;

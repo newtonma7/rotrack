@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import com.rotrack.dto.TimeEntryDTO;
 import com.rotrack.exception.ConflictException;
+import com.rotrack.exception.ResourceNotFoundException;
 import com.rotrack.model.ActivityType;
 import com.rotrack.model.TimeEntry;
 import com.rotrack.repository.TimeEntryRepository;
@@ -45,7 +46,22 @@ class TimeEntryServiceTest {
 
         assertEquals(entryId, result.id());
         assertEquals(originalEnd, result.endTime());
-        assertEquals(60, result.durationMinutes());
+        assertEquals(3600L, result.durationSeconds());
+        verify(repository, never()).save(any(TimeEntry.class));
+    }
+
+    @Test
+    void stoppingAnEntryForAnotherUserReturnsNotFoundAndPreservesOwnershipBoundary() {
+        UUID ownerId = UUID.randomUUID();
+        UUID otherUserId = UUID.randomUUID();
+        UUID entryId = UUID.randomUUID();
+        when(repository.findByIdAndUserId(entryId, otherUserId)).thenReturn(Optional.empty());
+
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> service.stopSession(otherUserId, entryId)
+        );
+        verify(repository).findByIdAndUserId(entryId, otherUserId);
         verify(repository, never()).save(any(TimeEntry.class));
     }
 
@@ -80,6 +96,6 @@ class TimeEntryServiceTest {
 
         TimeEntryDTO result = service.getActiveSession(userId);
 
-        assertNull(result.durationMinutes());
+        assertNull(result.durationSeconds());
     }
 }

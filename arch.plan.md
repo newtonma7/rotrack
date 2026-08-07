@@ -1,7 +1,7 @@
 # rotrack Architecture
 
 **Status:** Living architecture and contract document
-**Last reviewed:** 2026-08-01
+**Last reviewed:** 2026-08-07
 **Delivery backlog:** [`todo.md`](todo.md)
 
 ## 1. Purpose and Product Boundaries
@@ -42,24 +42,21 @@ This section describes what exists in source control today. It is not a completi
 - Client-side Supabase session context and protected-route layouts
 - API client using native `fetch` and Supabase bearer tokens
 - Tracker UI with start, active-session restore, elapsed display, and explicit stop; sessions remain active across reload, navigation, tab changes, minimization, and browser closure until explicitly stopped
-- Dashboard using `GET /api/v1/dashboard/stats`
+- Dashboard using the timestamp-derived daily contract from `GET /api/v1/dashboard/stats`, with the browser IANA timezone
 
 ### Backend and database
 
 - Spring Boot 3.4, Java 21 target, Maven, Spring Web, JPA, OAuth2 Resource Server, validation, and PostgreSQL
-- Implemented endpoints: health, start session, get active session, two stop variants, and dashboard stats
-- Supabase migration defining `users`, `time_entries`, the `ROT|WORK` enum, ownership RLS policies, and signup profile creation
-- No source-controlled backend or frontend tests currently exist
+- Implemented endpoints: health, start session, get active session, ID-based stop, and dashboard stats
+- Supabase migrations defining `users`, `time_entries`, the `ROT|WORK` enum, ownership RLS policies, signup profile creation, timestamp constraints, one-active-session uniqueness, and reporting indexes
+- Source-controlled JUnit and Vitest suites cover timer lifecycle, JWT/error boundaries, dashboard range/DST aggregation, the typed API client, and dashboard states; database-backed migration/repository and Playwright coverage remain open
 
 ### Known baseline problems
 
-- `backend/target/**` is tracked and generated artifacts are dirty.
-- The root README is still a create-next-app template.
-- Frontend dependencies are not installed in the current environment, so historical build claims are unverified.
-- Spring JDBC does not propagate the user JWT into PostgreSQL; current RLS policies are not the backend authorization boundary.
-- The service-level check for one active session is race-prone without a database constraint.
-- Dashboard bucketing currently depends on the server timezone, uses fixed daytime hours, and assigns a full session to its start hour.
-- Authentication, validation, and unexpected errors do not yet share one stable response contract.
+- The migration constraint test currently inspects SQL source rather than applying migrations to PostgreSQL; repeatable database-backed proof remains open.
+- Spring JDBC does not propagate the user JWT into PostgreSQL; the dedicated application-role grants/RLS-bypass setup and two-user ownership matrix still need redacted integration evidence.
+- JWT validator unit tests exist, but real Supabase-signed JWT and two-user authenticated ownership flows remain unverified.
+- Authenticated browser proof, CI, staging, readiness checks, rate limiting, and production observability are not implemented.
 
 ## 3. Target System Architecture
 
@@ -179,6 +176,8 @@ Production requirements:
 | `GET /dashboard/stats` | Yes | Returns personal totals and daily buckets for a validated range/timezone |
 
 The frontend and API use `PUT /time-entries/{id}/stop`; the former active-stop compatibility endpoint has been retired after the ID-based path became the only caller contract.
+
+Dashboard requests require `timeZone=<IANA identifier>`. Optional `start` and `end` query parameters are paired ISO local dates, with `end` exclusive; omitting both selects the previous seven local calendar days including today. The response `range.start` and `range.end` are the corresponding UTC instants. Ranges must contain 1–366 local days.
 
 ### Core shapes
 

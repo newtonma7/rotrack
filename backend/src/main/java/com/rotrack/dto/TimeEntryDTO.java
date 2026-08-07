@@ -9,6 +9,6 @@ public record TimeEntryDTO(
         ActivityType activityType,
         Instant startTime,
         Instant endTime,
-        Integer durationMinutes,
+        Long durationSeconds,
         String notes
 ) {}

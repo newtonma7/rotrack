@@ -5,8 +5,9 @@ import java.util.List;
 import java.util.Map;
 
 public record DashboardStatsDTO(
-        Map<ActivityType, Integer> totalMinutes,
-        List<TimelinePointDTO> timeline,
-        List<RecentSessionDTO> recentSessions,
+        DashboardRangeDTO range,
+        Map<ActivityType, Long> totalSeconds,
+        List<DailyStatsDTO> daily,
+        List<TimeEntryDTO> recentSessions,
         int productivityScore
 ) {}
