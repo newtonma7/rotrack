@@ -66,7 +66,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 | Spring Boot API core | **In progress** | Security, timer lifecycle, and dashboard source/tests exist; live JWT/two-user ownership proof remains incomplete. Session creation now returns the documented `201`. |
 | Initial schema hardening | **Implemented—unverified** | `002_harden_time_entries.sql` contains the required indexes, but the tracked migration test only inspects SQL text rather than a PostgreSQL database. |
 | Supabase development integration | **In progress** | Historical migration/liveness/authenticated-lifecycle evidence exists; signup, RLS, application-role, and two-user proof remain incomplete. |
-| Automated test suites | **In progress** | Six frontend test files run 11 tests; six backend test classes run 33 tests. Live database, real JWT/two-user, and authenticated browser execution remain open. |
+| Automated test suites | **In progress** | Six frontend test files run 11 tests; six backend test classes run 32 tests. Live database, real JWT/two-user, and authenticated browser execution remain open. |
 | CI and deployment | **Not started** | No tracked pipeline, Dockerfile, staging evidence, or rollback runbook. |
 | Notes, logs, friends, groups | **Not started** | Architecture defined; implementation follows the core MVP. |
 
@@ -75,7 +75,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - Audited `main` at `2fc7cff` (the pre-change HEAD) from a clean worktree before this documentation change.
 - Node `v24.18.0`, npm `11.16.0`, Maven `3.9.12`, and Temurin Java `21.0.12` were available; Java 21 was selected explicitly for Maven.
 - `cd frontend && npm ci && npm run lint && npm run typecheck && npm test && npm run build` passed; the current Vitest suite reports 11 passing tests.
-- `cd backend && export JAVA_HOME=/home/newton/.local/jdk-21.0.12+8 && export PATH="$JAVA_HOME/bin:$PATH" && mvn test && mvn package` passed with 33 tests; no database-backed check was run.
+- `cd backend && export JAVA_HOME=/home/newton/.local/jdk-21.0.12+8 && export PATH="$JAVA_HOME/bin:$PATH" && mvn test && mvn package` passed with 32 tests; no database-backed check was run.
 - `git diff --check` passed and `git ls-files backend/target` returned no files. `npm ci` still reports 11 dependency audit findings and two pending install-script approvals; no automatic remediation was applied.
 - No remote database, RLS, or two-user scenario was re-run in this audit. Dated remote evidence below remains historical until re-attested.
 
@@ -192,7 +192,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 **Revalidation — 2026-08-06 / local workspace**
 
-- A fresh `npm ci`, frontend lint/typecheck/test/build, and backend `mvn test`/`mvn package` under Temurin Java `21.0.12` passed. The current suites report 11 frontend and 33 backend tests; no database-backed check was run.
+- A fresh `npm ci`, frontend lint/typecheck/test/build, and backend `mvn test`/`mvn package` under Temurin Java `21.0.12` passed. The current suites report 11 frontend and 32 backend tests; no database-backed check was run.
 
 ### M0.5 — Reconcile current-state documentation
 
@@ -341,7 +341,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - Added MockMvc coverage for authenticated query binding, the UTC-instant/local-date response contract, and stable missing-parameter errors. The API requires an IANA `timeZone`; optional paired `start`/`end` dates are end-exclusive and capped at 366 days.
 - Replaced minute/hour timeline DTOs with `range`, `totalSeconds`, complete daily buckets, full recent-session DTOs, and `productivityScore`; the frontend API test proves timezone/date query encoding.
 - Rebuilt the dashboard with seconds-based cards, Work/Rot daily bars, responsive distribution/recent-session panels, and distinct loading, empty, error, retry, and populated states. Vitest component tests cover those states and the accessible daily-data table.
-- The final clean package passed with 33 backend tests; frontend lint, typecheck, 11 tests, and production build passed. Searches found no dashboard `ZoneId.systemDefault`, fixed-hour, legacy timeline, or minute-total logic.
+- The final clean package passed with 32 backend tests; frontend lint, typecheck, 11 tests, and production build passed. Searches found no dashboard `ZoneId.systemDefault`, fixed-hour, legacy timeline, or minute-total logic.
 - Manual chart inspection used a temporary non-production fixture route that was removed immediately afterward. `agent-browser` screenshots at 1440×1000 and 390×844 confirmed daily bars, seconds-derived labels, Tangerine Studio colors/type, and responsive stacking (`/tmp/rotrack-m14-dashboard-desktop.png`, `/tmp/rotrack-m14-dashboard-mobile.png`). Authenticated live-data browser proof remains part of M2.3, not this deterministic chart check.
 
 ### M1.5 — Establish the MVP automated test suite
@@ -362,7 +362,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 **Evidence — 2026-08-07 / local workspace**
 
-- Tracked coverage includes six frontend test files (11 Vitest tests) and six backend test classes (33 JUnit tests), including dashboard range/DST fixtures, HTTP binding, typed client queries, UI loading/empty/error/retry/populated states, and ownership boundaries.
+- Tracked coverage includes six frontend test files (11 Vitest tests) and six backend test classes (32 JUnit tests), including dashboard range/DST fixtures, HTTP binding, typed client queries, UI loading/empty/error/retry/populated states, and ownership boundaries.
 - Frontend lint/typecheck/test/build and backend `mvn clean package` pass under the pinned toolchains. Real PostgreSQL, Supabase JWT, RLS, two-user ownership, and authenticated browser proof remain unverified.
 - The existing migration test inspects SQL source rather than applying migrations; the Playwright skeleton remains a future M1.5 task and no authenticated storage state is committed.
 
