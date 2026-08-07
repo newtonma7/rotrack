@@ -27,6 +27,13 @@ Use these questions to review the completed baseline phases and understand the i
 9. Why is “Maven passed with no tests” different from having meaningful backend test coverage?
 10. Which repository files should be treated as unrelated dirty state during phase review?
 
+## M0.5 — Current-state contract reconciliation
+
+1. Why should architecture documentation distinguish checked-in current state from the target design?
+2. Why is `201 Created` a better success status for starting a new session than a generic `200 OK`?
+3. Which layers must change together when an HTTP response contract is corrected?
+4. Why do passing source tests not prove remote migrations, RLS, or two-user ownership behavior?
+
 ## M1.1 — Database schema hardening
 
 1. Why does a partial unique index enforce one active session without preventing multiple completed sessions?
@@ -49,3 +56,18 @@ Use these questions to review the completed baseline phases and understand the i
 2. Why does a partial unique index remain necessary when the service already checks for an active session?
 3. How does returning an already-stopped entry make retries safe without changing its authoritative end time?
 4. Why is a page-unload request unreliable and incompatible with explicit stop semantics?
+
+## M1.4 — Dashboard time semantics
+
+1. Why are seven local calendar days not always the same duration as 168 hours?
+2. What does a half-open range `[start, end)` prevent at adjacent reporting boundaries?
+3. Why must the repository select sessions that overlap a range instead of only sessions that start inside it?
+4. Why are sessions clipped before totals are calculated, while recent-session resources can still show their full duration?
+5. Why does splitting at the next local start-of-day handle both 23-hour and 25-hour DST days?
+6. What would break if dashboard bucketing used the server's system timezone?
+7. Why does the dashboard contract use timestamp-derived seconds rather than stored or rounded minutes?
+8. Why are active sessions excluded from completed totals even though the tracker can display their live elapsed time?
+9. Why does the browser send an IANA timezone instead of only a numeric UTC offset?
+10. How is the productivity score calculated, and why is its no-time value defined as zero?
+11. Which stale frontend assumptions were exposed when the API changed from timeline/minute fields to daily/second fields?
+12. Why should loading, empty, error, and retry states each have a distinct user-facing presentation?
