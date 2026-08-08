@@ -61,11 +61,13 @@ Two typefaces. Both already live in `/public/fonts/`.
 
 | Role     | Font              | Use                                              |
 | -------- | ----------------- | ------------------------------------------------ |
-| Display  | **Migha Black**   | Wordmark, all hero & section headlines, big numbers. Very tight tracking (`-0.02em`). |
+| Display  | **Figtree**       | Wordmark, all hero & section headlines, big numbers. Use bold weight with comfortable tracking. |
 | Body     | **Figtree**       | All paragraphs, nav, chips, buttons, meta text.  |
 | Mono     | **Digital-7**     | LED/clock readouts only. Never for body.         |
 
 Use the `font-display` utility (defined in `globals.css`) for display type.
+It uses Figtree with a bold weight so display text remains consistent with the
+rest of the interface.
 Default `body` uses Figtree.
 
 **Scale (display, clamp-driven, mobile → desktop):**

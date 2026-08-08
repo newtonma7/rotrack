@@ -65,7 +65,7 @@ The frontend has a minimal Vitest baseline; broader frontend coverage and backen
 
 ## Frontend conventions
 
-Use App Router routes under `frontend/src/app`, feature components under `src/components`, shared primitives under `src/components/ui`, hooks under `src/hooks`, API/auth code under `src/lib`, and DTOs under `src/types`. Preserve RSC boundaries and add `"use client"` only for browser state, effects, or event handlers. Read `frontend/DESIGN.md` before UI work: use existing `--rt-*` tokens, Migha/Figtree/Digital-7 fonts, accessible controls, restrained motion, and no stock imagery or new accent colors.
+Use App Router routes under `frontend/src/app`, feature components under `src/components`, shared primitives under `src/components/ui`, hooks under `src/hooks`, API/auth code under `src/lib`, and DTOs under `src/types`. Preserve RSC boundaries and add `"use client"` only for browser state, effects, or event handlers. Read `frontend/DESIGN.md` before UI work: use existing `--rt-*` tokens, Figtree/Digital-7 fonts, accessible controls, restrained motion, and no stock imagery or new accent colors.
 
 ## Backend conventions
 
