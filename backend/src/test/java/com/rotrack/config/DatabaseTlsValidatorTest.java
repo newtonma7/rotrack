@@ -32,6 +32,22 @@ class DatabaseTlsValidatorTest {
     }
 
     @Test
+    void managedDatabaseRejectsCustomTlsVerificationImplementations() {
+        for (String override : new String[]{
+                "sslfactory=org.postgresql.ssl.NonValidatingFactory",
+                "sslfactoryarg=ignored",
+                "sslhostnameverifier=com.example.InsecureVerifier"
+        }) {
+            assertThatThrownBy(() -> DatabaseTlsValidator.validate(
+                    "jdbc:postgresql://db.example.test:5432/postgres?sslmode=verify-full"
+                            + "&sslrootcert=/run/secrets/supabase-db-ca.crt&" + override,
+                    false
+            )).isInstanceOf(IllegalStateException.class)
+                    .hasMessage("DATABASE_URL must not override PostgreSQL TLS verification implementations");
+        }
+    }
+
+    @Test
     void localProfileAloneMayDisableTlsForLoopbackPostgres() {
         assertThatCode(() -> DatabaseTlsValidator.validate(
                 "jdbc:postgresql://localhost:5432/postgres?sslmode=disable",

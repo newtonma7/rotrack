@@ -1,0 +1,53 @@
+-- Run as an authorized administrator only after confirming the linked project is staging.
+-- Set the password separately with psql \password so it never enters this file or shell history.
+BEGIN;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'rotrack_runtime') THEN
+    CREATE ROLE rotrack_runtime
+      LOGIN
+      NOINHERIT
+      BYPASSRLS
+      NOSUPERUSER
+      NOCREATEDB
+      NOCREATEROLE
+      NOREPLICATION;
+  END IF;
+
+  -- A membership can grant effective or SET ROLE access that direct REVOKE statements do not
+  -- remove. Fail closed and have the administrator remove every membership deliberately.
+  IF EXISTS (
+    SELECT 1
+    FROM pg_auth_members membership
+    JOIN pg_roles member_role ON member_role.oid = membership.member
+    WHERE member_role.rolname = 'rotrack_runtime'
+  ) THEN
+    RAISE EXCEPTION 'rotrack_runtime must not be a member of any other role';
+  END IF;
+END
+$$;
+
+ALTER ROLE rotrack_runtime
+  WITH LOGIN
+       NOINHERIT
+       BYPASSRLS
+       NOSUPERUSER
+       NOCREATEDB
+       NOCREATEROLE
+       NOREPLICATION;
+
+GRANT CONNECT ON DATABASE postgres TO rotrack_runtime;
+REVOKE CREATE, TEMPORARY ON DATABASE postgres FROM rotrack_runtime;
+GRANT USAGE ON SCHEMA public TO rotrack_runtime;
+REVOKE CREATE ON SCHEMA public FROM rotrack_runtime;
+REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM rotrack_runtime;
+REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM rotrack_runtime;
+REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public FROM rotrack_runtime;
+GRANT SELECT, INSERT, UPDATE ON TABLE public.time_entries TO rotrack_runtime;
+GRANT USAGE ON TYPE public.activity_type TO rotrack_runtime;
+
+COMMIT;
+
+-- Run runtime-role-audit.sql.template in a separate psql session authenticated as
+-- rotrack_runtime. Do not rerun this administrator-only mutation file as the runtime role.

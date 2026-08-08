@@ -1,0 +1,13 @@
+# Deny the entire repository by default. Only files consumed by backend/Dockerfile
+# may cross the build-context boundary, including when a remote builder is used.
+**
+
+!backend/
+!backend/Dockerfile
+!backend/pom.xml
+!backend/src/
+!backend/src/**
+
+!scripts/
+!scripts/container/
+!scripts/container/container-entrypoint.sh

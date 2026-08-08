@@ -1,0 +1,146 @@
+name: Protected authenticated E2E
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_disposable_staging:
+        description: Confirm the protected environment targets only disposable staging users
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: protected-authenticated-e2e
+  cancel-in-progress: false
+
+jobs:
+  authenticated-e2e-protected:
+    name: Authenticated E2E (protected staging)
+    runs-on: ubuntu-24.04
+    environment: disposable-staging-auth
+    steps:
+      - name: Require explicit disposable-staging approval
+        env:
+          CONFIRMED: ${{ inputs.confirm_disposable_staging }}
+        run: |
+          if [[ "$CONFIRMED" != "true" ]]; then
+            echo "Refusing to run without explicit disposable-staging confirmation." >&2
+            exit 1
+          fi
+      - name: Check out source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Set up repository-pinned Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install exact frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Install pinned Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Run required authenticated suite and destroy sensitive output
+        working-directory: frontend
+        env:
+          STAGING_SCOPE: ${{ secrets.ROTRACK_E2E_DISPOSABLE_STAGING_CONFIRMATION }}
+          BASE_URL: ${{ secrets.ROTRACK_E2E_BASE_URL }}
+          API_URL: ${{ secrets.ROTRACK_E2E_EXPECTED_API_URL }}
+          PRODUCTION_BASE_URL: ${{ secrets.ROTRACK_PRODUCTION_FRONTEND_URL }}
+          PRODUCTION_API_URL: ${{ secrets.ROTRACK_PRODUCTION_API_URL }}
+          STAGING_SUPABASE_REF: ${{ secrets.ROTRACK_STAGING_SUPABASE_PROJECT_REF }}
+          DEVELOPMENT_SUPABASE_REF: ${{ secrets.ROTRACK_DEVELOPMENT_SUPABASE_PROJECT_REF }}
+          PRODUCTION_SUPABASE_REF: ${{ secrets.ROTRACK_PRODUCTION_SUPABASE_PROJECT_REF }}
+          USER_A_STATE: ${{ secrets.ROTRACK_E2E_USER_A_STORAGE_STATE_JSON }}
+          USER_B_STATE: ${{ secrets.ROTRACK_E2E_USER_B_STORAGE_STATE_JSON }}
+        run: |
+          set -euo pipefail
+          : "${BASE_URL:?Protected environment must provide ROTRACK_E2E_BASE_URL}"
+          : "${API_URL:?Protected environment must provide ROTRACK_E2E_EXPECTED_API_URL}"
+          : "${PRODUCTION_BASE_URL:?Protected environment must provide production frontend identity}"
+          : "${PRODUCTION_API_URL:?Protected environment must provide production API identity}"
+          : "${STAGING_SUPABASE_REF:?Protected environment must provide staging Supabase identity}"
+          : "${DEVELOPMENT_SUPABASE_REF:?Protected environment must provide development Supabase identity}"
+          : "${PRODUCTION_SUPABASE_REF:?Protected environment must provide production Supabase identity}"
+          : "${USER_A_STATE:?Protected environment must provide User A storage state}"
+          : "${USER_B_STATE:?Protected environment must provide User B storage state}"
+          if [[ "$STAGING_SCOPE" != "disposable-staging-only" ]]; then
+            echo "Protected environment is not acknowledged as disposable staging." >&2
+            exit 1
+          fi
+          node - "$BASE_URL" "$API_URL" "$PRODUCTION_BASE_URL" "$PRODUCTION_API_URL" <<'NODE'
+          const [stagingFrontendRaw, stagingApiRaw, productionFrontendRaw, productionApiRaw] = process.argv.slice(2);
+          function normalized(raw, api) {
+            const url = new URL(raw);
+            if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) {
+              throw new Error("invalid protected URL identity");
+            }
+            const path = url.pathname.replace(/\/$/, "") || "/";
+            if ((api && path !== "/api/v1") || (!api && path !== "/")) {
+              throw new Error("invalid protected URL path");
+            }
+            return { host: url.host.toLowerCase(), path };
+          }
+          try {
+            const stagingFrontend = normalized(stagingFrontendRaw, false);
+            const stagingApi = normalized(stagingApiRaw, true);
+            const productionFrontend = normalized(productionFrontendRaw, false);
+            const productionApi = normalized(productionApiRaw, true);
+            const productionHosts = new Set([productionFrontend.host, productionApi.host]);
+            if (
+              stagingFrontend.host === stagingApi.host ||
+              productionHosts.has(stagingFrontend.host) ||
+              productionHosts.has(stagingApi.host)
+            ) {
+              throw new Error("staging identity overlaps production");
+            }
+          } catch {
+            console.error("Protected authenticated E2E URL identities are invalid or overlap production.");
+            process.exit(1);
+          }
+          NODE
+          if [[ ! "$STAGING_SUPABASE_REF" =~ ^[a-z0-9]{20}$ ]] || \
+             [[ ! "$DEVELOPMENT_SUPABASE_REF" =~ ^[a-z0-9]{20}$ ]] || \
+             [[ ! "$PRODUCTION_SUPABASE_REF" =~ ^[a-z0-9]{20}$ ]] || \
+             [[ "$STAGING_SUPABASE_REF" == "$DEVELOPMENT_SUPABASE_REF" ]] || \
+             [[ "$STAGING_SUPABASE_REF" == "$PRODUCTION_SUPABASE_REF" ]] || \
+             [[ "$DEVELOPMENT_SUPABASE_REF" == "$PRODUCTION_SUPABASE_REF" ]]; then
+            echo "Protected authenticated E2E requires three distinct Supabase project identities." >&2
+            exit 1
+          fi
+
+          umask 077
+          state_dir=$(mktemp -d "${RUNNER_TEMP}/rotrack-auth-state.XXXXXX")
+          cleanup() {
+            rm -rf "$state_dir" test-results playwright-report
+          }
+          trap cleanup EXIT
+          printf '%s' "$USER_A_STATE" > "$state_dir/user-a.json"
+          printf '%s' "$USER_B_STATE" > "$state_dir/user-b.json"
+          jq -e '(.cookies | type == "array") and (.origins | type == "array")' \
+            "$state_dir/user-a.json" >/dev/null
+          jq -e '(.cookies | type == "array") and (.origins | type == "array")' \
+            "$state_dir/user-b.json" >/dev/null
+          for state in "$state_dir/user-a.json" "$state_dir/user-b.json"; do
+            jq -e \
+              --arg staging "sb-${STAGING_SUPABASE_REF}-auth-token" \
+              --arg development "sb-${DEVELOPMENT_SUPABASE_REF}-auth-token" \
+              --arg production "sb-${PRODUCTION_SUPABASE_REF}-auth-token" \
+              '([.origins[].localStorage[]?.name] | index($staging) != null and index($development) == null and index($production) == null)' \
+              "$state" >/dev/null
+          done
+
+          PLAYWRIGHT_JSON_OUTPUT_FILE="$state_dir/playwright-results.json" \
+          ROTRACK_E2E_BASE_URL="$BASE_URL" \
+          ROTRACK_E2E_EXPECTED_API_URL="$API_URL" \
+          ROTRACK_E2E_USER_A_STORAGE_STATE="$state_dir/user-a.json" \
+          ROTRACK_E2E_USER_B_STORAGE_STATE="$state_dir/user-b.json" \
+          ROTRACK_E2E_REQUIRE_AUTH=1 \
+            npm run e2e -- --reporter=json --output="$state_dir/playwright-output"
+          node ../scripts/release/check-playwright-result.mjs "$state_dir/playwright-results.json"

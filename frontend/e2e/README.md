@@ -17,11 +17,13 @@ Required for the complete suite:
 
 ```bash
 export ROTRACK_E2E_BASE_URL=http://localhost:3000
+# Required for release smoke so browser API responses are bound to the approved API:
+export ROTRACK_E2E_EXPECTED_API_URL=http://localhost:8080/api/v1
 export ROTRACK_E2E_USER_A_STORAGE_STATE=/tmp/rotrack-e2e-user-a.json
 export ROTRACK_E2E_USER_B_STORAGE_STATE=/tmp/rotrack-e2e-user-b.json
 ```
 
-`ROTRACK_E2E_STORAGE_STATE` remains a compatibility alias for User A. A configured
+`ROTRACK_E2E_STORAGE_STATE` remains a compatibility alias for User A. Required-auth runs also require `ROTRACK_E2E_EXPECTED_API_URL`; the harness installs a browser request guard before navigation so `/api/v1` requests to any other origin/base are aborted before transmission. A configured
 path that is missing, not a regular file, or resolves inside the repository is a
 configuration error. The hostile two-user request is derived from the same API
 origin observed on the frontend's successful start request, preventing a false

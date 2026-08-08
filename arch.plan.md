@@ -1,7 +1,7 @@
 # rotrack Architecture
 
 **Status:** Living architecture and contract document
-**Last reviewed:** 2026-08-07
+**Last reviewed:** 2026-08-08
 **Delivery backlog:** [`todo.md`](todo.md)
 
 ## 1. Purpose and Product Boundaries
@@ -49,15 +49,17 @@ This section describes what exists in source control today. It is not a completi
 - Spring Boot 3.4, Java 21 target, Maven, Spring Web, JPA, OAuth2 Resource Server, validation, and PostgreSQL
 - Implemented endpoints: independent liveness/readiness, start session, get active session, ID-based stop, and dashboard stats
 - Supabase migrations defining `users`, `time_entries`, the `ROT|WORK` enum, ownership RLS policies, signup profile creation, timestamp constraints, one-active-session uniqueness, and reporting indexes
-- Source-controlled suites include executable PostgreSQL migration/repository tests, generated signed-JWT filter tests, service/controller ownership tests, Vitest/RTL coverage, and a quarantined external-auth Playwright critical path
+- Source-controlled suites include executable PostgreSQL migration/repository tests, generated signed-JWT filter tests, service/controller ownership tests, Vitest/RTL coverage, and a quarantined external-auth Playwright critical path that can bind observed browser API responses to an approved API base
 - Backend startup validates managed JDBC hostname verification with an explicit CA path, exact CORS origins, bounded Hikari settings, and cached/single-flight database readiness
+- A pinned Java 21 multi-stage container runs as UID/GID `10001:10001`, separates liveness from readiness, materializes an injected provider CA in task-local `/tmp`, and has placeholder-only ECS/Fargate base and staging overlays
+- Pull-request workflows and local guards cover frontend/backend suites, isolated PostgreSQL migration apply/verify, secret scanning, operational contract tests, and a credential-free container build; authenticated E2E remains a separate protected staging workflow
 
 ### Known baseline problems
 
 - The PostgreSQL verification suite has rollback-only evidence against the configured development schema and empty-database apply evidence against an isolated temporary PostgreSQL cluster; direct Data API RLS is also verified.
 - Spring JDBC does not propagate the user JWT into PostgreSQL. The dedicated `rotrack_runtime` role bypasses RLS with only the required application DML, and the live two-user Spring ownership matrix passes.
 - Generated ES256/RS256 failure tests cover the production decoder/filter boundary, while live Supabase sign-in and two-user authenticated ownership flow pass. Fresh confirmation-email opening remains an external inbox limitation.
-- The Playwright harness has external two-user auth states and a passing authenticated run. Managed-CA startup/readiness/CORS are locally verified; CI, staging, rate limiting, and production observability remain open.
+- The Playwright harness has external two-user auth states and a passing authenticated run. Managed-CA startup/readiness/CORS and the integrated non-root container are locally verified. Hosted CI/branch protection, an isolated deployed staging environment, rate limiting, active structured-log redaction, monitoring/alert routing, and rollback rehearsal remain open.
 
 ## 3. Target System Architecture
 
@@ -335,7 +337,7 @@ Tests are delivered with each feature; testing is not a cleanup phase.
 
 ### CI and deployment
 
-- Pull requests run frontend lint/typecheck/tests/build, backend tests/package, migration checks, and secret scanning.
+- Pull requests run frontend install/audit/lint/typecheck/tests/build, backend Java 21 tests/package, isolated PostgreSQL migration checks, secret and workflow-policy guards, operational contract tests, and a credential-free non-root container build/inspection.
 - Staging deploys the frontend to Vercel and the containerized backend to ECS Fargate against a separate Supabase project.
 - Production promotion requires staging smoke evidence and a documented rollback.
 - Apply database migrations before application versions that depend on them; migrations must be backward-compatible during rollout.
@@ -346,6 +348,7 @@ Tests are delivered with each feature; testing is not a cleanup phase.
 - Never log bearer tokens, note content, reflections, or credentials.
 - Monitor API error rate/latency, ECS health, database connections, migration status, and frontend exceptions.
 - Health endpoints distinguish liveness from dependency readiness before ECS rollout.
+- Release, rollback, monitoring, structured-log redaction, and incident-response contracts are source controlled, but they are preparation rather than evidence that telemetry, alerts, owners, staging smoke, or rollback rehearsal are active.
 
 ## 10. Architecture Change Rules
 

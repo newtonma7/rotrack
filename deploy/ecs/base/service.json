@@ -1,0 +1,39 @@
+{
+  "cluster": "${ECS_CLUSTER_ARN}",
+  "serviceName": "rotrack-api-${ENVIRONMENT}",
+  "taskDefinition": "${TASK_DEFINITION_ARN}",
+  "desiredCount": 2,
+  "launchType": "FARGATE",
+  "platformVersion": "1.4.0",
+  "enableExecuteCommand": false,
+  "healthCheckGracePeriodSeconds": 90,
+  "deploymentConfiguration": {
+    "maximumPercent": 200,
+    "minimumHealthyPercent": 100,
+    "deploymentCircuitBreaker": {
+      "enable": true,
+      "rollback": true
+    }
+  },
+  "networkConfiguration": {
+    "awsvpcConfiguration": {
+      "subnets": [
+        "${PRIVATE_SUBNET_A_ID}",
+        "${PRIVATE_SUBNET_B_ID}"
+      ],
+      "securityGroups": [
+        "${API_SECURITY_GROUP_ID}"
+      ],
+      "assignPublicIp": "DISABLED"
+    }
+  },
+  "loadBalancers": [
+    {
+      "targetGroupArn": "${TARGET_GROUP_ARN}",
+      "containerName": "rotrack-api",
+      "containerPort": 8080
+    }
+  ],
+  "propagateTags": "SERVICE",
+  "enableECSManagedTags": true
+}

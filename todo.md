@@ -65,9 +65,9 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 | Dashboard UI and API | **Verified** | M1.4 replaces fixed server-time/minute timelines with validated IANA-zone ranges, timestamp-derived seconds, local daily buckets, tested DST/clipping, and explicit UI states. |
 | Spring Boot API core | **Verified** | Live Supabase JWT sign-in, Spring ownership isolation, timer lifecycle, dashboard flow, health, readiness, TLS, and CORS evidence pass. |
 | Initial schema hardening | **Verified** | Empty-database apply and migrated-database rollback/repository verification pass against isolated PostgreSQL targets. |
-| Supabase development integration | **In progress** | Migration, role, Data API RLS, signup-trigger, Spring ownership, and two-user evidence pass; confirmation-email opening remains an external inbox limitation. |
-| Automated test suites | **Verified** | Frontend 11/11, backend 64/64 with four expected opt-in skips, migration apply/verify, and authenticated Playwright 4/4 pass. |
-| CI and deployment | **Not started** | No tracked pipeline, Dockerfile, staging evidence, or rollback runbook. |
+| Supabase development integration | **In progress** | Migration, role, Data API RLS, signup-trigger, Spring ownership, and two-user technical evidence pass; the recorded fresh signup has not completed confirmation and sign-in because opening the confirmation email remains an external inbox limitation. |
+| Automated test suites | **Verified** | Frontend 19/19 and backend 65/65 pass with four expected default opt-in skips; migration apply/verify and the latest authenticated Playwright 4/4 evidence also pass. |
+| CI and deployment | **In progress** | Tracked PR/protected-E2E workflows, a non-root backend image, staging overlays, and release/monitoring runbooks pass local contract checks; deployment, active observability, hosted CI, branch protection, registry digest, smoke, and rollback remain incomplete. |
 | Notes, logs, friends, groups | **Not started** | Architecture defined; implementation follows the core MVP. |
 
 ### Current audit — 2026-08-07 / local workspace
@@ -378,7 +378,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 ### M2.1 — Apply and verify the development migration
 
-**Status:** In progress
+**Status:** Verified
 
 - Apply reviewed migrations to the Supabase development project.
 - Verify the signup trigger creates `public.users`.
@@ -392,7 +392,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - The direct Supabase Data API two-user matrix passed: each user read only owned rows, foreign filters returned zero rows, and forged inserts returned `403` for both users. The dedicated `rotrack_runtime` audit also passed.
 - A fresh signup through the real UI returned `200` and reached the confirmation page. Redacted Supabase management SQL confirmed matching `auth.users` and `public.users` rows; the disposable row was removed afterward. The confirmation email itself was not opened because no inbox access was available.
 
-**Remaining evidence:** None for the database/API gate; email confirmation remains an external inbox limitation if the gate requires opening it.
+**Remaining evidence:** None for the database/API technical gate. Opening a fresh confirmation email remains an external inbox limitation and is not treated as a failed migration, trigger, RLS, or ownership check.
 
 ### M2.2 — Make local startup deterministic
 
@@ -428,7 +428,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - A fresh signup through the real UI returned `200`, reached `/signup/confirmation`, and sent a confirmation email. A redacted management query confirmed the Auth row and signup-trigger profile; the disposable row was removed. Email confirmation was not opened because no inbox access was available.
 - Direct Data API RLS and the final redacted route evidence are recorded in `docs/operations/2026-08-07-local-verification.md`.
 
-**Remaining evidence:** None technically; opening the confirmation email remains an external inbox limitation if required by the gate.
+**Remaining evidence:** The authenticated tracker/dashboard/ownership technical matrix is complete. To satisfy the task's recorded same-user signup/sign-in acceptance literally, an authorized operator must open the fresh confirmation message and complete that disposable user's first sign-in.
 
 ## 6. Milestone 3 — CI, Staging, and MVP Release
 
@@ -437,33 +437,50 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 ### M3.1 — Pull-request CI
 
-**Status:** Not started
+**Status:** Implemented—unverified
 
 - Run frontend install/lint/typecheck/test/build, backend test/package, migration validation, and secret scanning.
 - Cache dependencies without caching generated source artifacts into Git.
 - Require green checks before merge.
 
-**Evidence:** Link a passing pipeline and a deliberately observed failing check.
+**Evidence — 2026-08-08 / integrated local workspace**
+
+- Added commit-pinned pull-request jobs for frontend install/high audit/lint/typecheck/Vitest/build, Java 21 backend test/package, isolated PostgreSQL apply/verify, workflow/secret/operational guards, and a credential-free container build/inspection. Authenticated Playwright is manual, protected-environment-only, fail-closed, API-target-bound, and requires exactly four passes with no skipped/unexpected/flaky results.
+- Local CI equivalents passed: frontend `npm ci`, `npm audit --audit-level=high`, lint, typecheck, 19 Vitest tests, build, and four-test Playwright listing; backend `mvn clean test` and `mvn package` each passed with 65 tests and four expected default integration skips.
+- Against a disposable PostgreSQL 17.6 container, migration `apply` passed 1/1, ordered migration application passed, and migrated `verify`/repository coverage passed 4/4. Actionlint, the workflow pin/policy guard, operational safeguard suites, and Gitleaks over 50 commits passed.
+- Deliberate local negative fixtures rejected a forbidden `.env`/certificate path, mutable reusable-workflow reference, privileged trigger, artifact upload, unresolved staging sentinel, malformed staging identities, skipped Playwright result, and release target mismatch.
+- Missing required evidence: a hosted green PR URL, a deliberately failing required GitHub check that blocks merge, configured branch protection, and protected-environment reviewer/branch restrictions. Keep this task unverified until those external controls are observed.
 
 ### M3.2 — Containerize and deploy staging
 
-**Status:** Not started
+**Status:** In progress
 
 - Build a non-root Spring Boot container with liveness/readiness checks.
 - Deploy frontend to Vercel, API to ECS Fargate, and use a separate Supabase staging project.
 - Configure secrets, TLS, restricted CORS, structured logs, and database connection limits.
 
-**Evidence:** Image digest, staging URLs, health results, and redacted configuration checklist.
+**Evidence — 2026-08-08 / integrated local workspace**
+
+- Added a pinned multi-stage Java 21 image, fixed UID/GID `10001:10001`, read-only-root/Fargate contract, exact liveness/readiness probes, SIGTERM shutdown, injected provider-CA materialization, immutable image references, ECS base inputs, and staging-only render/validation/checklist/evidence files.
+- Local Podman no-cache build and image inspection passed. The integrated local image ID was `fbd4fc7bf0ba2b9547247c949372b2388b5974e8d920b17275f43d75e41f0927` with local content digest `sha256:5c12238002411ba0e589c0c3b72d3afccb6b2a68fd007e91a594e8c2569fb82d`; this was not pushed and is not a registry digest or release artifact.
+- A disposable local TLS PostgreSQL 17.6 service accepted ordered migrations; the separate `rotrack_runtime` audit returned all true for identity, memberships, RLS bypass, relation/sequence/database/routine boundaries. The non-root backend container returned `200 {"status":"ok"}` liveness and `200 {"status":"ready"}` readiness, then stopped on SIGTERM with exit 143 rather than forced kill.
+- Staging rendering accepts only distinct project identities, distinct staging/production AWS accounts, staging-prefixed ECS names, separate task/execution roles, exact HTTPS origins, six staging secret ARNs, an immutable image digest, and a rollout-surge-aware connection budget. Synthetic positive and negative validations pass without real values.
+- Missing required evidence: an authorized separate Supabase staging project, registry digest, Vercel/ECS deployment, public staging URLs, official staging CA provenance, live IAM/RLS/CORS/health/browser evidence, and a redacted completed checklist. No remote infrastructure was created.
 
 ### M3.3 — Release safeguards
 
-**Status:** Not started
+**Status:** In progress
 
 - Run the critical Playwright flow and documented manual health smoke against staging.
 - Document database-first migration order, application rollback, and incident contacts.
 - Add API/frontend error monitoring and alerts for health, latency, error rate, and connection exhaustion.
 
-**Evidence:** Smoke result, rollback rehearsal, dashboards/alert identifiers.
+**Evidence — 2026-08-08 / integrated local workspace**
+
+- Added migration-first rollout/application rollback contracts, migration rollback limits, staging-only smoke and rollback-rehearsal scripts, alert thresholds/windows/owners, structured-log allowlist/redaction rules, frontend/API monitoring separation/retention, and incident-response roles/escalation.
+- Safe local checks passed Bash syntax, release static policy, API-target/inventory isolation, secret/path handling, exact Playwright result parsing, and fail-closed rollback approval. Staging smoke and rollback rehearsal were deliberately not executed because integrated staging does not exist.
+- Production promotion is explicitly stopped until rate limiting, structured logging/redaction, dashboards/alerts/routing, named incident staffing, hosted staging smoke, and rollback rehearsal are implemented and observed.
+- Missing required evidence: staging smoke 4/4, exact candidate/prior rollback rehearsal, telemetry ingestion/redaction sentinel, dashboard/alert identifiers and routing test, measured threshold tuning, incident contacts, retention/access proof, and observation window.
 
 **MVP release gate**
 
@@ -640,4 +657,4 @@ Append evidence beneath the completed task; do not create unsupported global che
 
 ## 13. Next Action
 
-M2 technical verification is complete. If the gate requires end-to-end email confirmation, open the confirmation message for the disposable signup using an authorized inbox; otherwise begin M3 CI/staging work. Do not promote to production without separate staging and production verification.
+M2 technical verification is complete, with confirmation-email opening retained as the sole external inbox limitation. M3 implementation preparation is integrated locally. Next, open a pull request to obtain hosted green/failing required-check evidence and provision an explicitly separate non-production Supabase/Vercel/AWS staging environment. After an immutable registry image is deployed, execute the redacted staging health/CORS/authenticated smoke, telemetry/redaction checks, and rollback rehearsal. Do not start M4 or promote to production until the M3 MVP release gate is Verified; rate limiting and active observability remain explicit production blockers.

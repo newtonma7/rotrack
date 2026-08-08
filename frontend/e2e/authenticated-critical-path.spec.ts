@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { installApiTargetGuard } from "./support/api-target";
 import { e2eEnvironment } from "./support/environment";
 import {
   authenticatedUserId,
@@ -24,6 +25,10 @@ function utcDate(): string {
 function expectSameDashboardDay(startDate: string): void {
   expect(utcDate(), "The scenario crossed a UTC dashboard boundary; rerun it.").toBe(startDate);
 }
+
+test.beforeEach(async ({ page }) => {
+  await installApiTargetGuard(page, e2eEnvironment.expectedApiUrl);
+});
 
 function expectSameInstant(actual: string, expected: string): void {
   // PostgreSQL stores timestamptz at microsecond precision while the create response
@@ -100,6 +105,7 @@ test.describe("authenticated tracker critical path", () => {
       storageState: e2eEnvironment.userAStorageState,
     });
     const firstPage = await firstContext.newPage();
+    await installApiTargetGuard(firstPage, e2eEnvironment.expectedApiUrl);
     await stopActiveSessionIfPresent(firstPage);
     const started = await startSession(firstPage, "WORK");
     await firstContext.close();
@@ -108,6 +114,7 @@ test.describe("authenticated tracker critical path", () => {
       storageState: e2eEnvironment.userAStorageState,
     });
     const reopenedPage = await reopenedContext.newPage();
+    await installApiTargetGuard(reopenedPage, e2eEnvironment.expectedApiUrl);
     try {
       await openTracker(reopenedPage);
       const restored = await restoreActiveSession(reopenedPage);
@@ -137,6 +144,8 @@ test.describe("two-user ownership isolation", () => {
     });
     const userAPage = await userAContext.newPage();
     const userBPage = await userBContext.newPage();
+    await installApiTargetGuard(userAPage, e2eEnvironment.expectedApiUrl);
+    await installApiTargetGuard(userBPage, e2eEnvironment.expectedApiUrl);
 
     try {
       await stopActiveSessionIfPresent(userAPage);

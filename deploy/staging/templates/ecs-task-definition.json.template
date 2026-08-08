@@ -1,0 +1,87 @@
+{
+  "family": "__ROTRACK_STAGING_ECS_TASK_FAMILY__",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "runtimePlatform": {
+    "cpuArchitecture": "X86_64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "__ROTRACK_STAGING_AWS_EXECUTION_ROLE_ARN__",
+  "taskRoleArn": "__ROTRACK_STAGING_AWS_TASK_ROLE_ARN__",
+  "containerDefinitions": [
+    {
+      "name": "rotrack-api",
+      "image": "__ROTRACK_STAGING_BACKEND_IMAGE_URI__",
+      "essential": true,
+      "user": "10001:10001",
+      "readonlyRootFilesystem": true,
+      "linuxParameters": {"initProcessEnabled": true},
+      "portMappings": [
+        {
+          "name": "http",
+          "containerPort": 8080,
+          "hostPort": 8080,
+          "protocol": "tcp",
+          "appProtocol": "http"
+        }
+      ],
+      "mountPoints": [
+        {"sourceVolume": "tmp", "containerPath": "/tmp", "readOnly": false}
+      ],
+      "environment": [
+        {"name": "PORT", "value": "8080"},
+        {"name": "DATABASE_CA_CERTIFICATE_PATH", "value": "/tmp/rotrack-certs/supabase-db-ca.crt"},
+        {"name": "DATABASE_CONNECTION_TIMEOUT_MS", "value": "5000"},
+        {"name": "DATABASE_POOL_VALIDATION_TIMEOUT_MS", "value": "2000"},
+        {"name": "DATABASE_MAXIMUM_POOL_SIZE", "value": "__ROTRACK_STAGING_DATABASE_MAXIMUM_POOL_SIZE__"},
+        {"name": "DATABASE_MINIMUM_IDLE", "value": "0"},
+        {"name": "READINESS_CACHE_TTL", "value": "5s"},
+        {"name": "SUPABASE_JWT_AUDIENCE", "value": "authenticated"},
+        {"name": "CORS_ALLOWED_ORIGINS", "value": "__ROTRACK_STAGING_FRONTEND_ORIGIN__"},
+        {"name": "SERVER_SHUTDOWN", "value": "graceful"},
+        {"name": "SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE", "value": "25s"},
+        {"name": "LOGGING_STRUCTURED_FORMAT_CONSOLE", "value": "ecs"},
+        {"name": "LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY", "value": "WARN"},
+        {"name": "LOGGING_LEVEL_ORG_HIBERNATE_SQL", "value": "OFF"},
+        {"name": "LOGGING_LEVEL_ORG_HIBERNATE_ORM_JDBC_BIND", "value": "OFF"},
+        {"name": "SPRING_JPA_SHOW_SQL", "value": "false"}
+      ],
+      "secrets": [
+        {"name": "DATABASE_URL", "valueFrom": "__ROTRACK_STAGING_DATABASE_URL_SECRET_ARN__"},
+        {"name": "DATABASE_USERNAME", "valueFrom": "__ROTRACK_STAGING_DATABASE_USERNAME_SECRET_ARN__"},
+        {"name": "DATABASE_PASSWORD", "valueFrom": "__ROTRACK_STAGING_DATABASE_PASSWORD_SECRET_ARN__"},
+        {"name": "DATABASE_CA_CERTIFICATE_PEM", "valueFrom": "__ROTRACK_STAGING_DATABASE_CA_CERTIFICATE_PEM_SECRET_ARN__"},
+        {"name": "SUPABASE_JWKS_URI", "valueFrom": "__ROTRACK_STAGING_SUPABASE_JWKS_URI_SECRET_ARN__"},
+        {"name": "SUPABASE_ISSUER_URI", "valueFrom": "__ROTRACK_STAGING_SUPABASE_ISSUER_URI_SECRET_ARN__"}
+      ],
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "wget -q -T 4 -O /dev/null http://127.0.0.1:8080/api/v1/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      },
+      "stopTimeout": 30,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/rotrack/staging/backend",
+          "awslogs-region": "__ROTRACK_STAGING_AWS_REGION__",
+          "awslogs-stream-prefix": "rotrack-api",
+          "mode": "non-blocking",
+          "max-buffer-size": "4m"
+        }
+      }
+    }
+  ],
+  "volumes": [{"name": "tmp"}],
+  "tags": [
+    {"key": "Environment", "value": "staging"},
+    {"key": "Application", "value": "rotrack"}
+  ]
+}

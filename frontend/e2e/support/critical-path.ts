@@ -1,4 +1,6 @@
 import { expect, type Page, type Response } from "@playwright/test";
+import { isExpectedApiUrl } from "./api-target";
+import { e2eEnvironment } from "./environment";
 
 export type ActivityType = "WORK" | "ROT";
 
@@ -48,6 +50,12 @@ function apiResponse(
 }
 
 async function responseData<T>(captured: CapturedResponse, expectedStatus: number): Promise<T> {
+  if (e2eEnvironment.expectedApiUrl) {
+    expect(
+      isExpectedApiUrl(captured.response.url(), e2eEnvironment.expectedApiUrl),
+      "The frontend called an API outside the approved target.",
+    ).toBe(true);
+  }
   expect(captured.response.status()).toBe(expectedStatus);
   const body = JSON.parse(captured.body) as ApiEnvelope<T>;
   expect(body).toHaveProperty("data");

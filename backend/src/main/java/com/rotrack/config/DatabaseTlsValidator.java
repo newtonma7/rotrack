@@ -34,6 +34,7 @@ public class DatabaseTlsValidator {
 
         String mode = effective.getProperty("sslmode", "").toLowerCase(Locale.ROOT);
         if (MANAGED_MODE.equals(mode)) {
+            rejectCustomTlsImplementations(effective);
             String rootCertificate = effective.getProperty("sslrootcert", "").trim();
             if (rootCertificate.isEmpty()) {
                 throw new IllegalStateException(
@@ -47,6 +48,15 @@ public class DatabaseTlsValidator {
         throw new IllegalStateException(localProfile
                 ? "The local profile permits sslmode=disable only for loopback PostgreSQL; otherwise use verify-full"
                 : "Managed PostgreSQL requires DATABASE_URL sslmode=verify-full");
+    }
+
+    private static void rejectCustomTlsImplementations(Properties effective) {
+        for (String property : new String[]{"sslfactory", "sslfactoryarg", "sslhostnameverifier"}) {
+            if (!effective.getProperty(property, "").isBlank()) {
+                throw new IllegalStateException(
+                        "DATABASE_URL must not override PostgreSQL TLS verification implementations");
+            }
+        }
     }
 
     private static boolean hasOnlyLoopbackHosts(Properties effective) {

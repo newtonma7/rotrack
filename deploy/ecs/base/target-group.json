@@ -1,0 +1,19 @@
+{
+  "Name": "rotrack-api-${ENVIRONMENT}",
+  "Protocol": "HTTP",
+  "ProtocolVersion": "HTTP1",
+  "Port": 8080,
+  "VpcId": "${VPC_ID}",
+  "TargetType": "ip",
+  "HealthCheckEnabled": true,
+  "HealthCheckProtocol": "HTTP",
+  "HealthCheckPort": "traffic-port",
+  "HealthCheckPath": "/api/v1/readiness",
+  "HealthCheckIntervalSeconds": 30,
+  "HealthCheckTimeoutSeconds": 5,
+  "HealthyThresholdCount": 2,
+  "UnhealthyThresholdCount": 3,
+  "Matcher": {
+    "HttpCode": "200"
+  }
+}

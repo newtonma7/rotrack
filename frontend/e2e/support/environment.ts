@@ -39,6 +39,7 @@ function httpUrl(variable: string, fallback?: string): string | undefined {
 
 export const e2eEnvironment = {
   baseUrl: httpUrl("ROTRACK_E2E_BASE_URL", "http://localhost:3000")!,
+  expectedApiUrl: httpUrl("ROTRACK_E2E_EXPECTED_API_URL"),
   userAStorageState: externalStorageState(
     "ROTRACK_E2E_USER_A_STORAGE_STATE",
     "ROTRACK_E2E_STORAGE_STATE",
@@ -49,9 +50,11 @@ export const e2eEnvironment = {
 
 if (
   e2eEnvironment.requireAuth &&
-  (!e2eEnvironment.userAStorageState || !e2eEnvironment.userBStorageState)
+  (!e2eEnvironment.userAStorageState ||
+    !e2eEnvironment.userBStorageState ||
+    !e2eEnvironment.expectedApiUrl)
 ) {
   throw new Error(
-    "ROTRACK_E2E_REQUIRE_AUTH=1 requires User A and User B storage-state paths. See e2e/README.md.",
+    "ROTRACK_E2E_REQUIRE_AUTH=1 requires User A/User B storage-state paths and ROTRACK_E2E_EXPECTED_API_URL. See e2e/README.md.",
   );
 }

@@ -1,0 +1,2 @@
+# Rendered files contain staging identifiers and secret references. Never commit them.
+/rendered/
