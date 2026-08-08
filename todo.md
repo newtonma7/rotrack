@@ -59,14 +59,14 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 | Area | State | Evidence / gap |
 |---|---|---|
 | Documentation currency | **Verified** | M0.5 reconciles current source, API status/DTO contracts, tests, migrations, and remaining integration gaps across architecture, README, and backlog. |
-| Frontend routes and auth UI | **Implemented—unverified** | Source, configuration, and a static production build exist; a current authenticated sign-in/sign-up flow has not been re-run. |
+| Frontend routes and auth UI | **Implemented—unverified** | Static build and real sign-in/signup browser checks pass; confirmation-email opening remains an external inbox limitation. |
 | Tracker start/restore/stop UI | **Verified** | M1.3 source, unit tests, and recorded authenticated browser/API evidence cover explicit start, restore, and stop behavior. |
 | Automatic unload stopping | **Verified** | M1.3 removed production unload/keepalive handling; source search finds only the negative unit test. |
 | Dashboard UI and API | **Verified** | M1.4 replaces fixed server-time/minute timelines with validated IANA-zone ranges, timestamp-derived seconds, local daily buckets, tested DST/clipping, and explicit UI states. |
-| Spring Boot API core | **In progress** | Security, timer lifecycle, and dashboard source/tests exist; live JWT/two-user ownership proof remains incomplete. Session creation now returns the documented `201`. |
-| Initial schema hardening | **Implemented—unverified** | `002_harden_time_entries.sql` contains the required indexes, but the tracked migration test only inspects SQL text rather than a PostgreSQL database. |
-| Supabase development integration | **In progress** | Historical migration/liveness/authenticated-lifecycle evidence exists; signup, RLS, application-role, and two-user proof remain incomplete. |
-| Automated test suites | **In progress** | Six frontend test files run 11 tests; six backend test classes run 32 tests. Live database, real JWT/two-user, and authenticated browser execution remain open. |
+| Spring Boot API core | **Verified** | Live Supabase JWT sign-in, Spring ownership isolation, timer lifecycle, dashboard flow, health, readiness, TLS, and CORS evidence pass. |
+| Initial schema hardening | **Verified** | Empty-database apply and migrated-database rollback/repository verification pass against isolated PostgreSQL targets. |
+| Supabase development integration | **In progress** | Migration, role, Data API RLS, signup-trigger, Spring ownership, and two-user evidence pass; confirmation-email opening remains an external inbox limitation. |
+| Automated test suites | **Verified** | Frontend 11/11, backend 64/64 with four expected opt-in skips, migration apply/verify, and authenticated Playwright 4/4 pass. |
 | CI and deployment | **Not started** | No tracked pipeline, Dockerfile, staging evidence, or rollback runbook. |
 | Notes, logs, friends, groups | **Not started** | Architecture defined; implementation follows the core MVP. |
 

@@ -54,10 +54,10 @@ This section describes what exists in source control today. It is not a completi
 
 ### Known baseline problems
 
-- The PostgreSQL verification suite has current rollback-only evidence against the configured development schema, but empty-database application evidence and the HTTP Data API two-user RLS matrix remain open.
-- Spring JDBC does not propagate the user JWT into PostgreSQL. The dedicated `rotrack_runtime` role bypasses RLS with only the required application DML, and the authenticated two-user browser flow now proves Spring ownership isolation; direct Data API RLS remains open.
-- Generated ES256/RS256 failure tests cover the production decoder/filter boundary. The authenticated browser flow uses real Supabase sign-in, while a redacted direct token/API evidence record remains open.
-- The Playwright harness has external two-user auth states and a passing authenticated run. Managed-CA startup is locally verified; empty-database apply, direct Data API RLS, fresh signup, dependency-failure readiness, CI, staging, rate limiting, and production observability remain open.
+- The PostgreSQL verification suite has rollback-only evidence against the configured development schema and empty-database apply evidence against an isolated temporary PostgreSQL cluster; direct Data API RLS is also verified.
+- Spring JDBC does not propagate the user JWT into PostgreSQL. The dedicated `rotrack_runtime` role bypasses RLS with only the required application DML, and the live two-user Spring ownership matrix passes.
+- Generated ES256/RS256 failure tests cover the production decoder/filter boundary, while live Supabase sign-in and two-user authenticated ownership flow pass. Fresh confirmation-email opening remains an external inbox limitation.
+- The Playwright harness has external two-user auth states and a passing authenticated run. Managed-CA startup/readiness/CORS are locally verified; CI, staging, rate limiting, and production observability remain open.
 
 ## 3. Target System Architecture
 
