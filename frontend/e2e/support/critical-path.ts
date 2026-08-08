@@ -23,22 +23,33 @@ type ApiEnvelope<T> = { data: T };
 
 const API_PREFIX = "/api/v1";
 
+type CapturedResponse = {
+  response: Response;
+  body: string;
+};
+
 function apiResponse(
   page: Page,
   method: string,
   pathname: string | RegExp,
-): Promise<Response> {
-  return page.waitForResponse((response) => {
-    const url = new URL(response.url());
+): Promise<CapturedResponse> {
+  let body: string | undefined;
+  const response = page.waitForResponse(async (candidate) => {
+    const url = new URL(candidate.url());
     const pathMatches =
       typeof pathname === "string" ? url.pathname === pathname : pathname.test(url.pathname);
-    return response.request().method() === method && pathMatches;
+    if (candidate.request().method() !== method || !pathMatches) return false;
+
+    // Capture before a reload/navigation can discard the response's CDP resource.
+    body = (await candidate.body()).toString();
+    return true;
   });
+  return response.then((captured) => ({ response: captured, body: body ?? "" }));
 }
 
-async function responseData<T>(response: Response, expectedStatus: number): Promise<T> {
-  expect(response.status()).toBe(expectedStatus);
-  const body = (await response.json()) as ApiEnvelope<T>;
+async function responseData<T>(captured: CapturedResponse, expectedStatus: number): Promise<T> {
+  expect(captured.response.status()).toBe(expectedStatus);
+  const body = JSON.parse(captured.body) as ApiEnvelope<T>;
   expect(body).toHaveProperty("data");
   return body.data;
 }
@@ -81,7 +92,7 @@ export async function startSession(page: Page, activityType: ActivityType): Prom
   expect(entry.activityType).toBe(activityType);
   expect(entry.endTime).toBeNull();
   await expect(page.getByText(`tracking ${activityType.toLowerCase()}`, { exact: true })).toBeVisible();
-  return { ...entry, apiOrigin: new URL(startedResponse.url()).origin };
+  return { ...entry, apiOrigin: new URL(startedResponse.response.url()).origin };
 }
 
 export async function waitForRecordedSecond(page: Page): Promise<void> {

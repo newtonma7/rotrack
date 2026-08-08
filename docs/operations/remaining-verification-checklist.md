@@ -17,21 +17,18 @@ Use this checklist to finish the current disposable development database verific
 - official Supabase CA and strict managed PostgreSQL TLS configuration;
 - dedicated `rotrack_runtime` role audit and live backend startup;
 - liveness, readiness, and allowed/denied CORS probes;
+- empty-database migration `apply` mode against a temporary isolated PostgreSQL cluster;
+- direct Supabase Data API two-user RLS matrix, including forged-insert denial;
 - two external disposable-user storage states outside the repository;
 - required-authenticated Playwright suite: 4 Chromium tests passed, 0 skipped;
-- frontend lint and typecheck.
+- degraded dependency-failure probe: liveness 200 and sanitized readiness 503;
+- final frontend/backend validation and clean configured health/readiness run.
 
-The remaining gates are:
-
-- empty-database migration `apply` mode;
-- direct Supabase Data API two-user RLS matrix;
-- fresh signup/confirmation and signup-trigger evidence;
-- readiness behavior when the database dependency fails;
-- one final clean run from the documented environment contract.
-
-The authenticated browser run used existing disposable users and proves real
-sign-in plus the Spring ownership flow; it does not prove fresh signup or direct
-Data API RLS.
+The fresh signup trigger gate now passes through a redacted administrative
+read-only query confirming matching `auth.users` and `public.users` rows. The
+only remaining limitation is opening the confirmation email itself; no inbox
+access was available. Existing confirmed disposable users prove the real
+sign-in and Spring ownership flow.
 
 ---
 

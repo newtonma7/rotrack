@@ -37,14 +37,73 @@ Sensitive values: not printed
 
 Earlier attempts correctly failed closed because the URL was unquoted in the shell environment and then because `$HOME` was passed literally inside the JDBC value. The local ignored `.env` now uses a quoted URL and an absolute CA path. PostgreSQL JDBC 42.7.x treats `sslrootcert=system` as a filename; the official provider CA is required.
 
-## Remaining M2.2 evidence
+## M2.2 completion evidence
 
-M2.2 remains **In progress** until the following additional live checks pass against a clean start:
+The previously open dependency-failure and final clean-start checks are recorded
+below under 2026-08-08. The allowed and denied live CORS preflights passed on
+2026-08-07.
 
-1. readiness dependency-failure → sanitized `503 {"status":"not_ready"}` while liveness remains 200;
-2. the final clean-environment startup is repeated from the documented runbook.
+## Remaining-gate execution — 2026-08-08
 
-The allowed and denied live CORS preflights passed on 2026-08-07.
+### Empty-database migration apply
+
+Docker/Podman was unavailable, so a temporary PostgreSQL 18.4 server was
+installed under `/tmp`, initialized as an isolated local cluster, and removed
+afterward. No repository or configured development database was used.
+
+```text
+Command: ROTRACK_TEST_DATABASE_MODE=apply mvn -Drotrack.postgres.integration=true -Dtest=PostgresMigrationIntegrationTest test
+Result: PASS — 1 test, 0 failures/errors/skips; BUILD SUCCESS
+Cleanup: temporary PostgreSQL cluster stopped and removed
+```
+
+### Direct Supabase Data API RLS matrix
+
+Using refreshed, external storage states (tokens never printed), the real
+Supabase REST Data API returned:
+
+```text
+User A owned read: PASS (18 rows; every row owned by A)
+User B owned read: PASS (0 rows; every returned row owned by B)
+User A foreign read: PASS (0 rows)
+User B foreign read: PASS (0 rows)
+Forged insert as A/B with the other user's user_id: PASS (403 for both)
+```
+
+### Fresh signup attempt
+
+A fresh disposable signup through the real `/signup` UI returned HTTP 200 and
+navigated to `/signup/confirmation`; Supabase reported a confirmation email was
+sent. A redacted Supabase management SQL query then confirmed both the new
+`auth.users` row and its matching `public.users` profile. The disposable row was
+removed afterward. The confirmation email itself was not opened because no
+inbox access was available; existing confirmed disposable users cover the real
+sign-in path.
+
+### Readiness dependency failure
+
+With an isolated loopback probe configuration (`ddl-auto=none`, explicit
+PostgreSQL dialect, and JDBC metadata disabled), an unreachable local database
+produced the intended sanitized result:
+
+```text
+Liveness: HTTP 200 {"status":"ok"}
+Readiness: HTTP 503 {"status":"not_ready"}
+```
+
+The normal `ddl-auto=validate` configuration intentionally fails startup when
+the database is unavailable before JPA can initialize; this fail-fast behavior
+was also observed and is distinct from the degraded readiness probe mode.
+
+### Final clean validation
+
+```text
+Frontend: npm ci, npm audit --audit-level=high, lint, typecheck, Vitest 11/11, build — PASS
+Backend: Java 21 mvn clean test — PASS (64 tests, 0 failures, 4 expected opt-in skips)
+Backend: mvn package — PASS
+Live backend: health 200, readiness 200, services stopped after validation
+Authenticated browser: 4 Chromium tests, 0 failures/skips — PASS
+```
 
 ## Authenticated browser verification — 2026-08-08
 
