@@ -41,7 +41,6 @@ export default function LandingPage() {
       </div>
       <Categories />
       <HowItWorks />
-      <FinalCta />
       <Footer />
     </main>
   );
@@ -544,76 +543,6 @@ function HowItWorks() {
             </li>
           ))}
         </ol>
-      </div>
-    </section>
-  );
-}
-
-/* ============================================================ */
-/*  FINAL CTA                                                    */
-/* ============================================================ */
-function FinalCta() {
-  const { user, loading } = useAuth();
-  const isLoggedIn = !loading && !!user;
-  const startHref = isLoggedIn ? "/tracker" : "/signup";
-
-  return (
-    <section className="relative min-h-svh flex items-center py-24 md:py-28 overflow-hidden">
-      <Bubble className="left-[10%] top-10 h-10 w-10 bg-[var(--rt-orange)] rt-float" />
-      <Bubble className="right-[8%] bottom-16 h-28 w-28 border-2 border-[var(--rt-ink)] bg-transparent rt-float-slow" />
-      <Bubble className="left-[48%] bottom-4 h-4 w-4 bg-[var(--rt-ink)]" />
-
-      <div className="mx-auto max-w-[1100px] px-6 md:px-10">
-        <div
-          className="relative rounded-[40px] overflow-hidden border border-[var(--rt-ink)]/10 bg-[var(--rt-ink)] text-[var(--rt-cream)] px-8 md:px-16 py-16 md:py-24"
-        >
-          {/* stripe accent using the webp */}
-          <div
-            aria-hidden="true"
-            className="absolute -right-24 top-0 bottom-0 w-[45%] opacity-70"
-            style={{
-              backgroundImage: `url(${BG_IMG})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              maskImage:
-                "linear-gradient(to left, black 40%, transparent 100%)",
-              WebkitMaskImage:
-                "linear-gradient(to left, black 40%, transparent 100%)",
-            }}
-          />
-
-          <div className="relative max-w-2xl">
-            <span className="inline-block text-[0.8rem] uppercase tracking-[0.2em] text-[var(--rt-orange)] font-medium">
-              ready when you are
-            </span>
-            <h2 className="mt-4 font-heading text-[clamp(2.4rem,6vw,5.2rem)] leading-[0.95] tracking-tight">
-              stop guessing where
-              <br />
-              your <span className="text-[var(--rt-orange)]">hours</span> go.
-            </h2>
-            <p className="mt-6 text-[1.05rem] text-[var(--rt-cream)]/75 max-w-lg">
-              Join rotrack and start the first honest week of time-logging
-              you&rsquo;ll actually stick with.
-            </p>
-            <div className="mt-9 flex flex-wrap items-center gap-3">
-              <Link
-                href={startHref}
-                className="inline-flex items-center gap-2 rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] px-6 py-3.5 font-medium hover:bg-[var(--rt-orange-deep)] transition-colors"
-              >
-                Start tracking free
-                <ArrowRight />
-              </Link>
-              {!isLoggedIn && (
-                <Link
-                  href="/signin"
-                  className="inline-flex items-center gap-2 rounded-full border border-[var(--rt-cream)]/30 text-[var(--rt-cream)] px-6 py-3.5 font-medium hover:bg-[var(--rt-cream)] hover:text-[var(--rt-ink)] transition-colors"
-                >
-                  I have an account
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
       </div>
     </section>
   );
