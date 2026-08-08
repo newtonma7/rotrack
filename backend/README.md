@@ -6,7 +6,7 @@ REST API for rotrack time tracking. Validates Supabase JWTs and connects to Supa
 
 - Java 21+
 - Maven 3.9+
-- Supabase project with migrations applied (`database/migrations/001_initial_schema.sql`)
+- Supabase project with all `database/migrations/*.sql` files applied in order
 
 ## Setup
 
@@ -18,7 +18,9 @@ REST API for rotrack time tracking. Validates Supabase JWTs and connects to Supa
 mvn spring-boot:run
 ```
 
-Health check: `GET http://localhost:8080/api/v1/health`
+Liveness: `GET http://localhost:8080/api/v1/health`
+
+Database readiness: `GET http://localhost:8080/api/v1/readiness`
 
 ## Endpoints
 
@@ -27,4 +29,4 @@ Health check: `GET http://localhost:8080/api/v1/health`
 - `GET /api/v1/time-entries/active` — get active session
 - `GET /api/v1/dashboard/stats` — weekly aggregates
 
-All endpoints except `/health` require `Authorization: Bearer <supabase_jwt>`.
+`/health` and `/readiness` are unauthenticated, sanitized orchestrator probes. All application-data endpoints require `Authorization: Bearer <supabase_jwt>`.

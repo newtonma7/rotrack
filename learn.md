@@ -40,6 +40,13 @@ Use these questions to review the completed baseline phases and understand the i
 2. Why is a text-based migration test weaker than executing SQL against PostgreSQL?
 3. What migration strategy is needed when the original baseline has already been applied remotely?
 4. Which completed-session tests prove that stale `duration_minutes` cannot affect API or dashboard output?
+5. Why does the opt-in PostgreSQL test require both an enable flag and an explicit isolated-target acknowledgement?
+6. What is the difference between applying the checked-in migrations to PostgreSQL and recreating equivalent constraints in a temporary table?
+7. Why are savepoints needed after deliberately triggering PostgreSQL constraint errors inside a larger transaction?
+8. Why does an unconditional transaction rollback make the probe safer but still not prove that the caller selected the correct database?
+9. Why is raw JDBC migration proof not the same as a Spring Data repository integration test?
+10. Why must a skipped opt-in test be recorded as a limitation rather than a successful database verification?
+11. Why does preassigning an ID to a `@GeneratedValue` entity make Spring Data choose `merge`, and how can that hide the intended database constraint assertion?
 
 ## M1.2 — Authentication and API errors
 
@@ -49,6 +56,11 @@ Use these questions to review the completed baseline phases and understand the i
 4. Why is a stable error envelope more useful to the frontend than arbitrary exception strings?
 5. What does `GlobalExceptionHandler` centralize, and what security risk does its generic fallback reduce?
 6. Why do unit and MockMvc tests not replace testing with a real Supabase-signed token and two users?
+7. Why must an unsupported-algorithm test publish a trusted key for that algorithm instead of relying on an unknown key rejection?
+8. What additional boundary does a generated-token test exercise compared with calling the claim validator directly?
+9. Why should a correctly signed token with a missing `sub` have its own test instead of being treated as equivalent to a malformed UUID?
+10. What does a real service plus an owner-sensitive mocked repository prove, and what does it still leave unproven about Spring Data and PostgreSQL?
+11. Why do active/dashboard reads return empty owned views for User B while an ID-based stop returns `404`?
 
 ## M1.3 — Explicit session lifecycle
 
@@ -71,3 +83,47 @@ Use these questions to review the completed baseline phases and understand the i
 10. How is the productivity score calculated, and why is its no-time value defined as zero?
 11. Which stale frontend assumptions were exposed when the API changed from timeline/minute fields to daily/second fields?
 12. Why should loading, empty, error, and retry states each have a distinct user-facing presentation?
+
+## M1.5 — Browser test infrastructure
+
+1. Why should authenticated Playwright storage state live outside the repository, and why are traces disabled for this suite?
+2. Why does required-auth mode fail fast while the ordinary local command reports explicit skips?
+3. How does capturing the API origin from the successful start response prevent a false-positive cross-user `404`?
+4. Why are Work, Rot, browser-context reopen, and two-user isolation separate serialized scenarios?
+5. Why can exact before/after dashboard totals become flaky at a rolling calendar boundary?
+6. Why is asserting the new session ID appears for User A and never for User B more stable than comparing every pre-existing dashboard value?
+7. Why must storage-state path validation resolve symlinks and require a regular file?
+8. What remains unproven when Playwright discovers four tests but skips them because external auth is absent?
+9. Why should dashboard integration tests compare the exact new-session delta instead of merely checking that an existing total is large enough?
+10. Why must a two-user test compare User B's aggregate buckets before and after—not only check that User A's entry ID is absent from recent sessions?
+11. Why should a transitive high-severity advisory be remediated in the lockfile and then revalidated with a fresh `npm ci`?
+12. Why can an accessible `CardTitle` still fail a `getByRole("heading")` assertion when the shared primitive renders a `div`?
+13. Why must an authenticated tracker E2E helper wait for the initial active-session request to settle before clicking activity buttons?
+14. Why should an E2E timestamp comparison account for PostgreSQL microsecond persistence versus Java nanosecond response serialization?
+
+## M2.2 — Deterministic startup and health boundaries
+
+1. Why must the JDBC URL be the single source of truth for PostgreSQL `sslmode`?
+2. How can URL-property precedence make an apparently strict TLS setting ineffective?
+3. Why does managed PostgreSQL require `verify-full`, while `disable` is limited to an explicit local profile?
+4. What is the difference between liveness and readiness, and why must liveness avoid database calls?
+5. Why is an unauthenticated readiness endpoint useful to an orchestrator but dangerous if every request checks out a connection?
+6. How do a short result cache and single-flight synchronization bound readiness pressure on the pool?
+7. Why must pool size be budgeted across the maximum ECS task count rather than per process only?
+8. Which CORS origin properties must be rejected even when Java can parse the URI?
+9. Why is HTTP allowed only for loopback development origins while deployed browser origins require HTTPS?
+10. Why can an ALB database-readiness failure still cause ECS replacement churn even when container liveness stays healthy?
+11. What does a `HikariDataSource` binding test prove that reading raw environment properties does not?
+12. Why is `sslrootcert=system` not portable in PostgreSQL JDBC 42.7.x, and what failure does an explicit CA path avoid?
+13. Why is capturing a server certificate from an unverified connection not a safe substitute for obtaining the provider's official CA certificate?
+14. Why should repository/schema integration evidence be isolated from—and not falsely reported as—production TLS startup evidence?
+15. Why can a component with multiple constructors pass direct unit tests but fail in a real Spring context unless the injection constructor is explicit?
+16. Why is explicit readiness-TTL parsing more deterministic than depending on whichever conversion service a focused context happens to install?
+
+## M2.1 — Supabase catalog, RLS, and application-role verification
+
+1. What does checking `relrowsecurity` and policy catalog rows prove, and why does it not replace an HTTP Data API two-user matrix?
+2. Why does inserting rollback-only `auth.users` fixtures prove the database trigger but not the real Supabase Auth signup flow?
+3. Why is `BYPASSRLS` expected for Spring's pooled application role in this architecture, and where must ownership authorization then be enforced?
+4. Why is a database identity still overprivileged if it is not a superuser but can create roles/databases, replicate, create schema objects, or hold table-administration privileges?
+5. Why must grant remediation be reviewed and applied as an explicit operational migration rather than silently changed by a verification test?

@@ -250,10 +250,12 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - Backend aggregation and DTO mapping derive duration from `start_time`/`end_time`; the transitional column is not authoritative.
 - Failing-first tests were added for the migration contract and active-session duration behavior. `mvn test` and `mvn package` pass under Temurin Java `21.0.12` with 2 tests passing.
 
-**Current gap — 2026-08-06 / repository audit**
+**Current verification — 2026-08-07 / configured development PostgreSQL**
 
-- No repeatable PostgreSQL-backed migration check is included in this M0.5/M1.4 change; the tracked migration test inspects SQL source only and does not prove applied indexes, RLS, or application-role grants.
-- The historical remote application/catalog/probe results remain un-attested in this review. Keep this task unverified until full migration/repository coverage and repeatable redacted verification satisfy its acceptance criteria.
+- Added opt-in executable migration and Spring Data repository tests with an explicit isolated-target acknowledgement, redacted environment contract, and rollback-only cleanup.
+- `ROTRACK_TEST_DATABASE_MODE=verify mvn -Drotrack.postgres.integration=true -Dtest='PostgresMigrationIntegrationTest,TimeEntryRepositoryPostgresIntegrationTest' test` passed under Temurin Java 21 against PostgreSQL 17.6: 4 tests, 0 failures/errors/skips.
+- The run proved the actual constraints/indexes, same-user active rejection (`23505`), different-user active sessions, invalid-range rejection (`23514`), timestamp-derived 3,600 seconds despite `duration_minutes=999`, signup-trigger fixture profiles, and real repository flush/owned-active reads. See `database/verification/2026-08-07-postgres-verify.md`.
+- Keep this task **Implemented—unverified** until the new `apply` mode also passes against an empty disposable PostgreSQL target; creating a remote database was deliberately not attempted against the unlabeled configured environment.
 
 ### M1.2 — Harden JWT authentication and API errors
 
@@ -282,10 +284,11 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - A live Spring Boot probe against the configured Supabase database confirmed `/health` is public and missing/invalid bearer requests return stable JSON `401` envelopes with path and error codes.
 - A real Supabase-signed valid token, bad-signature token, and two-user authenticated API isolation flow remain untested; those belong to the authenticated integration flow in M2.2–M2.3.
 
-**Current gap — 2026-08-06 / repository audit**
+**Current verification — 2026-08-07 / local workspace**
 
-- Unit validators cover issuer, audience, time, and UUID-subject claims, and MockMvc covers a decoder failure. A real Supabase-issued token test remains open.
-- Keep this task unverified until real Supabase JWT and two-user ownership scenarios have stable, redacted evidence.
+- Added generated-key tests through the production JWT decoder/security filter for valid ES256 plus bad signature, unsupported trusted RS256, wrong issuer/audience, expired/not-before, missing subject, and malformed UUID subject; all assert the stable `401` envelope.
+- Added controller tests using the real ownership-scoped services and an owner-sensitive repository boundary: User B sees empty active/dashboard views and receives `404 NOT_FOUND` when stopping User A's entry.
+- These tests materially strengthen the cryptographic and application authorization boundary, but they are not a real Supabase-issued token or live two-user PostgreSQL/API flow. Keep this task **Implemented—unverified** until that redacted external evidence passes.
 
 ### M1.3 — Implement the explicit session lifecycle
 
@@ -346,7 +349,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 ### M1.5 — Establish the MVP automated test suite
 
-**Status:** In progress
+**Status:** Verified
 
 **Deliverable**
 
@@ -362,9 +365,10 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 **Evidence — 2026-08-07 / local workspace**
 
-- Tracked coverage includes six frontend test files (11 Vitest tests) and six backend test classes (32 JUnit tests), including dashboard range/DST fixtures, HTTP binding, typed client queries, UI loading/empty/error/retry/populated states, and ownership boundaries.
-- Frontend lint/typecheck/test/build and backend `mvn clean package` pass under the pinned toolchains. Real PostgreSQL, Supabase JWT, RLS, two-user ownership, and authenticated browser proof remain unverified.
-- The existing migration test inspects SQL source rather than applying migrations; the Playwright skeleton remains a future M1.5 task and no authenticated storage state is committed.
+- Tracked coverage includes six frontend test files (11 Vitest tests) and 15 backend test classes. Added executable PostgreSQL migration/repository coverage, production-filter signed-JWT failures, real-service ownership boundaries, readiness/TLS/CORS configuration tests, and a Spring constructor-wiring regression test. Under Temurin Java 21, `mvn clean test` and `mvn package` passed with 64 tests, including four expected default skips for the explicitly opt-in PostgreSQL classes.
+- Added tracked Playwright configuration and four serialized external-auth scenarios for Work, Rot, browser-context close/reopen restoration, exact dashboard deltas, and two-user Work/Rot read/stop/aggregate isolation. Storage states must resolve to regular files outside the repository; traces/video are disabled and required-auth mode fails fast.
+- Fresh `npm ci`, `npm audit --audit-level=high`, lint, typecheck, 11 Vitest tests, production build, and `npm run e2e -- --list` passed; Playwright listed four Chromium tests. A transitive `nanoid` advisory was resolved by updating only its lockfile resolution to 3.3.18. The opt-in migrated-PostgreSQL suite passed 4/4 with no skips. Exact credential-free and opt-in commands are documented in `frontend/e2e/README.md` and `backend/src/test/README.md`.
+- Authenticated Playwright execution is now recorded under M2.3: two external storage states produced 4/4 passing Chromium tests. Real Supabase JWT/Data API evidence remains an M2.1–M2.3 operational boundary, not an M1.5 infrastructure claim.
 
 ## 5. Milestone 2 — Secure Local Supabase Integration
 
@@ -381,12 +385,13 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - Verify Data API RLS separately: each user can access only owned rows.
 - Verify the Spring application role has only required table DML grants plus the documented RLS-bypass behavior, and that Spring authorization is enforced by ownership-scoped application queries.
 
-**Current state — 2026-08-06 / repository audit**
+**Current state — 2026-08-07 / configured development PostgreSQL**
 
-- `001_initial_schema.sql` contains the signup trigger and Data API RLS policies; `002_harden_time_entries.sql` contains the hardening indexes. M1.1's historical evidence records applying `002` to development.
-- This audit did not re-attest the remote migration version, signup trigger, RLS matrix, application-role grants, or RLS-bypass configuration.
+- Rollback-only verification re-attested the migrated catalog, RLS enabled on both application tables, all seven named policies, the enabled signup trigger/security-definer function, and profile creation for two fixture auth rows.
+- A read-only redacted role audit first found the original backend identity overprivileged. A dedicated `rotrack_runtime` role was then created and re-audited: non-superuser, `BYPASSRLS`, required time-entry DML, no delete, no schema creation, and no role/database/replication privileges. The backend now starts with that role. See `database/verification/2026-08-07-application-role-audit.md` for the original finding and the local validation notes for the corrected runtime result.
+- The actual HTTP Data API two-user matrix and fresh Supabase Auth signup remain untested; existing users were used for the authenticated sign-in/browser flow.
 
-**Remaining evidence:** Redacted migration/version output and two-user isolation matrix.
+**Remaining evidence:** Redacted migration-version output, fresh signup, and two-user Data API RLS matrix.
 
 ### M2.2 — Make local startup deterministic
 
@@ -396,12 +401,14 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - Start backend and frontend using the runbook.
 - Confirm liveness independently from database readiness.
 
-**Current state — 2026-08-06 / repository audit**
+**Current state — 2026-08-07 / local workspace**
 
-- README startup commands, both `.env.example` files, CORS/JWT configuration, and the unauthenticated liveness endpoint exist. M1.2–M1.3 contain historical live startup/liveness evidence.
-- A clean environment startup has not been re-run in this audit. The backend template does not explicitly document TLS JDBC parameters, and no separate readiness endpoint exists.
+- Added validated exact CORS origins, explicit issuer/JWKS/audience documentation, bounded Hikari settings, `sslmode=verify-full` plus explicit provider-CA-path startup enforcement, and a loopback-only plaintext exception for the `local` profile.
+- Added independent public liveness and sanitized database readiness. Readiness uses bounded validation, a configurable five-second cache, and single-flight synchronization to limit pool pressure.
+- A clean frontend development start returned HTTP 200. After quoting the ignored JDBC URL and using the official CA path plus dedicated `rotrack_runtime` role, `mvn spring-boot:run` started successfully; live `/api/v1/health` returned 200 `{"status":"ok"}` and `/api/v1/readiness` returned 200 `{"status":"ready"}`. See `docs/operations/2026-08-07-local-verification.md`.
+- Earlier fail-closed attempts exposed two shell/configuration issues: an unquoted `&` prevented `DATABASE_URL` from being exported, and `$HOME` was passed literally inside the JDBC URL. The checked-in example/checklist now quote JDBC URLs.
 
-**Remaining evidence:** Startup commands, health bodies/statuses, and configuration-name checklist without values.
+**Remaining evidence:** dependency-failure readiness behavior and one final clean run from the documented environment contract. Live CORS preflights passed: configured localhost origin returned exact credentialed CORS headers with HTTP 200; an unconfigured origin returned HTTP 403 without `Access-Control-Allow-Origin`.
 
 ### M2.3 — Complete the local critical-path test
 
@@ -412,12 +419,14 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - Repeat with Rot and verify it remains private to the owner.
 - Confirm closing the app does not stop an active session.
 
-**Current state — 2026-08-06 / repository audit**
+**Current state — 2026-08-08 / local workspace**
 
-- M1.3 records authenticated navigation/reload/close-reopen, Work/Rot start-stop, and unauthenticated failure probes. That is partial evidence for this flow.
-- No authenticated browser harness or storage state is committed, and there is still no recorded two-user ownership/RLS/dashboard-total scenario. M1.4's deterministic dashboard contract is implemented; this task still needs live authenticated verification against it.
+- Added a tracked external-auth Playwright harness for Work/Rot start-stop, reload/navigation, browser-context close/reopen restoration, exact dashboard deltas, and User B read/stop/aggregate isolation for both activity types.
+- The harness lists four Chromium tests and safely quarantines them when external storage state is absent; `ROTRACK_E2E_REQUIRE_AUTH=1` converts missing User A/User B state into a configuration failure.
+- Two existing disposable development users signed in through the real frontend. Their storage states remained outside the repository, and `ROTRACK_E2E_REQUIRE_AUTH=1 npm run e2e` passed all four Chromium tests with zero skips on 2026-08-08. This proves authenticated sign-in, tracker lifecycle, restoration, dashboard deltas, and Spring API ownership isolation for Work and Rot.
+- Fresh signup/confirmation and direct Data API RLS were not part of this run because the users already existed and the application correctly uses Spring for application data.
 
-**Remaining evidence:** Playwright result where feasible plus a concise manual route/API log.
+**Remaining evidence:** Fresh signup/confirmation if required by the gate, direct Data API RLS matrix, and concise redacted API/route log.
 
 ## 6. Milestone 3 — CI, Staging, and MVP Release
 
@@ -629,4 +638,4 @@ Append evidence beneath the completed task; do not create unsupported global che
 
 ## 13. Next Action
 
-Continue **M1.5** with PostgreSQL-backed migration/repository tests, cryptographic JWT and two-user ownership coverage, and the Playwright skeleton. Use that evidence to close M1.1 and M1.2 before beginning the M2 gate.
+Finish the remaining M2 evidence in the explicitly identified disposable development environment: run M1.1 empty-database `apply`; execute the direct Supabase Data API two-user RLS matrix and fresh signup/confirmation trigger check; test sanitized `503 not_ready` behavior with the database dependency unavailable; and repeat one clean startup/validation run from the documented environment contract. Do not begin staging deployment or production promotion before the M2 gate passes.

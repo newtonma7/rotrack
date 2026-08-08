@@ -2,9 +2,14 @@ spring:
   application:
     name: rotrack-api
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/postgres}
-    username: ${DATABASE_USERNAME:postgres}
-    password: ${DATABASE_PASSWORD:postgres}
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      connection-timeout: ${DATABASE_CONNECTION_TIMEOUT_MS:5000}
+      validation-timeout: ${DATABASE_POOL_VALIDATION_TIMEOUT_MS:2000}
+      maximum-pool-size: ${DATABASE_MAXIMUM_POOL_SIZE:5}
+      minimum-idle: ${DATABASE_MINIMUM_IDLE:0}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -17,8 +22,8 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          jwk-set-uri: ${SUPABASE_JWKS_URI:https://your-project.supabase.co/auth/v1/.well-known/jwks.json}
-          issuer-uri: ${SUPABASE_ISSUER_URI:https://your-project.supabase.co/auth/v1}
+          jwk-set-uri: ${SUPABASE_JWKS_URI}
+          issuer-uri: ${SUPABASE_ISSUER_URI}
 
 server:
   port: ${PORT:8080}
@@ -26,3 +31,8 @@ server:
 rotrack:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  health:
+    readiness-cache-ttl: ${READINESS_CACHE_TTL:5s}
+  security:
+    jwt:
+      audience: ${SUPABASE_JWT_AUDIENCE:authenticated}

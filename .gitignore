@@ -58,6 +58,8 @@ Thumbs.db
 frontend/.next/
 frontend/out/
 frontend/.vercel/
+frontend/AGENTS.md
+frontend/CLAUDE.md
 
 backend/secrets/*
 backend/target/

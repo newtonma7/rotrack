@@ -1,101 +1,401 @@
 package com.rotrack.schema;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.fail;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Savepoint;
 import java.sql.Statement;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 /**
- * Optional PostgreSQL proof for the migration's hardening invariants.
+ * Opt-in proof that the checked-in migrations enforce the time-entry invariants in PostgreSQL.
  *
- * This test is deliberately opt-in: it never invents credentials or connects to
- * the configured application database. Set ROTRACK_TEST_DATABASE_URL to an
- * isolated development database before running it.
+ * <p>The caller must explicitly confirm that the target is isolated. Every change, including DDL
+ * in apply mode, runs in one transaction and is rolled back. This keeps the default Maven suite
+ * credential-free and prevents a test invocation from modifying an application database.</p>
  */
 class PostgresMigrationIntegrationTest {
 
+    private static final String ENABLE_PROPERTY = "rotrack.postgres.integration";
+    private static final String APPLY_MODE = "apply";
+    private static final String VERIFY_MODE = "verify";
+    private static final List<String> MIGRATIONS = List.of(
+            "001_initial_schema.sql",
+            "002_harden_time_entries.sql"
+    );
+
     @Test
-    void appliedDatabaseContainsTheMigrationIndexes() throws SQLException {
-        try (Connection connection = openConnection();
-             PreparedStatement statement = connection.prepareStatement("""
-                     SELECT indexname, indexdef
-                     FROM pg_indexes
-                     WHERE schemaname = 'public'
-                       AND indexname IN (
-                           'idx_time_entries_one_active_per_user',
-                           'idx_time_entries_user_start_time'
-                       )
-                     ORDER BY indexname
-                     """)) {
-            try (ResultSet result = statement.executeQuery()) {
-                StringBuilder indexes = new StringBuilder();
-                while (result.next()) {
-                    indexes.append(result.getString("indexname"))
-                            .append(" ")
-                            .append(result.getString("indexdef"))
-                            .append("\n");
+    void actualMigratedTimeEntriesEnforcesDatabaseInvariants() throws Exception {
+        TestDatabaseConfiguration configuration = configuration();
+
+        try (Connection connection = DriverManager.getConnection(
+                configuration.url(), configuration.username(), configuration.password())) {
+            connection.setAutoCommit(false);
+            try {
+                if (APPLY_MODE.equals(configuration.mode())) {
+                    assertMigrationTargetIsEmpty(connection);
+                    createMinimalAuthContractWhenNeeded(connection);
+                    applyOrderedMigrations(connection);
                 }
-                String definitions = indexes.toString();
-                assertTrue(definitions.contains("idx_time_entries_one_active_per_user"));
-                assertTrue(definitions.contains("WHERE (end_time IS NULL)"));
-                assertTrue(definitions.contains("idx_time_entries_user_start_time"));
+
+                assertActualSchemaContract(connection);
+                proveTimeEntryInvariants(connection);
+            } finally {
+                connection.rollback();
             }
         }
     }
 
-    @Test
-    void postgresRejectsDuplicateActiveRowsAndInvalidRanges() throws SQLException {
-        try (Connection connection = openConnection();
-             Statement statement = connection.createStatement()) {
-            connection.setAutoCommit(false);
-            statement.execute("""
-                    CREATE TEMP TABLE rotrack_constraint_probe (
-                        user_id uuid NOT NULL,
-                        start_time timestamptz NOT NULL,
-                        end_time timestamptz,
-                        CONSTRAINT probe_end_after_start
-                            CHECK (end_time IS NULL OR end_time > start_time)
-                    ) ON COMMIT DROP
-                    """);
-            statement.execute("""
-                    CREATE UNIQUE INDEX probe_one_active_per_user
-                      ON rotrack_constraint_probe(user_id)
-                      WHERE end_time IS NULL
-                    """);
+    private TestDatabaseConfiguration configuration() {
+        String enabled = System.getProperty(ENABLE_PROPERTY, "false").trim();
+        if (!enabled.equals("true") && !enabled.equals("false")) {
+            throw new IllegalStateException("-D" + ENABLE_PROPERTY + " must be either true or false");
+        }
+        Assumptions.assumeTrue(Boolean.parseBoolean(enabled),
+                "PostgreSQL integration is opt-in; see backend/src/test/README.md");
 
-            UUID userId = UUID.randomUUID();
-            statement.executeUpdate(
-                    "INSERT INTO rotrack_constraint_probe(user_id, start_time) VALUES ('"
-                            + userId + "', now())"
-            );
-            assertThrows(SQLException.class, () -> statement.executeUpdate(
-                    "INSERT INTO rotrack_constraint_probe(user_id, start_time) VALUES ('"
-                            + userId + "', now())"
-            ));
+        String url = requiredEnvironment("ROTRACK_TEST_DATABASE_URL");
+        if (url.toLowerCase(Locale.ROOT).contains("password=")) {
+            throw new IllegalStateException(
+                    "ROTRACK_TEST_DATABASE_URL must not contain a password; use the separate password variable");
+        }
+        String mode = requiredEnvironment("ROTRACK_TEST_DATABASE_MODE").toLowerCase(Locale.ROOT);
+        if (!mode.equals(APPLY_MODE) && !mode.equals(VERIFY_MODE)) {
+            throw new IllegalStateException("ROTRACK_TEST_DATABASE_MODE must be apply or verify");
+        }
+        if (!"true".equalsIgnoreCase(requiredEnvironment("ROTRACK_TEST_DATABASE_ISOLATED"))) {
+            throw new IllegalStateException(
+                    "ROTRACK_TEST_DATABASE_ISOLATED must be true after confirming the target is disposable");
+        }
 
-            UUID otherUserId = UUID.randomUUID();
-            assertThrows(SQLException.class, () -> statement.executeUpdate(
-                    "INSERT INTO rotrack_constraint_probe(user_id, start_time, end_time) VALUES ('"
-                            + otherUserId + "', now(), now() - interval '1 second')"
-            ));
-            connection.rollback();
+        return new TestDatabaseConfiguration(
+                url,
+                environmentOrDefault("ROTRACK_TEST_DATABASE_USERNAME", "postgres"),
+                environmentOrDefault("ROTRACK_TEST_DATABASE_PASSWORD", ""),
+                mode
+        );
+    }
+
+    private void assertMigrationTargetIsEmpty(Connection connection) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                SELECT to_regclass('public.users')::text,
+                       to_regclass('public.time_entries')::text,
+                       to_regtype('public.activity_type')::text
+                """)) {
+            try (ResultSet result = statement.executeQuery()) {
+                assertTrue(result.next());
+                if (result.getString(1) != null || result.getString(2) != null || result.getString(3) != null) {
+                    fail("Apply mode requires an isolated database without the rotrack public schema; "
+                            + "use verify mode for an already-migrated isolated database");
+                }
+            }
         }
     }
 
-    private Connection openConnection() throws SQLException {
-        String url = System.getenv("ROTRACK_TEST_DATABASE_URL");
-        Assumptions.assumeTrue(url != null && !url.isBlank(),
-                "Set ROTRACK_TEST_DATABASE_URL to run PostgreSQL integration tests");
-        String username = System.getenv().getOrDefault("ROTRACK_TEST_DATABASE_USERNAME", "postgres");
-        String password = System.getenv().getOrDefault("ROTRACK_TEST_DATABASE_PASSWORD", "");
-        return DriverManager.getConnection(url, username, password);
+    private void createMinimalAuthContractWhenNeeded(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("CREATE SCHEMA IF NOT EXISTS auth");
+            if (!relationExists(connection, "auth.users")) {
+                statement.execute("""
+                        CREATE TABLE auth.users (
+                            id UUID PRIMARY KEY,
+                            email TEXT
+                        )
+                        """);
+            }
+            if (!functionExists(connection, "auth.uid()")) {
+                statement.execute("""
+                        CREATE FUNCTION auth.uid()
+                        RETURNS UUID
+                        LANGUAGE sql
+                        STABLE
+                        AS 'SELECT NULL::UUID'
+                        """);
+            }
+        }
+    }
+
+    private void applyOrderedMigrations(Connection connection) throws IOException, SQLException {
+        Path migrationDirectory = findRepositoryRoot().resolve("database/migrations");
+        try (Statement statement = connection.createStatement()) {
+            for (String migration : MIGRATIONS) {
+                statement.execute(Files.readString(migrationDirectory.resolve(migration)));
+            }
+        }
+    }
+
+    private void assertActualSchemaContract(Connection connection) throws SQLException {
+        assertTrue(relationExists(connection, "public.users"), "public.users must be an actual table");
+        assertTrue(relationExists(connection, "public.time_entries"),
+                "public.time_entries must be an actual table");
+
+        String rangeConstraint = querySingleString(connection, """
+                SELECT pg_get_constraintdef(oid)
+                FROM pg_constraint
+                WHERE conrelid = 'public.time_entries'::regclass
+                  AND conname = 'time_entries_end_after_start'
+                """);
+        assertNotNull(rangeConstraint, "time_entries_end_after_start must exist");
+        String normalizedConstraint = normalize(rangeConstraint);
+        assertTrue(normalizedConstraint.contains("end_time is null"));
+        assertTrue(normalizedConstraint.contains("end_time > start_time"));
+
+        String activeIndex = querySingleString(connection, """
+                SELECT indexdef
+                FROM pg_indexes
+                WHERE schemaname = 'public'
+                  AND tablename = 'time_entries'
+                  AND indexname = 'idx_time_entries_one_active_per_user'
+                """);
+        assertNotNull(activeIndex, "the one-active-session index must exist on public.time_entries");
+        String normalizedActiveIndex = normalize(activeIndex);
+        assertTrue(normalizedActiveIndex.contains("create unique index"));
+        assertTrue(normalizedActiveIndex.contains("(user_id)"));
+        assertTrue(normalizedActiveIndex.contains("where (end_time is null)"));
+
+        String reportingIndex = querySingleString(connection, """
+                SELECT indexdef
+                FROM pg_indexes
+                WHERE schemaname = 'public'
+                  AND tablename = 'time_entries'
+                  AND indexname = 'idx_time_entries_user_start_time'
+                """);
+        assertNotNull(reportingIndex, "the reporting index must exist on public.time_entries");
+        assertTrue(normalize(reportingIndex).contains("(user_id, start_time)"));
+
+        assertEquals(2, querySingleInt(connection, """
+                SELECT count(*)
+                FROM pg_class
+                WHERE oid IN ('public.users'::regclass, 'public.time_entries'::regclass)
+                  AND relrowsecurity
+                """), "RLS must remain enabled on both application tables");
+        assertEquals(7, querySingleInt(connection, """
+                SELECT count(*)
+                FROM pg_policies
+                WHERE schemaname = 'public'
+                  AND (
+                    (tablename = 'users' AND policyname IN (
+                      'users_select_own', 'users_insert_own', 'users_update_own'
+                    ))
+                    OR
+                    (tablename = 'time_entries' AND policyname IN (
+                      'time_entries_select_own', 'time_entries_insert_own',
+                      'time_entries_update_own', 'time_entries_delete_own'
+                    ))
+                  )
+                """), "all ownership policies from migration 001 must exist");
+        assertEquals(1, querySingleInt(connection, """
+                SELECT count(*)
+                FROM pg_trigger
+                WHERE tgrelid = 'auth.users'::regclass
+                  AND tgname = 'on_auth_user_created'
+                  AND tgfoid = 'public.handle_new_user()'::regprocedure
+                  AND NOT tgisinternal
+                  AND tgenabled <> 'D'
+                """), "the enabled signup trigger must call public.handle_new_user");
+        assertEquals(1, querySingleInt(connection, """
+                SELECT count(*)
+                FROM pg_proc
+                WHERE oid = 'public.handle_new_user()'::regprocedure
+                  AND prosecdef
+                  AND 'search_path=public' = ANY (proconfig)
+                """), "the signup function must be security-definer with a fixed public search_path");
+    }
+
+    private void proveTimeEntryInvariants(Connection connection) throws SQLException {
+        UUID firstUser = UUID.randomUUID();
+        UUID secondUser = UUID.randomUUID();
+        insertAuthUser(connection, firstUser);
+        insertAuthUser(connection, secondUser);
+        assertEquals(2, queryCount(connection, """
+                SELECT count(*)
+                FROM public.users
+                WHERE id IN (?, ?)
+                """, firstUser, secondUser), "the signup trigger must create both public profiles");
+
+        OffsetDateTime start = OffsetDateTime.of(2026, 8, 7, 12, 0, 0, 0, ZoneOffset.UTC);
+        insertTimeEntry(connection, UUID.randomUUID(), firstUser, start, null, null);
+
+        expectSqlState(connection, "23505", () ->
+                insertTimeEntry(connection, UUID.randomUUID(), firstUser, start.plusMinutes(1), null, null));
+
+        insertTimeEntry(connection, UUID.randomUUID(), secondUser, start, null, null);
+        assertEquals(2, queryCount(connection, """
+                SELECT count(*)
+                FROM public.time_entries
+                WHERE user_id IN (?, ?)
+                  AND end_time IS NULL
+                """, firstUser, secondUser), "different users may each have an active row");
+
+        expectSqlState(connection, "23514", () -> insertTimeEntry(
+                connection,
+                UUID.randomUUID(),
+                secondUser,
+                start,
+                start.minusSeconds(1),
+                null
+        ));
+
+        UUID completedEntry = UUID.randomUUID();
+        insertTimeEntry(connection, completedEntry, firstUser, start, start.plusHours(1), 999);
+        try (PreparedStatement statement = connection.prepareStatement("""
+                SELECT duration_minutes,
+                       CAST(EXTRACT(EPOCH FROM (end_time - start_time)) AS BIGINT)
+                FROM public.time_entries
+                WHERE id = ?
+                """)) {
+            statement.setObject(1, completedEntry);
+            try (ResultSet result = statement.executeQuery()) {
+                assertTrue(result.next());
+                assertEquals(999, result.getInt(1), "the transitional value intentionally disagrees");
+                assertEquals(3_600L, result.getLong(2),
+                        "duration must be derived from authoritative timestamps");
+            }
+        }
+    }
+
+    private void insertAuthUser(Connection connection, UUID userId) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "INSERT INTO auth.users(id, email) VALUES (?, ?)")) {
+            statement.setObject(1, userId);
+            statement.setString(2, "rotrack-db-test-" + userId + "@example.invalid");
+            statement.executeUpdate();
+        }
+    }
+
+    private void insertTimeEntry(
+            Connection connection,
+            UUID id,
+            UUID userId,
+            OffsetDateTime start,
+            OffsetDateTime end,
+            Integer durationMinutes
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                INSERT INTO public.time_entries(
+                    id, user_id, activity_type, start_time, end_time, duration_minutes
+                ) VALUES (?, ?, 'WORK', ?, ?, ?)
+                """)) {
+            statement.setObject(1, id);
+            statement.setObject(2, userId);
+            statement.setObject(3, start);
+            statement.setObject(4, end);
+            statement.setObject(5, durationMinutes);
+            statement.executeUpdate();
+        }
+    }
+
+    private void expectSqlState(Connection connection, String expectedState, SqlOperation operation)
+            throws SQLException {
+        Savepoint savepoint = connection.setSavepoint();
+        try {
+            operation.run();
+            fail("Expected PostgreSQL SQLSTATE " + expectedState);
+        } catch (SQLException exception) {
+            assertEquals(expectedState, exception.getSQLState());
+        } finally {
+            connection.rollback(savepoint);
+            connection.releaseSavepoint(savepoint);
+        }
+    }
+
+    private boolean relationExists(Connection connection, String qualifiedName) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT to_regclass(?) IS NOT NULL")) {
+            statement.setString(1, qualifiedName);
+            try (ResultSet result = statement.executeQuery()) {
+                assertTrue(result.next());
+                return result.getBoolean(1);
+            }
+        }
+    }
+
+    private boolean functionExists(Connection connection, String qualifiedSignature) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT to_regprocedure(?) IS NOT NULL")) {
+            statement.setString(1, qualifiedSignature);
+            try (ResultSet result = statement.executeQuery()) {
+                assertTrue(result.next());
+                return result.getBoolean(1);
+            }
+        }
+    }
+
+    private String querySingleString(Connection connection, String sql) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet result = statement.executeQuery()) {
+            return result.next() ? result.getString(1) : null;
+        }
+    }
+
+    private int querySingleInt(Connection connection, String sql) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet result = statement.executeQuery()) {
+            assertTrue(result.next());
+            return result.getInt(1);
+        }
+    }
+
+    private int queryCount(Connection connection, String sql, UUID first, UUID second) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setObject(1, first);
+            statement.setObject(2, second);
+            try (ResultSet result = statement.executeQuery()) {
+                assertTrue(result.next());
+                return result.getInt(1);
+            }
+        }
+    }
+
+    private String normalize(String value) {
+        return value.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+    }
+
+    private Path findRepositoryRoot() {
+        Path current = Path.of("").toAbsolutePath();
+        while (current != null) {
+            if (Files.isDirectory(current.resolve("database/migrations"))) {
+                return current;
+            }
+            current = current.getParent();
+        }
+        throw new IllegalStateException("Could not locate database/migrations");
+    }
+
+    private String requiredEnvironment(String name) {
+        String value = System.getenv(name);
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException(name + " is required when PostgreSQL integration is enabled");
+        }
+        return value.trim();
+    }
+
+    private String environmentOrDefault(String name, String fallback) {
+        String value = System.getenv(name);
+        return value == null ? fallback : value;
+    }
+
+    private record TestDatabaseConfiguration(String url, String username, String password, String mode) {
+    }
+
+    @FunctionalInterface
+    private interface SqlOperation {
+        void run() throws SQLException;
     }
 }

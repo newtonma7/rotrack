@@ -1,20 +1,26 @@
 import { defineConfig, devices } from "@playwright/test";
-import { existsSync } from "node:fs";
-
-const storageState = process.env.ROTRACK_E2E_STORAGE_STATE;
+import { e2eEnvironment } from "./e2e/support/environment";
 
 export default defineConfig({
   testDir: "./e2e",
-  timeout: 30_000,
+  outputDir: "./test-results",
+  timeout: 45_000,
+  expect: { timeout: 10_000 },
   fullyParallel: false,
-  forbidOnly: !!process.env.CI,
+  workers: 1,
+  forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
-  reporter: [["list"], ["html", { open: "never" }]],
+  reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]],
   use: {
-    baseURL: process.env.ROTRACK_E2E_BASE_URL ?? "http://localhost:3000",
-    storageState: storageState && existsSync(storageState) ? storageState : undefined,
-    trace: "retain-on-failure",
+    baseURL: e2eEnvironment.baseUrl,
+    storageState: e2eEnvironment.userAStorageState,
+    actionTimeout: 10_000,
+    navigationTimeout: 20_000,
+    timezoneId: "UTC",
+    // Authenticated network traces can retain bearer headers. Prefer screenshots and server logs.
+    trace: "off",
     screenshot: "only-on-failure",
+    video: "off",
   },
   projects: [
     {

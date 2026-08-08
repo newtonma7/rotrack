@@ -10,6 +10,7 @@ Read these before changing the repository:
 - [`todo.md`](todo.md) — dependency order, acceptance criteria, status, and verification evidence.
 - [`frontend/DESIGN.md`](frontend/DESIGN.md) — frontend visual and interaction design.
 - [`AGENTS.md`](AGENTS.md) — repository-specific development instructions.
+- [`docs/operations/startup-and-health.md`](docs/operations/startup-and-health.md) — deployment configuration and health-probe contract.
 
 The root README is a setup guide, not a substitute for those documents. Source code and recorded command output outrank stale documentation.
 
@@ -81,7 +82,7 @@ source backend/.env
 set +a
 ```
 
-The backend variables are documented in [`backend/.env.example`](backend/.env.example): database connection, Supabase issuer/JWKS URLs, JWT audience, CORS origins, and port.
+The backend variables are documented in [`backend/.env.example`](backend/.env.example): database connection/TLS, pool limits/timeouts, Supabase issuer/JWKS URLs and JWT audience, CORS origins, readiness caching, and port. `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `SUPABASE_JWKS_URI`, and `SUPABASE_ISSUER_URI` are required; startup fails rather than silently using development credentials. `DATABASE_URL` is the only TLS-mode source and managed PostgreSQL must include `sslmode=verify-full` plus an explicit `sslrootcert` path to the provider's official CA certificate. Only the explicit `local` Spring profile may use `sslmode=disable` for loopback PostgreSQL.
 
 Never commit populated `.env` files or include their values in issue/PR evidence.
 
@@ -103,17 +104,14 @@ npm ci
 npm run dev
 ```
 
-Open <http://localhost:3000>. The API listens on <http://localhost:8080> by default. Check API liveness with:
+Open <http://localhost:3000>. The API listens on <http://localhost:8080> by default. Probe it with:
 
 ```bash
-curl http://localhost:8080/api/v1/health
+curl --fail-with-body http://localhost:8080/api/v1/health
+curl --fail-with-body http://localhost:8080/api/v1/readiness
 ```
 
-Expected response:
-
-```json
-{"status":"ok"}
-```
+Liveness always performs no dependency calls and returns `200 {"status":"ok"}` while the process can serve HTTP. Readiness validates a database connection and returns either `200 {"status":"ready"}` or `503 {"status":"not_ready"}`. Both endpoints are unauthenticated and intentionally omit dependency details. Use liveness for ECS container restarts and readiness for traffic eligibility; see the [operations runbook](docs/operations/startup-and-health.md).
 
 ## Validation commands
 
@@ -139,7 +137,8 @@ The repository has focused Vitest and JUnit suites for the timer, API/security b
 
 All paths use the `/api/v1` prefix. Authenticated endpoints require `Authorization: Bearer <supabase-jwt>`.
 
-- `GET /health` — unauthenticated liveness check
+- `GET /health` — unauthenticated, database-independent liveness check
+- `GET /readiness` — unauthenticated database readiness check (`200` ready, `503` not ready)
 - `POST /time-entries/start` — start a `WORK` or `ROT` session (`201 Created`)
 - `GET /time-entries/active` — get the authenticated user's active session
 - `PUT /time-entries/{id}/stop` — stop an owned session by ID
@@ -161,8 +160,8 @@ The backend derives the acting user from the validated JWT subject. Clients must
 
 The repository is still working toward the production-ready MVP. In particular:
 
-- Migration hardening exists, but repeatable PostgreSQL-backed migration/constraint tests and current remote catalog evidence are still missing.
-- Real Supabase-signed JWT, two-user ownership/RLS, and application-role grant proof remain incomplete.
-- Test coverage is focused rather than complete; PostgreSQL integration, Playwright, CI, staging, readiness, and deployment work remain open.
+- Repeatable opt-in PostgreSQL migration/repository tests now exist and have current rollback-only verification evidence against the configured development database; empty-database application and direct Data API RLS evidence remain open.
+- The dedicated runtime role and authenticated two-user Spring ownership flow are locally verified; fresh signup, direct Data API RLS, and redacted direct-token evidence remain incomplete.
+- Test coverage is focused rather than complete; authenticated Playwright execution and managed-CA startup are locally verified, while dependency-failure readiness, CI, staging deployment, and deployed health-probe evidence remain open.
 
 Track these items in [`todo.md`](todo.md) rather than treating existing source or old build output as verification evidence.

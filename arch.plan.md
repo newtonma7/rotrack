@@ -47,16 +47,17 @@ This section describes what exists in source control today. It is not a completi
 ### Backend and database
 
 - Spring Boot 3.4, Java 21 target, Maven, Spring Web, JPA, OAuth2 Resource Server, validation, and PostgreSQL
-- Implemented endpoints: health, start session, get active session, ID-based stop, and dashboard stats
+- Implemented endpoints: independent liveness/readiness, start session, get active session, ID-based stop, and dashboard stats
 - Supabase migrations defining `users`, `time_entries`, the `ROT|WORK` enum, ownership RLS policies, signup profile creation, timestamp constraints, one-active-session uniqueness, and reporting indexes
-- Source-controlled JUnit and Vitest suites cover timer lifecycle, JWT/error boundaries, dashboard range/DST aggregation, the typed API client, and dashboard states; database-backed migration/repository and Playwright coverage remain open
+- Source-controlled suites include executable PostgreSQL migration/repository tests, generated signed-JWT filter tests, service/controller ownership tests, Vitest/RTL coverage, and a quarantined external-auth Playwright critical path
+- Backend startup validates managed JDBC hostname verification with an explicit CA path, exact CORS origins, bounded Hikari settings, and cached/single-flight database readiness
 
 ### Known baseline problems
 
-- The migration constraint test currently inspects SQL source rather than applying migrations to PostgreSQL; repeatable database-backed proof remains open.
-- Spring JDBC does not propagate the user JWT into PostgreSQL; the dedicated application-role grants/RLS-bypass setup and two-user ownership matrix still need redacted integration evidence.
-- JWT validator unit tests exist, but real Supabase-signed JWT and two-user authenticated ownership flows remain unverified.
-- Authenticated browser proof, CI, staging, readiness checks, rate limiting, and production observability are not implemented.
+- The PostgreSQL verification suite has current rollback-only evidence against the configured development schema, but empty-database application evidence and the HTTP Data API two-user RLS matrix remain open.
+- Spring JDBC does not propagate the user JWT into PostgreSQL. The dedicated `rotrack_runtime` role bypasses RLS with only the required application DML, and the authenticated two-user browser flow now proves Spring ownership isolation; direct Data API RLS remains open.
+- Generated ES256/RS256 failure tests cover the production decoder/filter boundary. The authenticated browser flow uses real Supabase sign-in, while a redacted direct token/API evidence record remains open.
+- The Playwright harness has external two-user auth states and a passing authenticated run. Managed-CA startup is locally verified; empty-database apply, direct Data API RLS, fresh signup, dependency-failure readiness, CI, staging, rate limiting, and production observability remain open.
 
 ## 3. Target System Architecture
 
