@@ -89,6 +89,16 @@ python3 - <<'PY'
 import json
 import os
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
+
+def exact_number(value, label):
+    try:
+        number = Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        raise SystemExit(f'{label} is not numeric')
+    if not number.is_finite():
+        raise SystemExit(f'{label} is not finite')
+    return number
 
 budget = json.loads(os.environ['BUDGET_JSON'])
 params = json.load(open(os.environ['FOUNDATION_PARAMETER_FILE'], encoding='utf-8'))['parameters']
@@ -96,7 +106,7 @@ expected_amount = params['budgetAmount']['value']
 expected_start = params['budgetStartDate']['value']
 expected_end = params['budgetEndDate']['value']
 period = budget.get('timePeriod', {})
-if budget.get('amount') != expected_amount or period.get('startDate') != expected_start or period.get('endDate') != expected_end:
+if exact_number(budget.get('amount'), 'budget amount') != exact_number(expected_amount, 'parameter budget amount') or period.get('startDate') != expected_start or period.get('endDate') != expected_end:
     raise SystemExit('budget amount or bounded period does not match foundation parameters')
 start = datetime.strptime(period['startDate'], '%Y-%m-%dT00:00:00Z')
 end = datetime.strptime(period['endDate'], '%Y-%m-%dT00:00:00Z')
@@ -107,7 +117,7 @@ notifications = budget.get('notifications', {})
 expected_emails = set(params['budgetAlertEmails']['value'])
 for key, threshold in (('actual50', 50), ('actual80', 80), ('actual100', 100)):
     item = notifications.get(key, {})
-    if item.get('enabled') is not True or item.get('operator') != 'GreaterThan' or item.get('threshold') != threshold or item.get('thresholdType') != 'Actual' or set(item.get('contactEmails', [])) != expected_emails:
+    if item.get('enabled') is not True or item.get('operator') != 'GreaterThan' or exact_number(item.get('threshold'), f'{key} threshold') != Decimal(str(threshold)) or item.get('thresholdType') != 'Actual' or set(item.get('contactEmails', [])) != expected_emails:
         raise SystemExit(f'missing actual budget alert: {key}')
 PY
 
