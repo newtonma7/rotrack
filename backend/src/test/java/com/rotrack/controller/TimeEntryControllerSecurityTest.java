@@ -2,7 +2,9 @@ package com.rotrack.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -25,8 +27,10 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.BadJwtException;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -71,6 +75,44 @@ class TimeEntryControllerSecurityTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("INVALID_TOKEN"))
                 .andExpect(jsonPath("$.error.message").value("Authentication failed"));
+    }
+
+    @Test
+    void nonApiMutationStillRequiresCsrfToken() throws Exception {
+        UUID userId = UUID.randomUUID();
+
+        mockMvc.perform(post("/future-browser-action")
+                        .with(user(userId.toString()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void apiMutationDoesNotRequireCsrfToken() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID entryId = UUID.randomUUID();
+        TimeEntryDTO started = new TimeEntryDTO(
+                entryId,
+                ActivityType.WORK,
+                Instant.parse("2026-01-01T10:00:00Z"),
+                null,
+                null,
+                null
+        );
+        when(timeEntryService.startSession(userId, ActivityType.WORK, null)).thenReturn(started);
+        Jwt jwt = Jwt.withTokenValue("test-token")
+                .header("alg", "none")
+                .subject(userId.toString())
+                .audience(List.of("authenticated"))
+                .build();
+
+        mockMvc.perform(post("/api/v1/time-entries/start")
+                        .with(authentication(new JwtAuthenticationToken(jwt, List.of())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"activityType\":\"WORK\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.id").value(entryId.toString()));
     }
 
     @Test

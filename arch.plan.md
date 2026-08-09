@@ -187,6 +187,7 @@ Production requirements:
 
 - No permissive HS256 fallback in the production profile.
 - CORS allows only configured frontend origins and required methods/headers.
+- CSRF protection remains enabled by default; the stateless bearer-token API boundary `/api/v1/**` is explicitly exempt because browsers do not attach its `Authorization` header automatically. Any future cookie-authenticated or browser-session route must remain outside this exemption and use an appropriate CSRF-token design.
 - Secrets are injected by the runtime and never stored in committed `.env` files.
 - All public traffic and JDBC connections use TLS.
 - Authentication failures return `401`; authenticated ownership failures use `404` to avoid resource enumeration; authorization-policy failures use `403`.
