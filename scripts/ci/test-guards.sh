@@ -143,6 +143,12 @@ for required in \
   'ROTRACK_PRODUCTION_SUPABASE_PROJECT_REF' \
   'ROTRACK_E2E_APPROVED_FRONTEND_HOST' \
   'ROTRACK_E2E_APPROVED_API_HOST' \
+  'fromjson' \
+  'access_token' \
+  '.user.id' \
+  'map(session)' \
+  'storage states share a user' \
+  'storage states share a token' \
   '.vercel.app' \
   '.azurecontainerapps.io'; do
   if ! grep -qF "$required" "$authenticated_workflow"; then
@@ -156,6 +162,10 @@ if grep -Eq 'disposable-staging|confirm_disposable_staging|STAGING_SUPABASE_REF|
 fi
 if grep -Eq '^  (workflow_dispatch|pull_request|pull_request_target|push|schedule|workflow_run|workflow_call):' "$authenticated_workflow"; then
   printf 'Authenticated workflow has an untrusted or automatic trigger.\n' >&2
+  exit 1
+fi
+if grep -q 'cmp -s' "$authenticated_workflow"; then
+  printf 'Authenticated workflow must compare parsed Supabase identities, not storage-state bytes.\n' >&2
   exit 1
 fi
 

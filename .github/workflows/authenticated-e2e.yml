@@ -152,24 +152,37 @@ jobs:
           trap 'exit 1' HUP INT TERM
           printf '%s' "$USER_A_STATE" > "$state_dir/user-a.json"
           printf '%s' "$USER_B_STATE" > "$state_dir/user-b.json"
-          for state in "$state_dir/user-a.json" "$state_dir/user-b.json"; do
-            jq -e \
-              --arg expected_origin "$NONPRODUCTION_ORIGIN" \
-              --arg expected_token "sb-${NONPRODUCTION_SUPABASE_REF}-auth-token" \
-              --arg forbidden_token "sb-${PRODUCTION_SUPABASE_REF}-auth-token" \
-              '(.cookies | type == "array" and length == 0) and
-               (.origins | type == "array" and length == 1) and
-               (.origins[0].origin == $expected_origin) and
-               (.origins[0].localStorage | type == "array" and length == 1) and
-               (.origins[0].localStorage[0].name == $expected_token) and
-               (.origins[0].localStorage[0].name != $forbidden_token) and
-               (.origins[0].localStorage[0].value | type == "string")' \
-              "$state" >/dev/null
-          done
-          if cmp -s "$state_dir/user-a.json" "$state_dir/user-b.json"; then
-            echo "User A and User B storage states must be distinct." >&2
-            exit 1
-          fi
+          # Parse only the allowlisted Supabase session value. The jq result is
+          # discarded, so neither bearer token nor extracted user identity can
+          # enter command arguments, logs, or workflow output.
+          jq -e -s \
+            --arg expected_origin "$NONPRODUCTION_ORIGIN" \
+            --arg expected_token "sb-${NONPRODUCTION_SUPABASE_REF}-auth-token" \
+            --arg forbidden_token "sb-${PRODUCTION_SUPABASE_REF}-auth-token" \
+            '
+            def require($ok; $message):
+              if $ok then . else error($message) end;
+            def session:
+              require((.cookies | type == "array" and length == 0); "invalid cookies")
+              | require((.origins | type == "array" and length == 1); "invalid origins")
+              | require((.origins[0].origin == $expected_origin); "unexpected origin")
+              | require((.origins[0].localStorage | type == "array" and length == 1); "invalid localStorage")
+              | require((.origins[0].localStorage[0].name == $expected_token); "unexpected auth key")
+              | require((.origins[0].localStorage[0].name != $forbidden_token); "production auth key")
+              | .origins[0].localStorage[0].value
+              | if type == "string" then . else error("session value is not a string") end
+              | try fromjson catch error("session value is not valid JSON")
+              | require((type == "object"); "session value is not an object")
+              | require((.access_token | type == "string" and length > 0); "session access token is empty")
+              | require((.user | type == "object"); "session user is missing")
+              | require((.user.id | type == "string" and length > 0); "session user id is empty")
+              | { user_id: .user.id, access_token: .access_token };
+            map(session) as $states
+            | require(($states | length == 2); "two storage states are required")
+            | require(($states[0].user_id != $states[1].user_id); "storage states share a user")
+            | require(($states[0].access_token != $states[1].access_token); "storage states share a token")
+            | true
+            ' "$state_dir/user-a.json" "$state_dir/user-b.json" >/dev/null
 
           PLAYWRIGHT_JSON_OUTPUT_FILE="$state_dir/playwright-results.json" \
           ROTRACK_E2E_BASE_URL="$BASE_URL" \
