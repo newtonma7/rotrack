@@ -15,6 +15,7 @@ concurrency:
 jobs:
   authenticated-e2e-protected:
     name: Authenticated E2E (protected non-production)
+    if: ${{ vars.ROTRACK_AUTHENTICATED_E2E_ENABLED == 'true' }}
     runs-on: ubuntu-24.04
     # Remote prerequisite: configure reviewers and branch restrictions on this
     # environment before adding any of the secrets referenced below.
