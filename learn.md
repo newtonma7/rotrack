@@ -155,7 +155,7 @@ Use these questions to review the completed baseline phases and understand the i
 10. Which risks do required automated checks, administrator-enforced branch protection, and blocked force pushes reduce for a solo maintainer—and which compromised-account risk do they not eliminate?
 11. Why does keeping GitHub auth secrets empty and running disposable authenticated E2E from a trusted local context provide a safer solo-maintainer equivalent than pretending self-approval is independent review?
 12. What did temporary public PR #17 prove about the reconciled scanner configuration? The five CI contexts and three default-setup `Analyze` contexts all appeared and succeeded, while the checked-in advanced `CodeQL (java)` and `CodeQL (javascript-typescript)` jobs failed because default setup rejects advanced SARIF; removing the advanced workflow leaves default setup as the sole scanner.
-13. Why does M3.1 remain **Implemented—unverified** after PR #17? A green required-check run proves contexts are wired and pass, but not that a deliberately failing required check blocks merging; that separate failure case must still be observed.
+13. Why did PR #17 alone leave M3.1 **Implemented—unverified**, and what closed the gap? PR #17 proved the eight required contexts could pass but did not test enforcement. PR #19 deliberately failed the required `Frontend` context with a temporary TypeScript type error; its open metadata reported `mergeStateStatus: BLOCKED`, completing the hosted-green plus deliberate-red evidence needed to mark M3.1 **Verified**.
 
 ## M3.2 — Backend container and deployment artifact
 

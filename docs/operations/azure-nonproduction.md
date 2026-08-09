@@ -18,7 +18,7 @@ The platform owner authorized and the coordinator observed:
 - one Vercel Preview deployment built successfully with the non-production Supabase values and ACA API URL. Vercel SSO protection remains enabled; no automation-bypass secret remains configured;
 - after a local-only unreachable-object finding, the non-production runtime database password was rotated, the prior password was rejected, local health/readiness passed, and the existing ACA configuration was redeployed and restarted; post-restart HTTPS health/readiness and deployment readback passed.
 
-Production resources and `rotrack-prod` were not created, changed, migrated, or queried by this procedure. Public GitHub visibility, `main` protection, exact required contexts, `nonproduction` protected-main policy, empty auth-secret inventories, absent/default-disabled `ROTRACK_AUTHENTICATED_E2E_ENABLED`, and public-repo security features are separately read back. One preliminary scale-from-zero health wake-up completed in 28.185 seconds; nine more trials and readiness p95/maximum are required. This checkpoint does **not** verify authenticated E2E, deliberate required-check blocking, alert delivery, rollback, Supabase logical backup/restore, or production readiness.
+Production resources and `rotrack-prod` were not created, changed, migrated, or queried by this procedure. Public GitHub visibility, `main` protection, exact required contexts, `nonproduction` protected-main policy, empty auth-secret inventories, absent/default-disabled `ROTRACK_AUTHENTICATED_E2E_ENABLED`, and public-repo security features are separately read back. PR #18 supplied hosted-green protected-path evidence; PR #19 supplied deliberate-red required-check blocking evidence, with the required `Frontend` context failing and open PR metadata reporting `mergeStateStatus: BLOCKED`. One preliminary scale-from-zero health wake-up completed in 28.185 seconds; nine more trials and readiness p95/maximum are required. This checkpoint does **not** verify authenticated E2E, alert delivery, rollback, Supabase logical backup/restore, or production readiness.
 
 ## Cost posture
 
@@ -105,12 +105,11 @@ Vercel Preview currently uses Vercel Authentication. Keep it enabled. Do not gen
 
 Before the M3 gate can pass:
 
-1. deliberately fail one currently required check and read back that merge is blocked; do not bypass or merge the temporary verification PR;
-2. keep the read-back `main` protection: pull requests, zero human approvals, strict app-bound required contexts, administrator enforcement, linear history, no force pushes/deletion, and advisory `CODEOWNERS`; keep `nonproduction` restricted to exactly protected `main`;
-3. keep repository/nonproduction/production auth-secret inventories empty, `ROTRACK_AUTHENTICATED_E2E_ENABLED` absent/default-disabled, and the hosted authenticated job administrator-disabled. Run authenticated non-production Playwright 4/4 from a trusted local operator context with disposable external storage states and exact approved frontend/API hosts;
-4. observe log ingestion/redaction and route health, readiness, error, restart, auth, connection, budget, and credit-expiry alerts;
-5. run at least ten scale-from-zero trials;
-6. establish encrypted off-site Supabase logical exports and rehearse restore, or record explicit data-loss risk acceptance;
-7. rehearse exact-digest rollback and restore the intended non-production candidate.
+1. keep the read-back `main` protection: pull requests, zero human approvals, strict app-bound required contexts, administrator enforcement, linear history, no force pushes/deletion, and advisory `CODEOWNERS`; keep `nonproduction` restricted to exactly protected `main`;
+2. keep repository/nonproduction/production auth-secret inventories empty, `ROTRACK_AUTHENTICATED_E2E_ENABLED` absent/default-disabled, and the hosted authenticated job administrator-disabled. Run authenticated non-production Playwright 4/4 from a trusted local operator context with disposable external storage states and exact approved frontend/API hosts;
+3. observe log ingestion/redaction and route health, readiness, error, restart, auth, connection, budget, and credit-expiry alerts;
+4. run at least ten scale-from-zero trials;
+5. establish encrypted off-site Supabase logical exports and rehearse restore, or record explicit data-loss risk acceptance;
+6. rehearse exact-digest rollback and restore the intended non-production candidate.
 
 Production remains stopped until those gates pass and the owner separately authorizes production mutation.

@@ -64,7 +64,8 @@ The first deployed revision exposed a contract defect: the application rejected 
 - Actions restricted to GitHub-owned actions; checked-in actions are full-SHA pinned and a source guard enforces that policy.
 - Public-repo security readback: vulnerability reporting, Dependabot security fixes, secret scanning, and push protection enabled; repository, `nonproduction`, and `production` auth-secret inventories empty; `ROTRACK_AUTHENTICATED_E2E_ENABLED` absent/default-disabled.
 - Default CodeQL setup is the sole chosen scanner with required contexts `Analyze (actions)`, `Analyze (java-kotlin)`, and `Analyze (javascript-typescript)`. The checked-in advanced workflow was removed after temporary public PR #17 proved its `CodeQL (java)` and `CodeQL (javascript-typescript)` jobs fail because default setup rejects advanced SARIF.
-- Temporary PR #17 used a dedicated branch/worktree and one empty credential-free commit. All eight required contexts appeared and succeeded. The draft PR was closed unmerged; its remote branch, local branch, and worktree were removed. The deliberate required-check blocking test remains unperformed, so M3.1 remains **Implemented—unverified**.
+- Historical temporary PR #17 used a dedicated branch/worktree and one empty credential-free commit. All eight required contexts appeared and succeeded; its advanced CodeQL conflict is preserved as historical evidence, and its remote branch, local branch, and worktree were removed.
+- PR #18 passed all eight required contexts and merged through the protected rebase path as `12dfdffb62ee51f6912b290eecc651444e797b90` after removing the conflicting advanced CodeQL workflow. PR #19 used one isolated temporary TypeScript type-error file; required `Frontend` under GitHub Actions app ID `15368` failed with TS2322, the other seven required contexts succeeded, and open PR metadata reported `mergeStateStatus: BLOCKED`. PR #19 was closed unmerged; its remote/local branch, worktree, and temporary file were removed. M3.1 is **Verified**.
 - The product owner approved a solo-maintainer equivalent: required automated checks and protected `main`, no force push/deletion, `CODEOWNERS` advisory, GitHub environment auth secrets empty, and authenticated E2E run from a trusted local operator context. The hosted credentialed job remains administrator-disabled unless a future second reviewer and protected environment are available.
 - After the deeper audit identified three personal-domain author addresses across 59 historical commits, the product owner explicitly chose to retain all three. No user email is present in tracked file content. Future local commits use the GitHub noreply address.
 
@@ -78,11 +79,10 @@ The first deployed revision exposed a contract defect: the application rejected 
 
 ## Open blockers
 
-1. Deliberately fail one currently required check and read back that merge is blocked; do not bypass or merge the test PR.
-2. Keep GitHub environment auth secrets empty and the hosted authenticated job administrator-disabled; run authenticated Playwright 4/4 from a trusted local operator context with disposable external state and exact approved hosts.
-3. Collector redaction sentinel, dashboards, alert routing/delivery, and credit-expiry notification.
-4. Complete the remaining nine scale-from-zero trials and calculate readiness p95/maximum; one preliminary wake-up took 28.185 seconds.
-5. Supabase encrypted logical exports and restore rehearsal, or explicit data-loss risk acceptance.
-6. Exact-digest rollback rehearsal.
+1. Keep GitHub environment auth secrets empty and the hosted authenticated job administrator-disabled; run authenticated Playwright 4/4 from a trusted local operator context with disposable external state and exact approved hosts.
+2. Collector redaction sentinel, dashboards, alert routing/delivery, and credit-expiry notification.
+3. Complete the remaining nine scale-from-zero trials and calculate readiness p95/maximum; one preliminary wake-up took 28.185 seconds.
+4. Supabase encrypted logical exports and restore rehearsal, or explicit data-loss risk acceptance.
+5. Exact-digest rollback rehearsal.
 
 Production remains stopped.

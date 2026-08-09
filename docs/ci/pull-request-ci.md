@@ -22,12 +22,19 @@ chosen scanner: GitHub default CodeQL setup. The checked-in advanced CodeQL
 workflow was removed after temporary PR #17 showed that its `CodeQL (java)` and
 `CodeQL (javascript-typescript)` jobs fail when default setup is enabled.
 
-PR #17 (temporary, credential-free, empty commit) showed all eight required
-contexts appearing and succeeding. Its read-only protection metadata also
+Historical PR #17 (temporary, credential-free, empty commit) showed all eight
+required contexts appearing and succeeding, while also exposing the conflict
+between the removed advanced CodeQL workflow and default setup. PR #18
+(credential-free documentation PR) then showed all eight required contexts
+appearing and succeeding, and merged through the protected rebase path as
+`12dfdffb62ee51f6912b290eecc651444e797b90`. Its read-only protection metadata
 confirmed pull requests, zero human approvals, strict checks, administrator
 enforcement, linear history, no force pushes/deletion, and advisory
-`CODEOWNERS`. M3.1 remains **Implemented—unverified** because a deliberately
-failing required check that blocks merging has not yet been demonstrated.
+`CODEOWNERS`. PR #19 then used one isolated temporary TypeScript type-error file;
+the exact required `Frontend` context failed under GitHub Actions app ID
+`15368`, the other seven required contexts succeeded, and the open PR metadata
+reported `mergeStateStatus: BLOCKED`. PR #19 was closed unmerged and all
+temporary artifacts were removed. M3.1 is **Verified**.
 
 ## CI boundary distinction
 
