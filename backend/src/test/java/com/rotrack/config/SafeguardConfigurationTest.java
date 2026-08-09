@@ -64,6 +64,54 @@ class SafeguardConfigurationTest {
     }
 
     @Test
+    void acceptsExactImageDigestForEnabledStagingLogging() {
+        String digest = "sha256:" + "a".repeat(64);
+
+        new ApplicationContextRunner()
+                .withUserConfiguration(ObservabilityConfiguration.class)
+                .withBean(ObjectMapper.class, ObjectMapper::new)
+                .withPropertyValues(
+                        "rotrack.logging.enabled=true",
+                        "rotrack.logging.environment=staging",
+                        "rotrack.logging.service-version=" + digest
+                )
+                .run(context -> assertThat(context.getStartupFailure()).isNull());
+    }
+
+    @Test
+    void rejectsMalformedDigestPlaceholdersAndColonValues() {
+        String validDigest = "sha256:" + "a".repeat(64);
+        String overlongDigest = validDigest + "0";
+
+        for (String serviceVersion : new String[]{
+                "sha256:" + "a".repeat(63),
+                "sha256:" + "A".repeat(64),
+                "sha256:" + "a".repeat(64) + ":extra",
+                "local",
+                "latest",
+                "unknown",
+                "replace-me",
+                "changeme",
+                "${IMAGE_DIGEST}",
+                "YOUR_IMAGE_DIGEST",
+                overlongDigest,
+                "release:2026"
+        }) {
+            new ApplicationContextRunner()
+                    .withUserConfiguration(ObservabilityConfiguration.class)
+                    .withBean(ObjectMapper.class, ObjectMapper::new)
+                    .withPropertyValues(
+                            "rotrack.logging.enabled=true",
+                            "rotrack.logging.environment=staging",
+                            "rotrack.logging.service-version=" + serviceVersion
+                    )
+                    .run(context -> assertThat(context.getStartupFailure())
+                            .as("service version %s", serviceVersion)
+                            .hasRootCauseInstanceOf(IllegalArgumentException.class));
+        }
+    }
+
+    @Test
     void rejectsUnsafeLogEnvironmentOrReleaseMetadata() {
         new ApplicationContextRunner()
                 .withUserConfiguration(ObservabilityConfiguration.class)

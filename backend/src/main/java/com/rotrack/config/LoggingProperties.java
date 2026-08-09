@@ -1,9 +1,14 @@
 package com.rotrack.config;
 
+import java.util.regex.Pattern;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "rotrack.logging")
 public class LoggingProperties {
+
+    private static final Pattern SERVICE_VERSION_PATTERN = Pattern.compile(
+            "(?:[A-Za-z0-9._-]{1,128}|sha256:[a-f0-9]{64})"
+    );
 
     private boolean enabled;
     private String environment = "staging";
@@ -41,7 +46,7 @@ public class LoggingProperties {
             throw new IllegalArgumentException("rotrack.logging.environment must be staging or production");
         }
         if (serviceVersion == null
-                || !serviceVersion.matches("[A-Za-z0-9._-]{1,128}")
+                || !SERVICE_VERSION_PATTERN.matcher(serviceVersion).matches()
                 || isPlaceholder(serviceVersion)) {
             throw new IllegalArgumentException(
                     "rotrack.logging.service-version must be an explicit immutable release identifier"
