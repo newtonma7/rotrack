@@ -66,3 +66,4 @@ backend/target/
 frontend/playwright-report/
 frontend/test-results/
 .pi-subagents
+.vercel
