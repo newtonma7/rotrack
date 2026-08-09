@@ -5,7 +5,7 @@
 - Operator/reviewer roles: platform owner plus independent read-only agent reviews; private contacts omitted.
 - Explicit non-production authorization: yes.
 - Existing shared non-production Supabase project selected: yes.
-- `rotrack-prod`, Vercel Production, and production Azure resources mutated: no.
+- `rotrack-prod`, Vercel Production deployment/environment values, and production Azure resources mutated: no. A CLI-generated project-wide Vercel automation bypass was removed immediately, restoring zero bypass secrets.
 - Logical GitHub environments exist, but required protection is unavailable while the Free repository is private: open blocker.
 
 ## Artifact and infrastructure
