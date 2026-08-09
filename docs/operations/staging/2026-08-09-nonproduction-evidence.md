@@ -24,10 +24,26 @@
 ## Vercel Preview
 
 - One existing Vercel project used; Preview only.
-- Preview build completed successfully with the three approved `NEXT_PUBLIC_*` names and the ACA `/api/v1` URL.
-- Exact final Preview origin is the only configured ACA CORS origin; an unrelated HTTPS Origin received no allow-origin header.
+- The `READY`, target=`preview` deployment is assigned the stable alias `https://rotrack-newtonma7-7541-newton-mas-projects.vercel.app`.
+- Preview build completed successfully with the three approved `NEXT_PUBLIC_*` names and the non-production ACA `/api/v1` URL; read-only browser-asset inspection confirmed the embedded API mapping.
 - Vercel SSO protection remains enabled. A temporary CLI-generated automation-bypass secret was removed immediately; readback reports zero remaining bypass secrets.
-- Direct anonymous frontend smoke is therefore intentionally blocked by Vercel SSO. Browser-asset target inspection and authenticated E2E remain open.
+- Direct anonymous frontend smoke is therefore intentionally blocked by Vercel SSO. Authenticated E2E remains open.
+
+## CORS correction — 2026-08-09
+
+- Non-production ACA `CORS_ALLOWED_ORIGINS` was changed from the ephemeral Preview deployment URL to the stable Preview alias above. The mode-`0600` private non-production application parameter was reconciled to the same value.
+- The same existing digest/configuration was redeployed through the approved non-production `scripts/azure/app-deploy.sh` path; full secretRef/runtime readback passed. No Vercel alias/environment mutation, Production Vercel mutation, or Production Azure mutation was performed.
+- Exact non-production ACA preflight results using `OPTIONS`, `Origin`, `Access-Control-Request-Method: POST`, and `Access-Control-Request-Headers: authorization,content-type`:
+
+```text
+stable Preview alias: HTTP 200; exact allow-origin present; credentials allowed
+prior ephemeral Preview URL: HTTP 403; no allow-origin header
+Vercel target=production deployment URL: HTTP 403; no allow-origin header
+Vercel Production alias: HTTP 403; no allow-origin header
+```
+
+- Non-production ACA readback showed the stable alias, the corrected latest revision was healthy with 100% latest-revision traffic, and health/readiness returned `200` with `{"status":"ok"}` / `{"status":"ready"}`.
+- Read-only production asset inspection still found the non-production ACA `/api/v1` URL embedded in the target=production deployment. That pre-existing production mapping is not changed here and remains a separate production-release blocker.
 
 ## Fresh-user local acceptance
 
@@ -45,8 +61,8 @@ ACA runtime contract and secretRef readback: passed
 GET /api/v1/health: 200 {"status":"ok"}
 GET /api/v1/readiness: 200 {"status":"ready"}
 HTTP API request: 301 redirect to HTTPS
-Allowed exact Preview CORS origin: allow-origin present
-Unrelated CORS origin: allow-origin absent
+Allowed stable Preview alias CORS origin: HTTP 200 with exact allow-origin and credentials
+Prior ephemeral Preview, target=production deployment, and Production alias CORS origins: HTTP 403 with no allow-origin
 Vercel Preview build: READY
 Preliminary scale-from-zero trial 1/10: health wake-up 28.185s; readiness immediately afterward 0.062s
 ```
