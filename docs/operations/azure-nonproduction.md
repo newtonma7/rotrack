@@ -15,7 +15,8 @@ The platform owner authorized and the coordinator observed:
 - Container App `rotrack-api-nonproduction`, HTTPS-only ingress, port `8080`, scale `0..1`, 30-second termination grace, liveness/readiness probes, exact Vercel Preview CORS, and secrets injected through ACA secret references;
 - an immutable Linux/amd64 OCI-compatible backend image in ACR; deployment readback proved the image digest equals `ROTRACK_SERVICE_VERSION`;
 - `GET /api/v1/health` and `GET /api/v1/readiness` returned `200` after the corrected revision started;
-- one Vercel Preview deployment built successfully with the non-production Supabase values and ACA API URL. Vercel SSO protection remains enabled; no automation-bypass secret remains configured.
+- one Vercel Preview deployment built successfully with the non-production Supabase values and ACA API URL. Vercel SSO protection remains enabled; no automation-bypass secret remains configured;
+- after a local-only unreachable-object finding, the non-production runtime database password was rotated, the prior password was rejected, local health/readiness passed, and the existing ACA configuration was redeployed and restarted; post-restart HTTPS health/readiness and deployment readback passed.
 
 Production resources and `rotrack-prod` were not created, changed, migrated, or queried by this procedure. One preliminary scale-from-zero health wake-up completed in 28.185 seconds; nine more trials and readiness p95/maximum are required. This checkpoint does **not** verify hosted GitHub protections, authenticated E2E, alert delivery, rollback, Supabase logical backup/restore, or production readiness.
 
@@ -41,7 +42,9 @@ Populated parameter files stay outside Git under `~/.config/rotrack/azure/`:
 - foundation parameters: mode `0400`;
 - application/runtime parameters: mode `0600`.
 
-Never print or commit database credentials, CA PEM, Supabase project refs, JWT settings, Vercel tokens, browser storage state, subscription/tenant IDs, or populated parameter files. Local ignored `.env` files must be owner-readable only.
+Never print or commit database credentials, CA PEM, Supabase project refs, JWT settings, Vercel tokens, browser storage state, subscription/tenant/resource IDs, operator contact details, alert destinations, or populated parameter files. Keep the exact provider inventory and credential-rotation record in an access-controlled operator system outside Git. Local ignored `.env` files must be owner-readable only.
+
+Treat this runbook and the infrastructure source as public information: authorization, least privilege, exact target validation, and provider controls must remain secure even when every checked-in command and resource label is known. Repository secrecy is not a substitute for those controls.
 
 ## Validate source without mutating Azure
 
@@ -102,8 +105,8 @@ Vercel Preview currently uses Vercel Authentication. Keep it enabled. Do not gen
 
 Before the M3 gate can pass:
 
-1. deliberately make the repository public or upgrade GitHub; the product owner has already chosen to retain historical author metadata;
-2. protect `main`, require the named CI/CodeQL checks and code-owner review, and restrict the `nonproduction` environment to protected `main` with a required reviewer;
+1. choose the solo-maintainer protection policy, then deliberately make the repository public or upgrade GitHub only after this audit is closed; the product owner explicitly retained all three historical personal-domain author addresses;
+2. protect `main`, require the named CI/CodeQL checks, and restrict the `nonproduction` environment to protected `main`; no second human reviewer is currently available, so CODEOWNERS/environment approval remains an explicit release blocker unless an independently reviewed solo-maintainer equivalent is approved;
 3. configure exact approved frontend/API host variables and only then add disposable authenticated-E2E secrets;
 4. retain the completed operator-attested fresh first-sign-in evidence, then run authenticated non-production Playwright 4/4 after GitHub protection, approved host variables, and environment secrets are configured;
 5. observe log ingestion/redaction and route health, readiness, error, restart, auth, connection, budget, and credit-expiry alerts;

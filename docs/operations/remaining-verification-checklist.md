@@ -9,6 +9,13 @@ Use this checklist to finish the current disposable development database verific
 - Use disposable test users and database rows only.
 - Database verification tests roll back their probe data. Still confirm the target is disposable before running them.
 - Do not change grants or roles in production.
+- Set local paths explicitly instead of copying a developer-specific home directory:
+
+```bash
+export REPO_ROOT='/absolute/path/to/rotrack'
+export JAVA_HOME='/absolute/path/to/java-21'
+export PATH="$JAVA_HOME/bin:$PATH"
+```
 
 ## Verification status — 2026-08-09
 
@@ -201,10 +208,10 @@ export ROTRACK_TEST_DATABASE_PASSWORD='rotrack-test-only'
 export ROTRACK_TEST_DATABASE_ISOLATED='true'
 export ROTRACK_TEST_DATABASE_MODE='apply'
 
-export JAVA_HOME=/home/newton/.local/jdk-21.0.12+8
-export PATH="$JAVA_HOME/bin:$PATH"
+test -d "$REPO_ROOT/backend"
+test -x "$JAVA_HOME/bin/java"
 
-cd /home/newton/dev/rotrack/backend
+cd "$REPO_ROOT/backend"
 mvn -Drotrack.postgres.integration=true \
   -Dtest=PostgresMigrationIntegrationTest \
   test
@@ -230,13 +237,10 @@ docker stop rotrack-postgres-test
 ### Backend
 
 ```bash
-cd /home/newton/dev/rotrack
+cd "$REPO_ROOT"
 set -a
 source backend/.env
 set +a
-
-export JAVA_HOME=/home/newton/.local/jdk-21.0.12+8
-export PATH="$JAVA_HOME/bin:$PATH"
 
 cd backend
 mvn spring-boot:run
@@ -244,10 +248,10 @@ mvn spring-boot:run
 
 ### Frontend
 
-In a second terminal:
+In a second terminal with `REPO_ROOT` set:
 
 ```bash
-cd /home/newton/dev/rotrack/frontend
+cd "$REPO_ROOT/frontend"
 npm ci
 npm run dev
 ```
@@ -339,7 +343,7 @@ export ROTRACK_E2E_USER_B_STORAGE_STATE="$HOME/.local/state/rotrack-e2e/user-b.j
 For User A:
 
 ```bash
-cd /home/newton/dev/rotrack/frontend
+cd "$REPO_ROOT/frontend"
 npx playwright codegen \
   --save-storage="$ROTRACK_E2E_USER_A_STORAGE_STATE" \
   "$ROTRACK_E2E_BASE_URL/signin"
@@ -370,7 +374,7 @@ Never print, open, commit, or send these JSON files.
 ## 9. Run the authenticated browser suite
 
 ```bash
-cd /home/newton/dev/rotrack/frontend
+cd "$REPO_ROOT/frontend"
 ROTRACK_E2E_REQUIRE_AUTH=1 npm run e2e
 ```
 
@@ -390,7 +394,7 @@ The scenarios cover:
 Frontend:
 
 ```bash
-cd /home/newton/dev/rotrack/frontend
+cd "$REPO_ROOT/frontend"
 npm ci
 npm audit --audit-level=high
 npm run lint
@@ -403,10 +407,7 @@ ROTRACK_E2E_REQUIRE_AUTH=1 npm run e2e
 Backend:
 
 ```bash
-export JAVA_HOME=/home/newton/.local/jdk-21.0.12+8
-export PATH="$JAVA_HOME/bin:$PATH"
-
-cd /home/newton/dev/rotrack/backend
+cd "$REPO_ROOT/backend"
 mvn clean test
 mvn package
 ```
@@ -414,7 +415,7 @@ mvn package
 Then run:
 
 ```bash
-cd /home/newton/dev/rotrack
+cd "$REPO_ROOT"
 git diff --check
 git status --short
 ```

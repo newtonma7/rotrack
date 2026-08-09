@@ -55,22 +55,33 @@ The first deployed revision exposed a contract defect: the application rejected 
 
 ## GitHub/public-readiness evidence
 
-- Full reachable/side/unreachable history Gitleaks scans: no leaks found.
-- Tracked tree: no `.env`, browser storage state, private key, certificate, or build output.
+- Full reachable history, remote mirror, prospective candidate, and post-cleanup unreachable-object scans found no retained leaks. The remote mirror covered all current remote refs and branches.
+- Tracked tree: no `.env`, browser storage state, private key, certificate, user email, live provider hostname, cloud account/project identifier, or build output.
+- The public-readiness audit removed the stale `CHAT_PROMPT.md` artifact and generalized developer-specific absolute paths.
+- One local-only unreachable Git object contained populated non-production database configuration. It was absent from all refs/reflogs and the GitHub object API, then was purged by exact object ID without exposing its values. Because a read-only audit processed that object, rotate the non-production runtime database password and update its consumers before public visibility.
 - One-off dependency check: checksum-verified OSV Scanner `2.5.0` ran `scan source --recursive` over the repository while excluding `node_modules`, `target`, and `.next`; exit `0`, zero result groups/findings. Frontend `npm audit --audit-level=high` also passed. Recurring backend dependency scanning is still absent and remains a publication follow-up.
 - Dependabot alerts and automated security fixes enabled; open Dependabot alerts: zero at readback.
 - Actions restricted to GitHub-owned actions; checked-in actions are full-SHA pinned and a source guard enforces that policy.
 - CodeQL source is configured to run only when the repository becomes public.
-- The product owner chose to retain the historical author metadata, including its personal-domain author email. Future local commits use the GitHub noreply address; historical metadata rewriting is no longer a blocker.
+- After the deeper audit identified three personal-domain author addresses across 59 historical commits, the product owner explicitly chose to retain all three. No user email is present in tracked file content. Future local commits use the GitHub noreply address.
+
+## Credential rotation after public-readiness audit
+
+- A local-only unreachable Git object containing populated non-production database configuration was absent from refs, reflogs, the remote mirror, and the GitHub object API, then purged by exact object ID.
+- The product owner authorized non-production rotation and Azure redeployment. The runtime database password was changed without printing it; the new password authenticated and the old password failed.
+- The ignored local backend environment and external mode-`0600` Azure application parameter file were updated. The local backend returned health/readiness `200`.
+- The existing immutable non-production Container App configuration was redeployed and its active revision restarted so it could not retain the prior secret. Post-restart HTTPS health/readiness returned `200`; digest/service-version, secret references, HTTPS ingress, probes, and scale readback still passed.
+- Temporary private rollback copies were securely removed after verification. No production resource, credential, database, or deployment was queried or mutated.
 
 ## Open blockers
 
-1. Deliberate public-or-paid GitHub protection transition; historical author metadata will be retained.
-2. Required `main` checks/code-owner review and `nonproduction` reviewer/branch restrictions.
-3. Exact GitHub host variables and disposable storage-state secrets, then authenticated Playwright 4/4.
-4. Collector redaction sentinel, dashboards, alert routing/delivery, and credit-expiry notification.
-5. Complete the remaining nine scale-from-zero trials and calculate readiness p95/maximum; one preliminary wake-up took 28.185 seconds.
-6. Supabase encrypted logical exports and restore rehearsal, or explicit data-loss risk acceptance.
-7. Exact-digest rollback rehearsal.
+1. Decide the solo-maintainer protection policy: no second human reviewer is currently available, so required CODEOWNERS/environment approval cannot yet be verified.
+2. Deliberate public-or-paid GitHub protection transition.
+3. Required `main` checks and `nonproduction` branch restrictions; add reviewer requirements only when a second trusted reviewer exists.
+4. Exact GitHub host variables and disposable storage-state secrets, then authenticated Playwright 4/4.
+5. Collector redaction sentinel, dashboards, alert routing/delivery, and credit-expiry notification.
+6. Complete the remaining nine scale-from-zero trials and calculate readiness p95/maximum; one preliminary wake-up took 28.185 seconds.
+7. Supabase encrypted logical exports and restore rehearsal, or explicit data-loss risk acceptance.
+8. Exact-digest rollback rehearsal.
 
 Production remains stopped.
