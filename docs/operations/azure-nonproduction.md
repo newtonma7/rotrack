@@ -105,13 +105,12 @@ Vercel Preview currently uses Vercel Authentication. Keep it enabled. Do not gen
 
 Before the M3 gate can pass:
 
-1. choose the solo-maintainer protection policy, then deliberately make the repository public or upgrade GitHub only after this audit is closed; the product owner explicitly retained all three historical personal-domain author addresses;
-2. protect `main`, require the named CI/CodeQL checks, and restrict the `nonproduction` environment to protected `main`; no second human reviewer is currently available, so CODEOWNERS/environment approval remains an explicit release blocker unless an independently reviewed solo-maintainer equivalent is approved;
-3. configure exact approved frontend/API host variables and only then add disposable authenticated-E2E secrets;
-4. retain the completed operator-attested fresh first-sign-in evidence, then run authenticated non-production Playwright 4/4 after GitHub protection, approved host variables, and environment secrets are configured;
-5. observe log ingestion/redaction and route health, readiness, error, restart, auth, connection, budget, and credit-expiry alerts;
-6. run at least ten scale-from-zero trials;
-7. establish encrypted off-site Supabase logical exports and rehearse restore, or record explicit data-loss risk acceptance;
-8. rehearse exact-digest rollback and restore the intended non-production candidate.
+1. deliberately make the repository public only after this audit is closed; the product owner explicitly retained all three historical personal-domain author addresses and approved the solo-maintainer equivalent;
+2. protect `main` with pull requests and named CI/CodeQL checks applied to administrators, block force pushes/deletion, and restrict `nonproduction` to protected `main`; `CODEOWNERS` remains advisory;
+3. keep GitHub auth secrets empty and the hosted authenticated job administrator-disabled. Run authenticated non-production Playwright 4/4 from a trusted local operator context with disposable external storage states and exact approved frontend/API hosts;
+4. observe log ingestion/redaction and route health, readiness, error, restart, auth, connection, budget, and credit-expiry alerts;
+5. run at least ten scale-from-zero trials;
+6. establish encrypted off-site Supabase logical exports and rehearse restore, or record explicit data-loss risk acceptance;
+7. rehearse exact-digest rollback and restore the intended non-production candidate.
 
 Production remains stopped until those gates pass and the owner separately authorizes production mutation.

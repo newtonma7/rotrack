@@ -34,7 +34,7 @@ No pause alert, resume operation, export retention, backup configuration, PITR, 
 
 ## Required logical environment inputs
 
-Keep populated values in the approved GitHub Environment or an operator-owned secret store; do not commit them.
+Keep populated values in an operator-owned secret store outside Git. Under the approved solo-maintainer equivalent, GitHub auth secrets remain empty; only public non-secret variables may be environment-scoped after protection is read back.
 
 Non-production (`nonproduction`):
 
@@ -101,9 +101,9 @@ Include revision overlap when a rollout can run old and new replicas together. R
 
 ## Vercel and GitHub integration
 
-Use one Vercel project. Let ordinary branch/PR deployments use Vercel Preview with the `nonproduction` GitHub environment's public values. GitHub/ACA `nonproduction` maps to runtime/telemetry label `staging`; production maps to `production`. Because `NEXT_PUBLIC_*` values are embedded at build time, do not promote Preview bytes to Production. Build Vercel Production from the same reviewed source commit under the `production` GitHub environment, record its separate immutable deployment provenance, and verify its production-scoped values. Do not create or document a dedicated staging project.
+Use one Vercel project. Let ordinary branch/PR deployments use Vercel Preview with Preview-scoped public values. GitHub/ACA `nonproduction` maps to runtime/telemetry label `staging`; production maps to `production`. Because `NEXT_PUBLIC_*` values are embedded at build time, do not promote Preview bytes to Production. Build Vercel Production from the same reviewed source commit under production-scoped values, record its separate immutable deployment provenance, and verify those values. Do not create or document a dedicated staging project.
 
-Both GitHub environments must have protected approvals and separately scoped secrets/variables before they are treated as release controls. The names `nonproduction` and `production` are logical boundaries; their settings are not asserted here.
+Under the approved solo-maintainer equivalent, public `main` requires automated checks and blocks force pushes/deletion; logical `nonproduction` is restricted to protected `main`, `CODEOWNERS` is advisory, GitHub auth secrets remain empty, and authenticated E2E runs from a trusted local operator context. A future credentialed hosted workflow or production deployment requires separately approved controls. The environment names are logical boundaries; their settings are not asserted here.
 
 The Preview and Production frontend values must point to the matching Supabase project and API. The backend CORS allowlist must contain exact approved HTTPS origins; do not use a wildcard or assume every Vercel preview URL is trusted. If multiple Preview origins are needed, approve them explicitly and include them in the non-production contract without exposing production.
 

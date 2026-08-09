@@ -83,23 +83,16 @@ will not connect to a non-loopback host.
 
 ## Protected authenticated E2E
 
-Authenticated external-auth Playwright is **not** part of pull-request CI. The candidate `.github/workflows/authenticated-e2e.yml` uses `repository_dispatch` type `rotrack-authenticated-e2e`, which GitHub resolves from the trusted default branch; it is not the hosted workflow until these reviewed commits are pushed. The fixed non-secret payload confirmation is `nonproduction-authenticated-e2e-only`.
+Authenticated external-auth Playwright is **not** part of pull-request CI. `.github/workflows/authenticated-e2e.yml` uses `repository_dispatch` type `rotrack-authenticated-e2e`, which GitHub resolves from the trusted default branch. The fixed non-secret payload confirmation is `nonproduction-authenticated-e2e-only`. A job-level check of administrator-controlled variable `ROTRACK_AUTHENTICATED_E2E_ENABLED` defaults the job off before GitHub assigns a runner, evaluates the protected environment, or exposes secrets.
 
-Before adding any authenticated values, make the repository public or use a plan that supports the required controls, protect `main`, and configure logical environment `nonproduction` with a required reviewer and a deployment-branch restriction to protected `main`. Read back those controls. Then configure only environment-scoped:
+The product owner approved a solo-maintainer equivalent because no second human reviewer is currently available. Under this policy:
 
-- variables `ROTRACK_E2E_APPROVED_FRONTEND_HOST` and `ROTRACK_E2E_APPROVED_API_HOST`, copied from authoritative Vercel Preview/ACA readback;
-- secrets `ROTRACK_E2E_BASE_URL` and `ROTRACK_E2E_EXPECTED_API_URL`;
-- distinct `ROTRACK_NONPRODUCTION_SUPABASE_PROJECT_REF` and `ROTRACK_PRODUCTION_SUPABASE_PROJECT_REF` identities;
-- `ROTRACK_E2E_USER_A_STORAGE_STATE_JSON` and `ROTRACK_E2E_USER_B_STORAGE_STATE_JSON` for two distinct disposable non-production users.
+- protect public `main` with pull requests and required CI/CodeQL checks, apply the rules to administrators, and block force pushes/deletion;
+- restrict logical environment `nonproduction` to protected `main`;
+- keep `ROTRACK_AUTHENTICATED_E2E_ENABLED` unset and all GitHub environment/repository auth secrets empty;
+- treat `CODEOWNERS` as advisory rather than claim an impossible self-approval;
+- run authenticated non-production Playwright from a trusted local operator context with disposable users and storage states outside Git, binding the exact approved Vercel Preview/ACA hosts and requiring four passes with no skips, unexpected targets, or flaky results.
 
-Never configure personal or production user state in this environment. The workflow permits only the exact approved `.vercel.app` / `.azurecontainerapps.io` hosts, zero cookies, one exact frontend origin, and one matching non-production Supabase token entry per storage state. It parses the Supabase session JSON and requires distinct nonempty user IDs and access tokens, then exactly four passed tests with zero skipped/unexpected/flaky results, removes all temporary state/output, disables trace/video, and forbids artifact upload. The Azure adapter and workflow now match the two-project topology; legacy AWS files under `deploy/staging/` are not the active path.
+The dormant hosted workflow retains exact `.vercel.app` / `.azurecontainerapps.io` host validation, distinct non-production/production project identities, distinct user IDs/access tokens, temporary-state cleanup, disabled trace/video, and no artifact upload. Do not enable it or configure its variables/secrets without a second trusted reviewer and independently read-back environment approval. Personal or production user state is forbidden.
 
-Environment approval, branch protection, a real GitHub-hosted run, and external
-non-production availability cannot be validated from a local checkout. Treat
-`nonproduction` and `production` as existing logical GitHub environments whose
-protection settings still require independent observation. Required reviewers, branch restrictions,
-and environment-secret availability depend on repository visibility and plan; verify
-them against the [GitHub Environments documentation](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments). If the required controls are unavailable, production remains stopped until the plan/visibility changes or an independently reviewed equivalent gate is approved. Credential-free PR CI remains isolated
-from hosted Supabase; only approved environment-scoped authenticated E2E may use
-disposable users/data in the shared non-production project. Treat each as a
-release-side requirement, not as evidence supplied by these files.
+Branch protection and external non-production availability cannot be validated from a local checkout. Read back available controls against the [GitHub Environments documentation](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments). Credential-free PR CI remains isolated from hosted Supabase. Production remains stopped until all release-side requirements are observed; source files alone are not evidence.

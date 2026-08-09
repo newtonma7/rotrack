@@ -39,8 +39,8 @@ The immediate stage is operational verification and the remaining production saf
 - Open a pull request and record all required credential-free checks passing.
 - Deliberately make one required check fail on a disposable branch/commit and verify merge is blocked; restore the green state afterward.
 - Configure and verify branch protection for the documented required check names.
-- Preserve the trusted-default-branch `repository_dispatch` boundary for authenticated E2E. Do not add storage-state secrets until public/paid `main` and `nonproduction` protections, exact approved host variables, and a required reviewer are configured and read back.
-- After Lane B supplies the explicit non-production frontend/API pair, verify the environment's required reviewers and branch restrictions, then run the authenticated job only against that pair; require exactly four passed tests and no skips, flaky results, or unexpected API targets.
+- Preserve the trusted-default-branch `repository_dispatch` boundary and administrator-controlled default-disabled job gate for authenticated E2E. Under the approved solo-maintainer equivalent, keep the enable variable unset and GitHub environment secrets empty; do not weaken this boundary to compensate for the missing second reviewer.
+- After Lane B supplies the explicit non-production frontend/API pair, run authenticated E2E from a trusted local operator context using disposable external storage states and exact approved hosts; require exactly four passed tests and no skips, flaky results, or unexpected API targets. A future hosted credentialed run requires a second trusted reviewer and independently read-back environment protection before enabling the job or adding secrets.
 
 **Done when:** Hosted green and deliberate-red evidence and required-check enforcement are recorded; after Lane B is deployed, protected-environment restrictions and the authenticated staging run are also recorded with URLs/identifiers that reveal no secrets.
 

@@ -17,8 +17,9 @@ jobs:
     name: Authenticated E2E (protected non-production)
     if: ${{ vars.ROTRACK_AUTHENTICATED_E2E_ENABLED == 'true' }}
     runs-on: ubuntu-24.04
-    # Remote prerequisite: configure reviewers and branch restrictions on this
-    # environment before adding any of the secrets referenced below.
+    # Solo-maintainer policy keeps this job disabled and environment secrets
+    # empty. A future hosted credentialed run requires a second trusted reviewer
+    # and independently verified environment protection before enablement.
     environment: nonproduction
     steps:
       - name: Require explicit non-production payload confirmation

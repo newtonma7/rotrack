@@ -58,11 +58,12 @@ The first deployed revision exposed a contract defect: the application rejected 
 - Full reachable history, remote mirror, prospective candidate, and post-cleanup unreachable-object scans found no retained leaks. The remote mirror covered all current remote refs and branches.
 - Tracked tree: no `.env`, browser storage state, private key, certificate, user email, live provider hostname, cloud account/project identifier, or build output.
 - The public-readiness audit removed the stale `CHAT_PROMPT.md` artifact and generalized developer-specific absolute paths.
-- One local-only unreachable Git object contained populated non-production database configuration. It was absent from all refs/reflogs and the GitHub object API, then was purged by exact object ID without exposing its values. Because a read-only audit processed that object, rotate the non-production runtime database password and update its consumers before public visibility.
+- One local-only unreachable Git object contained populated non-production database configuration. It was absent from all refs/reflogs and the GitHub object API, then was purged by exact object ID without exposing its values. The non-production runtime password and consumers were subsequently rotated and verified below.
 - One-off dependency check: checksum-verified OSV Scanner `2.5.0` ran `scan source --recursive` over the repository while excluding `node_modules`, `target`, and `.next`; exit `0`, zero result groups/findings. Frontend `npm audit --audit-level=high` also passed. Recurring backend dependency scanning is still absent and remains a publication follow-up.
 - Dependabot alerts and automated security fixes enabled; open Dependabot alerts: zero at readback.
 - Actions restricted to GitHub-owned actions; checked-in actions are full-SHA pinned and a source guard enforces that policy.
 - CodeQL source is configured to run only when the repository becomes public.
+- The product owner approved a solo-maintainer equivalent: required automated checks and protected `main`, no force push/deletion, `CODEOWNERS` advisory, GitHub environment auth secrets empty, and authenticated E2E run from a trusted local operator context. The hosted credentialed job remains administrator-disabled unless a future second reviewer and protected environment are available.
 - After the deeper audit identified three personal-domain author addresses across 59 historical commits, the product owner explicitly chose to retain all three. No user email is present in tracked file content. Future local commits use the GitHub noreply address.
 
 ## Credential rotation after public-readiness audit
@@ -75,13 +76,12 @@ The first deployed revision exposed a contract defect: the application rejected 
 
 ## Open blockers
 
-1. Decide the solo-maintainer protection policy: no second human reviewer is currently available, so required CODEOWNERS/environment approval cannot yet be verified.
-2. Deliberate public-or-paid GitHub protection transition.
-3. Required `main` checks and `nonproduction` branch restrictions; add reviewer requirements only when a second trusted reviewer exists.
-4. Exact GitHub host variables and disposable storage-state secrets, then authenticated Playwright 4/4.
-5. Collector redaction sentinel, dashboards, alert routing/delivery, and credit-expiry notification.
-6. Complete the remaining nine scale-from-zero trials and calculate readiness p95/maximum; one preliminary wake-up took 28.185 seconds.
-7. Supabase encrypted logical exports and restore rehearsal, or explicit data-loss risk acceptance.
-8. Exact-digest rollback rehearsal.
+1. Deliberate public GitHub transition and immediate remote readback of the approved solo-maintainer controls.
+2. Required pull requests and CI/CodeQL checks on `main`, applied to administrators with force pushes/deletion blocked; `nonproduction` restricted to protected `main` and `CODEOWNERS` advisory.
+3. Keep GitHub environment auth secrets empty and the hosted authenticated job administrator-disabled; run authenticated Playwright 4/4 from a trusted local operator context with disposable external state and exact approved hosts.
+4. Collector redaction sentinel, dashboards, alert routing/delivery, and credit-expiry notification.
+5. Complete the remaining nine scale-from-zero trials and calculate readiness p95/maximum; one preliminary wake-up took 28.185 seconds.
+6. Supabase encrypted logical exports and restore rehearsal, or explicit data-loss risk acceptance.
+7. Exact-digest rollback rehearsal.
 
 Production remains stopped.

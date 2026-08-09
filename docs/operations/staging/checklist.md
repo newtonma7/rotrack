@@ -11,7 +11,7 @@ Use [`deploy/staging/README.md`](../../../deploy/staging/README.md) for the targ
 - [x] Record change owner, non-production authorization, window, teardown owner, and approval outside Git. (2026-08-09)
 - [x] Select exactly the existing shared non-production Supabase project. Do not create or select a third project.
 - [x] Select Vercel Preview in the one approved Vercel project; do not select a dedicated staging project.
-- [ ] Confirm the logical GitHub environment is `nonproduction` and its protected variables/secrets are scoped to non-production. Read back repository visibility/plan and required-reviewer/branch/environment-secret support; if required controls are unavailable, production remains stopped until the plan changes or an independently reviewed equivalent gate is approved.
+- [ ] Confirm public `main` has the approved solo-maintainer rules applied to administrators: pull requests, required CI/CodeQL checks, and no force push/deletion. Confirm logical GitHub environment `nonproduction` is restricted to protected `main`, GitHub auth secrets are empty, and `CODEOWNERS` is advisory.
 - [x] Confirm Azure subscription, managed environment `rotrack-nonproduction-env`, resource group `rotrack-nonproduction`, and Container App `rotrack-api-nonproduction` from authoritative readback. The managed environment is the Azure security boundary and is not shared with production.
 - [x] Confirm every selected identity is non-production and no production user, secret, API URL, database host, or browser state is selected.
 - [ ] Confirm disposable non-production users/data and a teardown date.
@@ -70,7 +70,7 @@ Stop immediately on an identity mismatch. Never change the expected production o
 ## 4. Vercel Preview and GitHub environment
 
 - [x] Confirm the one Vercel project and select its built-in Preview environment; do not create a staging project.
-- [ ] Confirm the logical GitHub `nonproduction` environment has required approval/branch restrictions and non-production-only values. Settings are external evidence.
+- [ ] Confirm logical GitHub `nonproduction` is restricted to protected `main` and has no auth secrets. Run authenticated E2E from a trusted local operator context with disposable external state; do not claim required human approval under the solo-maintainer policy. Settings and the local 4/4 result are external evidence.
 - [x] Configure only the three frontend names: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_KEY`, and `NEXT_PUBLIC_API_URL` for Preview.
 - [x] Confirm the local deployment inputs use one consistent shared non-production Supabase project and set Preview API URL to the ACA `/api/v1` endpoint; browser-asset target inspection remains open.
 - [x] Build/deploy a Preview and confirm backend CORS allows only the exact final HTTPS Preview origin and omits the header for an unrelated origin.

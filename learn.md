@@ -152,6 +152,8 @@ Use these questions to review the completed baseline phases and understand the i
 7. Why are historical author-email privacy and future GitHub noreply configuration separate decisions, and why would rewriting the former require explicit approval?
 8. What does scheduled Dependabot coverage prove, and what remains unproven about review and merge policy?
 9. Why do one-time Gitleaks and OSV scans not replace recurring secret and backend dependency scanning?
+10. Which risks do required automated checks, administrator-enforced branch protection, and blocked force pushes reduce for a solo maintainer—and which compromised-account risk do they not eliminate?
+11. Why does keeping GitHub auth secrets empty and running disposable authenticated E2E from a trusted local context provide a safer solo-maintainer equivalent than pretending self-approval is independent review?
 
 ## M3.2 — Backend container and deployment artifact
 
