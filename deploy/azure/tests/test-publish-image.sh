@@ -53,7 +53,7 @@ elif [ "${1:-}" = identity ]; then
   printf '%s\n' fake-principal-id
 elif [ "${1:-}" = role ] && [ "${2:-}" = assignment ]; then
   printf '%s\n' '[{"roleDefinitionId":"/subscriptions/sub/providers/Microsoft.Authorization/roleDefinitions/7f951dda-4ed3-4680-a7ca-43fe172d538d","scope":"/subscriptions/sub/resourceGroups/rotrack-nonproduction/providers/Microsoft.ContainerRegistry/registries/rotracknonproductionabc123"}]'
-elif [ "${1:-}" = consumption ]; then
+elif [ "${1:-}" = rest ]; then
   printf '%s\n' "{\"amount\":25,\"timePeriod\":{\"startDate\":\"$FAKE_BUDGET_START\",\"endDate\":\"$FAKE_BUDGET_END\"},\"notifications\":{\"actual50\":{\"enabled\":true,\"operator\":\"GreaterThan\",\"threshold\":50,\"thresholdType\":\"Actual\",\"contactEmails\":[\"owner@example.test\"]},\"actual80\":{\"enabled\":true,\"operator\":\"GreaterThan\",\"threshold\":80,\"thresholdType\":\"Actual\",\"contactEmails\":[\"owner@example.test\"]},\"actual100\":{\"enabled\":true,\"operator\":\"GreaterThan\",\"threshold\":100,\"thresholdType\":\"Actual\",\"contactEmails\":[\"owner@example.test\"]}}}"
 elif [ "${1:-}" = acr ] && [ "${2:-}" = login ]; then
   case "$ARGS" in

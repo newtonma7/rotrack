@@ -36,6 +36,7 @@ cat > "$BIN/az" <<'SH'
 #!/bin/sh
 set -eu
 ARGS="$*"
+printf '%s\n' "$ARGS" >> "$FAKE_AZ_LOG"
 case "$ARGS" in
   *'account show'*) printf '%s\n' "$AZURE_SUBSCRIPTION_ID" ;;
   *'group show'*) printf '%s\n' eastus ;;
@@ -45,15 +46,42 @@ case "$ARGS" in
   *'containerapp env show'*) printf '%s\n' rotrack-nonproduction-env ;;
   *'identity show'*) printf '%s\n' fake-principal-id ;;
   *'role assignment list'*) printf '%s\n' '[{"roleDefinitionId":"/subscriptions/sub/providers/Microsoft.Authorization/roleDefinitions/7f951dda-4ed3-4680-a7ca-43fe172d538d","scope":"/subscriptions/sub/resourceGroups/rotrack-nonproduction/providers/Microsoft.ContainerRegistry/registries/rotracknonproductionabc123"}]' ;;
-  *'consumption budget show'*'properties.amount'*) printf '%s\n' '{"amount":null,"start":null,"end":null,"notifications":{}}' ;;
-  *'consumption budget show'*) printf '%s\n' "{\"amount\":\"15.0\",\"timePeriod\":{\"startDate\":\"$FAKE_START\",\"endDate\":\"$FAKE_END\"},\"notifications\":{\"actual50\":{\"enabled\":true,\"operator\":\"GreaterThan\",\"threshold\":\"50.0\",\"thresholdType\":\"Actual\",\"contactEmails\":[\"owner@example.test\"]},\"actual80\":{\"enabled\":true,\"operator\":\"GreaterThan\",\"threshold\":\"80.0\",\"thresholdType\":\"Actual\",\"contactEmails\":[\"owner@example.test\"]},\"actual100\":{\"enabled\":true,\"operator\":\"GreaterThan\",\"threshold\":\"100.0\",\"thresholdType\":\"Actual\",\"contactEmails\":[\"owner@example.test\"]}}}" ;;
+  *'consumption budget show'*) printf '%s\n' '{}' ;;
+  *'rest'*'Microsoft.Consumption/budgets/rotrack-nonproduction-budget'*'api-version=2023-05-01'*)
+    FAKE_START="$FAKE_START" FAKE_END="$FAKE_END" FAKE_OMIT_THRESHOLD_TYPE="${FAKE_OMIT_THRESHOLD_TYPE:-0}" python3 - <<'PY'
+import json
+import os
+notifications = {}
+for name, threshold in (('actual50', '50.0'), ('actual80', '80.0'), ('actual100', '100.0')):
+    item = {
+        'enabled': True,
+        'operator': 'GreaterThan',
+        'threshold': threshold,
+        'contactEmails': ['owner@example.test'],
+    }
+    if os.environ['FAKE_OMIT_THRESHOLD_TYPE'] != '1':
+        item['thresholdType'] = 'Actual'
+    notifications[name] = item
+print(json.dumps({'amount': '15.0', 'timePeriod': {'startDate': os.environ['FAKE_START'], 'endDate': os.environ['FAKE_END']}, 'notifications': notifications}))
+PY
+    ;;
 esac
 SH
 chmod +x "$BIN/az"
 
 AZURE_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
 AZURE_FOUNDATION_PARAMETER_FILE="$TMP/foundation.json" \
+FAKE_AZ_LOG="$TMP/az.log" \
 PATH="$BIN:$PATH" \
   "$ROOT/scripts/azure/preflight.sh"
+grep -Fq -- 'rest --method get --url https://management.azure.com/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rotrack-nonproduction/providers/Microsoft.Consumption/budgets/rotrack-nonproduction-budget?api-version=2023-05-01' "$TMP/az.log"
+grep -Fq -- '--query properties' "$TMP/az.log"
+if AZURE_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
+  AZURE_FOUNDATION_PARAMETER_FILE="$TMP/foundation.json" \
+  FAKE_AZ_LOG="$TMP/az-negative.log" FAKE_OMIT_THRESHOLD_TYPE=1 \
+  PATH="$BIN:$PATH" "$ROOT/scripts/azure/preflight.sh" >/dev/null 2>&1; then
+  printf '%s\n' 'preflight accepted a REST budget response without thresholdType' >&2
+  exit 1
+fi
 
-printf '%s\n' 'azure preflight budget response-shape contract: passed'
+printf '%s\n' 'azure preflight budget REST response-shape contract: passed'

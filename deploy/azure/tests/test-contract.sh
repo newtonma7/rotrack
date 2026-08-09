@@ -19,6 +19,9 @@ done
 for test_script in test-publish-image test-rbac-role-scope test-preflight-budget-shape; do
   [ -x "$AZURE_DIR/tests/$test_script.sh" ] || fail "$test_script.sh is not executable"
 done
+[ "$(grep -Fc 'az rest' "$SCRIPTS_DIR/preflight.sh")" -eq 1 ] || fail 'budget preflight must use az rest exactly once'
+grep -Fq -- 'providers/Microsoft.Consumption/budgets/rotrack-nonproduction-budget?api-version=2023-05-01' "$SCRIPTS_DIR/preflight.sh" || fail 'budget REST URL/API version missing'
+grep -Fq -- '--query properties' "$SCRIPTS_DIR/preflight.sh" || fail 'budget REST properties query missing'
 
 # Render/compile is local only. It must not create or update Azure resources.
 FOUNDATION_RENDERED=$(mktemp)

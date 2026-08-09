@@ -77,11 +77,13 @@ else
   [ "$ROLE_COUNT" -ge 1 ] || fail 'managed identity does not have the exact AcrPull assignment on the target ACR'
 fi
 
-BUDGET_JSON=$(az consumption budget show \
-  --budget-name rotrack-nonproduction-budget \
-  --resource-group rotrack-nonproduction \
+BUDGET_URL="https://management.azure.com/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/rotrack-nonproduction/providers/Microsoft.Consumption/budgets/rotrack-nonproduction-budget?api-version=2023-05-01"
+BUDGET_JSON=$(az rest \
+  --method get \
+  --url "$BUDGET_URL" \
   --subscription "$AZURE_SUBSCRIPTION_ID" \
-  --query '{amount:amount,timePeriod:timePeriod,notifications:notifications}' \
+  --only-show-errors \
+  --query properties \
   --output json)
 export BUDGET_JSON
 export FOUNDATION_PARAMETER_FILE
