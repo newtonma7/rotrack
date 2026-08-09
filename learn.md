@@ -148,12 +148,14 @@ Use these questions to review the completed baseline phases and understand the i
 3. Why does authenticated E2E use `repository_dispatch` from the trusted default branch instead of executing credentialed code from an untrusted pull request?
 4. Why must the workflow bind the exact approved Preview and API hosts as well as the logical `nonproduction` environment?
 5. Why must the two Playwright storage states contain distinct user IDs and access tokens and belong to the approved non-production Supabase project?
-6. Why does a configured CodeQL workflow that skips while the repository is private not count as a successful CodeQL scan?
+6. Why did the pre-public configured CodeQL workflow that skipped while the repository was private not count as a successful CodeQL scan?
 7. Why are historical author-email privacy and future GitHub noreply configuration separate decisions, and why would rewriting the former require explicit approval?
 8. What does scheduled Dependabot coverage prove, and what remains unproven about review and merge policy?
 9. Why do one-time Gitleaks and OSV scans not replace recurring secret and backend dependency scanning?
 10. Which risks do required automated checks, administrator-enforced branch protection, and blocked force pushes reduce for a solo maintainer—and which compromised-account risk do they not eliminate?
 11. Why does keeping GitHub auth secrets empty and running disposable authenticated E2E from a trusted local context provide a safer solo-maintainer equivalent than pretending self-approval is independent review?
+12. What did temporary public PR #17 prove about the reconciled scanner configuration? The five CI contexts and three default-setup `Analyze` contexts all appeared and succeeded, while the checked-in advanced `CodeQL (java)` and `CodeQL (javascript-typescript)` jobs failed because default setup rejects advanced SARIF; removing the advanced workflow leaves default setup as the sole scanner.
+13. Why does M3.1 remain **Implemented—unverified** after PR #17? A green required-check run proves contexts are wired and pass, but not that a deliberately failing required check blocks merging; that separate failure case must still be observed.
 
 ## M3.2 — Backend container and deployment artifact
 

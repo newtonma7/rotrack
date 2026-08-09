@@ -6,7 +6,7 @@
 - Explicit non-production authorization: yes.
 - Existing shared non-production Supabase project selected: yes.
 - `rotrack-prod`, Vercel Production deployment/environment values, and production Azure resources mutated: no. A CLI-generated project-wide Vercel automation bypass was removed immediately, restoring zero bypass secrets.
-- Logical GitHub environments exist, but required protection is unavailable while the Free repository is private: open blocker.
+- Repository is public. Read-only GitHub metadata confirms protected `main` with pull requests, zero human approvals, strict app-bound checks, administrator enforcement, linear history, no force pushes/deletion, and advisory `CODEOWNERS`; `nonproduction` allows exactly protected `main` with no reviewers or secrets; `production` was unchanged and has zero secrets.
 
 ## Artifact and infrastructure
 
@@ -62,7 +62,9 @@ The first deployed revision exposed a contract defect: the application rejected 
 - One-off dependency check: checksum-verified OSV Scanner `2.5.0` ran `scan source --recursive` over the repository while excluding `node_modules`, `target`, and `.next`; exit `0`, zero result groups/findings. Frontend `npm audit --audit-level=high` also passed. Recurring backend dependency scanning is still absent and remains a publication follow-up.
 - Dependabot alerts and automated security fixes enabled; open Dependabot alerts: zero at readback.
 - Actions restricted to GitHub-owned actions; checked-in actions are full-SHA pinned and a source guard enforces that policy.
-- CodeQL source is configured to run only when the repository becomes public.
+- Public-repo security readback: vulnerability reporting, Dependabot security fixes, secret scanning, and push protection enabled; repository, `nonproduction`, and `production` auth-secret inventories empty; `ROTRACK_AUTHENTICATED_E2E_ENABLED` absent/default-disabled.
+- Default CodeQL setup is the sole chosen scanner with required contexts `Analyze (actions)`, `Analyze (java-kotlin)`, and `Analyze (javascript-typescript)`. The checked-in advanced workflow was removed after temporary public PR #17 proved its `CodeQL (java)` and `CodeQL (javascript-typescript)` jobs fail because default setup rejects advanced SARIF.
+- Temporary PR #17 used a dedicated branch/worktree and one empty credential-free commit. All eight required contexts appeared and succeeded. The draft PR was closed unmerged; its remote branch, local branch, and worktree were removed. The deliberate required-check blocking test remains unperformed, so M3.1 remains **Implemented—unverified**.
 - The product owner approved a solo-maintainer equivalent: required automated checks and protected `main`, no force push/deletion, `CODEOWNERS` advisory, GitHub environment auth secrets empty, and authenticated E2E run from a trusted local operator context. The hosted credentialed job remains administrator-disabled unless a future second reviewer and protected environment are available.
 - After the deeper audit identified three personal-domain author addresses across 59 historical commits, the product owner explicitly chose to retain all three. No user email is present in tracked file content. Future local commits use the GitHub noreply address.
 
@@ -76,12 +78,11 @@ The first deployed revision exposed a contract defect: the application rejected 
 
 ## Open blockers
 
-1. Deliberate public GitHub transition and immediate remote readback of the approved solo-maintainer controls.
-2. Required pull requests and CI/CodeQL checks on `main`, applied to administrators with force pushes/deletion blocked; `nonproduction` restricted to protected `main` and `CODEOWNERS` advisory.
-3. Keep GitHub environment auth secrets empty and the hosted authenticated job administrator-disabled; run authenticated Playwright 4/4 from a trusted local operator context with disposable external state and exact approved hosts.
-4. Collector redaction sentinel, dashboards, alert routing/delivery, and credit-expiry notification.
-5. Complete the remaining nine scale-from-zero trials and calculate readiness p95/maximum; one preliminary wake-up took 28.185 seconds.
-6. Supabase encrypted logical exports and restore rehearsal, or explicit data-loss risk acceptance.
-7. Exact-digest rollback rehearsal.
+1. Deliberately fail one currently required check and read back that merge is blocked; do not bypass or merge the test PR.
+2. Keep GitHub environment auth secrets empty and the hosted authenticated job administrator-disabled; run authenticated Playwright 4/4 from a trusted local operator context with disposable external state and exact approved hosts.
+3. Collector redaction sentinel, dashboards, alert routing/delivery, and credit-expiry notification.
+4. Complete the remaining nine scale-from-zero trials and calculate readiness p95/maximum; one preliminary wake-up took 28.185 seconds.
+5. Supabase encrypted logical exports and restore rehearsal, or explicit data-loss risk acceptance.
+6. Exact-digest rollback rehearsal.
 
 Production remains stopped.

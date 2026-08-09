@@ -443,14 +443,17 @@ Do not include credentials, tokens, storage-state contents, or certificate conte
 
 ## 12. Non-production exception and production gate
 
-The product owner previously authorized non-production M3 setup while M2.3 was blocked only on the fresh confirmed user's first sign-in. The operator-attested step is now complete and M2.3 is verified. The 2026-08-09 Azure/Vercel checkpoint is recorded in [`azure-nonproduction.md`](azure-nonproduction.md). Deployed authenticated 4/4 remains separate, and neither the former exception nor the completed local acceptance authorizes production.
+The product owner previously authorized non-production M3 setup while M2.3 was blocked only on the fresh confirmed user's first sign-in. The operator-attested step is now complete and M2.3 is verified. The 2026-08-09 Azure/Vercel checkpoint is recorded in [`azure-nonproduction.md`](azure-nonproduction.md). Public GitHub visibility, the approved protected `main` fields, exact required contexts, `nonproduction` protected-main policy, empty auth-secret inventories, absent/default-disabled E2E variable, and public-repo security features are now read back. Temporary PR #17 showed all eight required contexts appearing and succeeding; its conflicting advanced CodeQL jobs failed against default setup and the advanced workflow was removed. Deployed authenticated 4/4 and the deliberate required-check blocking test remain separate, and neither the former exception nor the completed local acceptance authorizes production.
 
 For non-production, use the existing shared non-production/dev Supabase Free project with:
 
 - its official database CA and least-privilege `rotrack_runtime` role;
 - disposable non-production users/data for development and approved environment-scoped authenticated E2E; credential-free PR CI uses isolated disposable PostgreSQL instead of hosted Supabase;
 - Vercel Preview in the one Vercel project;
-- logical GitHub `nonproduction` environment;
+- logical GitHub `nonproduction` environment, read back as exactly protected `main` with no reviewers or secrets;
+- public GitHub `main` protection with pull requests, zero human approvals, strict app-bound required contexts, administrator enforcement, linear history, no force pushes/deletion, and advisory `CODEOWNERS`;
+- repository/nonproduction/production auth-secret inventories empty and `ROTRACK_AUTHENTICATED_E2E_ENABLED` absent/default-disabled;
+- vulnerability reporting, Dependabot security fixes, secret scanning, push protection, and default CodeQL setup enabled/configured;
 - Azure Container Apps Consumption in managed environment `rotrack-nonproduction-env` inside resource group `rotrack-nonproduction` with app `rotrack-api-nonproduction`;
 - exact CORS, health/readiness, cold-start, connection, telemetry, and budget/credit-expiry checks.
 
