@@ -54,14 +54,110 @@ expect_workflow_failure() {
 }
 
 expect_workflow_failure mutable-reusable 'not pinned to a full commit SHA' \
-  'name: fixture' 'on: workflow_call' 'jobs:' '  delegated:' \
+  'name: fixture' 'on:' '  workflow_call:' 'jobs:' '  delegated:' \
   '    uses: owner/repository/.github/workflows/ci.yml@main'
+expect_workflow_failure missing-permissions 'explicit top-level permissions' \
+  'name: fixture' 'on:' '  push:' 'jobs:' '  test:' '    runs-on: ubuntu-latest' \
+  '    steps:' '      - run: true'
 expect_workflow_failure privileged-trigger 'pull_request_target is forbidden' \
-  'name: fixture' 'on:' '  pull_request_target:' 'jobs:' '  test:' \
-  '    runs-on: ubuntu-latest' '    steps:' '      - run: true'
+  'name: fixture' 'on:' '  pull_request_target:' 'permissions:' '  contents: read' 'jobs:' \
+  '  test:' '    runs-on: ubuntu-latest' '    steps:' '      - run: true'
 expect_workflow_failure artifact-upload 'artifact upload is forbidden' \
-  'name: fixture' 'on: push' 'jobs:' '  test:' '    runs-on: ubuntu-latest' \
-  '    steps:' '      - uses: actions/upload-artifact@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+  'name: fixture' 'on:' '  push:' 'permissions:' '  contents: read' 'jobs:' '  test:' \
+  '    runs-on: ubuntu-latest' '    steps:' \
+  '      - uses: actions/upload-artifact@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+expect_workflow_failure write-permission 'least-privilege' \
+  'name: fixture' 'on:' '  push:' 'permissions:' '  contents: write' 'jobs:' '  test:' \
+  '    runs-on: ubuntu-latest' '    steps:' '      - run: true'
+expect_workflow_failure secret-pull-request 'secrets may not be exposed' \
+  'name: fixture' 'on:' '  pull_request:' 'permissions:' '  contents: read' 'jobs:' \
+  '  test:' '    runs-on: ubuntu-latest' '    steps:' \
+  '      - run: echo "${{ secrets.EXAMPLE }}"'
+expect_workflow_failure quoted-secret-pull-request 'secrets may not be exposed' \
+  'name: fixture' 'on:' '  "pull_request":' 'permissions:' '  contents: read' 'jobs:' \
+  '  test:' '    runs-on: ubuntu-latest' '    steps:' \
+  '      - run: echo "${{ secrets.EXAMPLE }}"'
+expect_workflow_failure inline-on 'inline on:' \
+  'name: fixture' 'on: push' 'permissions:' '  contents: read' 'jobs:' '  test:' \
+  '    runs-on: ubuntu-latest' '    steps:' '      - run: true'
+expect_workflow_failure inline-permissions 'inline permissions:' \
+  'name: fixture' 'on:' '  push:' 'permissions: { contents: read }' 'jobs:' '  test:' \
+  '    runs-on: ubuntu-latest' '    steps:' '      - run: true'
+expect_workflow_failure job-write-all 'read-all/write-all' \
+  'name: fixture' 'on:' '  push:' 'permissions:' '  contents: read' 'jobs:' '  test:' \
+  '    permissions: write-all' '    runs-on: ubuntu-latest' '    steps:' '      - run: true'
+expect_workflow_failure root-write-all 'read-all/write-all' \
+  'name: fixture' 'on:' '  push:' 'permissions: write-all' 'jobs:' '  test:' \
+  '    runs-on: ubuntu-latest' '    steps:' '      - run: true'
+
+expect_workflow_pass() {
+  local name=$1
+  shift
+  rm -f "$workflow_fixture"/*
+  printf '%s\n' "$@" >"$workflow_fixture/fixture.yml"
+  if ! ROTRACK_WORKFLOW_DIR="$workflow_fixture" "$script_dir/check-workflow-policy.sh" \
+      >"$tmp_dir/${name}.stdout" 2>"$tmp_dir/${name}.stderr"; then
+    printf 'Expected workflow-policy fixture %s to pass.\n' "$name" >&2
+    cat "$tmp_dir/${name}.stderr" >&2
+    exit 1
+  fi
+}
+expect_workflow_pass comment-only-upload \
+  'name: fixture' 'on:' '  push:' 'permissions:' '  contents: read' 'jobs:' '  test:' \
+  '    runs-on: ubuntu-latest' '    steps:' \
+  '      # actions/upload-artifact@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' \
+  '      - run: true'
+
+expect_authenticated_trigger_failure() {
+  local name=$1
+  shift
+  rm -f "$workflow_fixture"/*
+  {
+    printf '%s\n' 'name: fixture' 'on:'
+    printf '%s\n' "$@"
+    printf '%s\n' 'permissions:' '  contents: read' 'jobs:' '  test:' \
+      '    runs-on: ubuntu-latest' '    steps:' '      - run: true'
+  } >"$workflow_fixture/authenticated-e2e.yml"
+  set +e
+  ROTRACK_WORKFLOW_DIR="$workflow_fixture" "$script_dir/check-workflow-policy.sh" \
+    >"$tmp_dir/${name}.stdout" 2>"$tmp_dir/${name}.stderr"
+  local status=$?
+  set -e
+  if (( status == 0 )) || ! grep -q 'trusted-default-branch repository_dispatch' "$tmp_dir/${name}.stderr"; then
+    printf 'Expected authenticated trigger fixture %s to fail closed.\n' "$name" >&2
+    exit 1
+  fi
+}
+expect_authenticated_trigger_failure workflow-dispatch '  workflow_dispatch:'
+expect_authenticated_trigger_failure automatic-trigger '  repository_dispatch:' '    types:' \
+  '      - rotrack-authenticated-e2e' '  push:'
+
+# The privileged browser flow is a trusted-default-branch repository dispatch.
+authenticated_workflow=.github/workflows/authenticated-e2e.yml
+for required in \
+  'repository_dispatch:' \
+  'rotrack-authenticated-e2e' \
+  'github.event.client_payload.confirm_nonproduction' \
+  'environment: nonproduction' \
+  'ROTRACK_NONPRODUCTION_SUPABASE_PROJECT_REF' \
+  'ROTRACK_PRODUCTION_SUPABASE_PROJECT_REF' \
+  'ROTRACK_E2E_APPROVED_FRONTEND_HOST' \
+  'ROTRACK_E2E_APPROVED_API_HOST' \
+  '.vercel.app' \
+  '.azurecontainerapps.io'; do
+  if ! grep -qF "$required" "$authenticated_workflow"; then
+    printf 'Authenticated workflow is missing the required target-policy marker: %s.\n' "$required" >&2
+    exit 1
+  fi
+done
+if grep -Eq 'disposable-staging|confirm_disposable_staging|STAGING_SUPABASE_REF|DEVELOPMENT_SUPABASE_REF|STAGING_SCOPE|three distinct Supabase|ROTRACK_PRODUCTION_FRONTEND_URL|ROTRACK_PRODUCTION_API_URL' "$authenticated_workflow"; then
+  printf 'Authenticated workflow still contains a legacy staging, three-project, or production-URL secret assumption.\n' >&2
+  exit 1
+fi
+if grep -Eq '^  (workflow_dispatch|pull_request|pull_request_target|push|schedule|workflow_run|workflow_call):' "$authenticated_workflow"; then
+  printf 'Authenticated workflow has an untrusted or automatic trigger.\n' >&2
+  exit 1
+fi
 
 set +e
 ROTRACK_TEST_DATABASE_ISOLATED=true \

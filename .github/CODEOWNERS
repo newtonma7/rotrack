@@ -1,0 +1,6 @@
+# CODEOWNERS identifies requested reviewers; it becomes a merge gate only when
+# repository branch protection explicitly requires code-owner approval.
+* @newtonma7
+
+# Keep publication, workflow, and security-policy changes explicitly owned.
+.github/ @newtonma7
