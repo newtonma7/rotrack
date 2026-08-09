@@ -74,7 +74,9 @@ public class SecurityConfig {
                 );
 
         http
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf
+                        // Browser requests cannot attach this API's bearer header automatically; keep CSRF enabled outside the API boundary.
+                        .ignoringRequestMatchers("/api/v1/**"))
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
