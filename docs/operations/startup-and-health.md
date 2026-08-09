@@ -1,6 +1,6 @@
 # Startup, configuration, and health probes
 
-This runbook defines the M2.2 local and ECS-facing configuration contract. Use only redacted values in logs and deployment evidence.
+This runbook defines the M2.2 local and Azure Container Apps-facing configuration contract. It describes the approved target only; no Azure, Vercel, GitHub, or Supabase deployment is claimed as configured or verified. Use only redacted values in logs and deployment evidence.
 
 ## Configuration checklist
 
@@ -25,9 +25,9 @@ Spring receives these through the process environment (shell, IDE, container, or
 | `DATABASE_PASSWORD` | yes | Application-role password; inject as a secret |
 | `DATABASE_CONNECTION_TIMEOUT_MS` | no | Pool acquisition bound; defaults to 5000 ms |
 | `DATABASE_POOL_VALIDATION_TIMEOUT_MS` | no | Hikari connection-validation bound; defaults to 2000 ms |
-| `DATABASE_MAXIMUM_POOL_SIZE` | no | Per-task pool cap; defaults to 5 |
-| `DATABASE_MINIMUM_IDLE` | no | Per-task idle-connection floor; defaults to 0 |
-| `READINESS_CACHE_TTL` | no | Single-task readiness result cache; defaults to 5 seconds |
+| `DATABASE_MAXIMUM_POOL_SIZE` | no | Per-process/per-replica pool cap; defaults to 5 |
+| `DATABASE_MINIMUM_IDLE` | no | Per-process/per-replica idle-connection floor; defaults to 0 |
+| `READINESS_CACHE_TTL` | no | Per-process readiness result cache; defaults to 5 seconds |
 | `SUPABASE_ISSUER_URI` | yes | Exact Supabase token issuer (`.../auth/v1`) |
 | `SUPABASE_JWKS_URI` | yes | Supabase asymmetric signing-key set (`.../.well-known/jwks.json`) |
 | `SUPABASE_JWT_AUDIENCE` | no | Expected access-token audience; defaults to `authenticated` |
@@ -44,7 +44,7 @@ The resource server accepts ES256 tokens only and validates issuer, audience, ti
 
 The process-local mutation limiter is defense in depth for authenticated start/stop requests; it does not replace the required trusted fleet-wide/authentication-adjacent edge control. Structured request logging is disabled for local development. Staging and production must enable it explicitly with validated environment/release metadata and must still prove collector-side redaction and routing.
 
-`DATABASE_URL` is the only TLS-mode source because PostgreSQL JDBC URL parameters override separate driver properties. Managed PostgreSQL must include `sslmode=verify-full`, which verifies encryption, the certificate chain, and the database hostname; startup rejects weaker or missing modes. Download the official CA certificate from the database provider, store it in the deployment secret/configuration system, mount it read-only (the examples use `/run/secrets/supabase-db-ca.crt`), and set that path with `sslrootcert`. Do not capture and trust a certificate from an unverified connection. PostgreSQL JDBC 42.7.x treats `sslrootcert=system` as a literal filename, so it is not a portable trust-store setting. Only the explicit `local` Spring profile may use `sslmode=disable` for loopback PostgreSQL.
+`DATABASE_URL` is the only TLS-mode source because PostgreSQL JDBC URL parameters override separate driver properties. Managed PostgreSQL must include `sslmode=verify-full`, which verifies encryption, the certificate chain, and the database hostname; startup rejects weaker or missing modes. Download the official CA certificate from the database provider and store it in the deployment secret/configuration system. The container entrypoint requires `DATABASE_CA_CERTIFICATE_PATH=/tmp/rotrack-certs/supabase-db-ca.crt`, materializes the injected CA there with mode `0600`, and requires the URL's `sslrootcert` to match exactly. A direct local process may use another readable path, but the checked-in example uses the container-compatible path to avoid configuration drift. Do not capture and trust a certificate from an unverified connection. PostgreSQL JDBC 42.7.x treats `sslrootcert=system` as a literal filename, so it is not a portable trust-store setting. Only the explicit `local` Spring profile may use `sslmode=disable` for loopback PostgreSQL.
 
 ## Deterministic local startup
 
@@ -82,17 +82,18 @@ Required backend settings deliberately have no credential defaults. Missing sett
 | `GET /api/v1/health` | none | `200 {"status":"ok"}` | process cannot serve HTTP |
 | `GET /api/v1/readiness` | obtains and validates a pooled database connection | `200 {"status":"ready"}` | `503 {"status":"not_ready"}` |
 
-Both endpoints are unauthenticated and expose only the stable `status` field. They never return a JDBC URL, SQL error, host, credential, JWT setting, or stack trace. The readiness check reflects PostgreSQL because all authenticated application-data requests require that persistence boundary. Results are cached per task for five seconds by default, so repeated public polls cause at most one pool checkout per cache interval. It does not actively call the JWKS endpoint: signing keys are fetched and cached by Spring Security, so coupling readiness to a fresh external fetch would incorrectly remove an otherwise capable task from service.
+Both endpoints are unauthenticated and expose only the stable `status` field. They never return a JDBC URL, SQL error, host, credential, JWT setting, or stack trace. The readiness check reflects PostgreSQL because all authenticated application-data requests require that persistence boundary. Results are cached per process/replica for five seconds by default, so repeated public polls cause at most one pool checkout per cache interval. It does not actively call the JWKS endpoint: signing keys are fetched and cached by Spring Security, so coupling readiness to a fresh external fetch would incorrectly remove an otherwise capable replica from service.
 
-For ECS/Fargate:
+For Azure Container Apps:
 
-- use `/api/v1/health` as the container liveness command;
-- use `/api/v1/readiness` as the load-balancer target health path and restrict direct Internet routing to health paths with listener/security-group policy where the platform permits;
-- configure health intervals/timeouts around the bounded connection/validation timeouts, with a startup grace period and thresholds that avoid replacement churn during a shared database incident;
-- do not route traffic to a task until readiness returns 200;
-- budget PostgreSQL connections as `DATABASE_MAXIMUM_POOL_SIZE × maximum ECS tasks`, reserving capacity for migrations and operations.
+- use `/api/v1/health` as the process liveness probe on port `8080`;
+- use `/api/v1/readiness` as the database-aware readiness probe and route traffic only to ready replicas;
+- configure probe intervals/timeouts around the bounded connection/validation timeouts, with startup grace and thresholds that avoid replacement churn during a shared database incident;
+- budget PostgreSQL connections as `DATABASE_MAXIMUM_POOL_SIZE × maximum replicas`, including rollout overlap and reserving capacity for migrations and operations;
+- keep separate target Azure managed environments, resource groups, and Container Apps for non-production and production. The approved target names are managed environments `rotrack-nonproduction-env` / `rotrack-production-env`, resource groups `rotrack-nonproduction` / `rotrack-production`, and apps `rotrack-api-nonproduction` / `rotrack-api-production`;
+- Consumption min-replica `0` is initially acceptable. Before production promotion, run at least 10 non-production scale-from-zero trials. Keep production at `0` only with explicit product-owner acceptance when p95 readiness is at most 30 seconds and no trial exceeds 60 seconds; otherwise set production minimum replicas to `1`. Ensure alerts distinguish an accepted cold start from sustained unavailability.
 
-An ALB marks targets unhealthy and ECS may replace repeatedly unhealthy tasks even when container liveness is still healthy. Before staging, choose thresholds and deployment circuit-breaker behavior that prevent a database-wide outage from causing an unbounded replacement/connection storm.
+Container Apps can replace unhealthy replicas even when process liveness remains healthy. Before non-production deployment, choose thresholds and revision/traffic behavior that prevent a database-wide outage from causing an unbounded replacement or connection storm. Before production promotion, add Azure budget and credit-expiry alerts; these are required safeguards, not evidence that billing or alerts are configured.
 
 ## Smoke probes
 
@@ -113,4 +114,4 @@ curl --include --request OPTIONS \
   http://localhost:8080/api/v1/time-entries/start
 ```
 
-If readiness is 503, inspect server-side logs and database reachability without copying credentials or connection strings into evidence. If liveness is 200 at the same time, do not restart-loop the process; keep it out of traffic until the dependency recovers.
+If readiness is 503, inspect server-side logs and database reachability without copying credentials or connection strings into evidence. If liveness is 200 at the same time, do not restart-loop the Container App; keep the revision out of traffic until the dependency recovers. If the app has just scaled from zero, measure the expected cold-start window before treating the first probe failure as an incident.

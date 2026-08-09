@@ -8,8 +8,8 @@
 
 - The local documentation clean-candidate walkthrough and the timer, ownership/RLS, migration, readiness, and authenticated browser technical matrix pass. M0.3 and M0.5 are **Verified**; M2.3 remains **Blocked** on fresh signup confirmation and first sign-in by an authorized disposable-inbox operator.
 - The recorded exception permits M3 source preparation while that inbox step is blocked; it does not verify M2, waive any release gate, or authorize production promotion.
-- M3 delivery foundations are integrated: pull-request workflows, isolated PostgreSQL migration checks, secret/workflow guards, a non-root Java 21 image, staging templates, release scripts, and monitoring/incident contracts.
-- M3 is **not yet Verified**: M3.1 remains **Implemented—unverified**, while M3.2 and M3.3 remain **In progress**. Hosted required-check evidence, branch/environment protection, an authorized isolated staging deployment, active rate limiting/observability, staging smoke, alert routing, and rollback rehearsal remain open; the external owner and unblock condition for staging are recorded in `todo.md`.
+- M3 delivery foundations are integrated: credential-free pull-request workflows with isolated PostgreSQL, isolated migration checks, secret/workflow guards, a non-root Java 21 OCI-compatible image, historical AWS-era staging templates, release scripts, and monitoring/incident contracts. The product-owner-approved target is Azure Container Apps Consumption with separate managed environments/resource groups/apps, one Vercel project, and two Supabase Free projects.
+- M3 is **not yet Verified**: M3.1 remains **Implemented—unverified**, while M3.2 and M3.3 remain **In progress**. The authenticated workflow still targets `disposable-staging-auth`, and legacy scripts still enforce three Supabase references/AWS assumptions. Hosted required-check evidence, branch/environment protection, an authorized non-production deployment, active rate limiting/observability, Free pause/backup safeguards, non-production smoke, alert routing, and rollback rehearsal remain open; the external owner and unblock condition are recorded in `todo.md`.
 - M4 is the next feature milestone, but it remains gated on the M3 MVP release gate unless the product owner explicitly records an exception in `todo.md` and `arch.plan.md`.
 - Never use production credentials or production infrastructure for development, migration tests, browser automation, smoke tests, or rehearsals.
 
@@ -28,7 +28,7 @@
 
 ## Stage 1 — Close the M3 release gate
 
-The immediate stage is operational verification and the remaining production safeguards. Lane A's credential-free hosted CI and repository-protection work may run concurrently with Lanes B and C. Its authenticated E2E execution must wait for Lane B's explicit staging frontend/API pair and the approved environment controls. Lane D may review commands and prerequisites concurrently, but live smoke and rollback execution must wait for the staging deployment and observability setup.
+The immediate stage is operational verification and the remaining production safeguards. Lane A's credential-free hosted CI and repository-protection work may run concurrently with Lanes B and C. Its authenticated E2E execution must wait for Lane B's explicit non-production Preview/API pair and the approved environment controls. Lane D may review commands and prerequisites concurrently, but live smoke and rollback execution must wait for the non-production deployment and observability setup.
 
 ### Lane A — Hosted CI and repository protection
 
@@ -39,26 +39,26 @@ The immediate stage is operational verification and the remaining production saf
 - Open a pull request and record all required credential-free checks passing.
 - Deliberately make one required check fail on a disposable branch/commit and verify merge is blocked; restore the green state afterward.
 - Configure and verify branch protection for the documented required check names.
-- Configure the authenticated-E2E environment with approved disposable staging auth state. Until reviewer and branch restrictions are observed, describe this environment only as environment-scoped and intended for protected staging.
-- After Lane B supplies the explicit staging frontend/API pair, verify the environment's required reviewers and branch restrictions, then run the authenticated job only against that pair; require exactly four passed tests and no skips, flaky results, or unexpected API targets.
+- Preserve the current `disposable-staging-auth` authenticated-E2E environment as legacy until its conversion is approved; its current three-reference/AWS-era assumptions must not be mistaken for the target `nonproduction` environment.
+- After Lane B supplies the explicit non-production frontend/API pair, verify the environment's required reviewers and branch restrictions, then run the authenticated job only against that pair; require exactly four passed tests and no skips, flaky results, or unexpected API targets.
 
 **Done when:** Hosted green and deliberate-red evidence and required-check enforcement are recorded; after Lane B is deployed, protected-environment restrictions and the authenticated staging run are also recorded with URLs/identifiers that reveal no secrets.
 
-### Lane B — Isolated staging deployment
+### Lane B — Production-separated non-production deployment
 
-**Owns:** `deploy/staging/`, staging deployment manifests/checklists, and one redacted staging evidence file. It may use authorized staging consoles/CLIs but must not alter production resources.
+**Owns:** `deploy/staging/`, non-production deployment documentation/checklists, and one redacted evidence file. It may use authorized provider consoles/CLIs but must not alter production resources.
 
 **Do:**
 
-- Prove that Supabase, Vercel, AWS, runtime roles, task roles, execution roles, and secret namespaces are staging-only and distinct from production.
-- Obtain the official Supabase staging CA through an authenticated provider channel and record redacted provenance.
+- Prove that the shared non-production Supabase project, Vercel Preview, target logical GitHub `nonproduction`, managed environment `rotrack-nonproduction-env` inside resource group `rotrack-nonproduction`, and Container App `rotrack-api-nonproduction` are the selected boundary and that production's managed environment/resource group/app remain separate.
+- Obtain the official shared-project Supabase CA through an authenticated provider channel and record redacted provenance.
 - Apply ordered migrations with an administrative migration identity; configure and audit the narrower runtime identity separately.
-- Build and push the committed backend image, record the immutable registry digest, and deploy that exact digest to ECS/Fargate.
-- Deploy the frontend to the assigned Vercel staging project with the exact staging API URL.
-- Verify connection budgeting across desired tasks, maximum tasks, and deployment surge; verify exact HTTPS CORS origins, TLS, liveness, and readiness.
-- Complete the staging checklist with names/IDs redacted where disclosure would be sensitive. Never commit actual secret values.
+- Build the platform-neutral backend OCI-compatible image; read back its registry manifest media type, architecture, and immutable digest; then deploy that exact digest to the non-production Azure Container App. If ACR is selected, use managed identity for pulls.
+- Deploy the frontend to Vercel Preview in the one Vercel project with the exact non-production API URL.
+- Verify connection budgeting across maximum Container App replicas and revision overlap; verify exact HTTPS CORS origins, TLS/CA injection, liveness, readiness, service-version-to-digest binding, ACA hardening controls, at least 10 scale-from-zero trials and the production minimum-replica decision, Free pause/resume ownership, encrypted logical-export retention/restore rehearsal or explicit product-owner risk acceptance, and budget/credit-expiry notifications.
+- Complete the non-production checklist with names/IDs redacted where disclosure would be sensitive. Never commit actual secret values.
 
-**Done when:** The immutable candidate is deployed to demonstrably isolated staging and redacted IAM, CA, migration, runtime-role, CORS, connection, and health evidence is complete.
+**Done when:** The immutable candidate is deployed to demonstrably separate non-production Azure/Vercel/GitHub boundaries while intentionally using the shared non-production Supabase project, and redacted CA, migration, runtime-role, CORS, connection, health, cold-start, and alert evidence is complete.
 
 ### Lane C — Active release safeguards and observability
 
@@ -68,7 +68,7 @@ The immediate stage is operational verification and the remaining production saf
 
 - Implement rate limiting for authentication-adjacent and mutation endpoints with `429`, bounded recovery, and trusted-proxy/bypass tests.
 - Implement structured-log allowlisting and redaction; prove tokens, credentials, note/reflection content, authorization headers, and private payload fields are absent.
-- Configure separate staging frontend/API telemetry with bounded retention and least-privilege access.
+- Configure logically separated non-production frontend/API telemetry with bounded retention and least-privilege access; do not infer a separate provider project from this requirement.
 - Materialize health, latency, error-rate, restart, authentication-failure, and connection-exhaustion dashboards/alerts from the checked-in contract.
 - Assign named incident roles and alert owners through the approved operational channel; do not commit private contact details.
 - Send a harmless redaction sentinel and test alert, then record redacted ingestion/routing evidence.
@@ -94,9 +94,9 @@ The immediate stage is operational verification and the remaining production saf
 ### M3 dependency order
 
 ```text
-A credential-free hosted CI/protection -------------┐
-B isolated staging deployment ─┬─> A authenticated E2E ┤
-C active safeguards/telemetry ─┴──────────────────────┴─> D smoke + rollback ─> M3 MVP gate
+A credential-free hosted CI/protection ----------------┐
+B production-separated non-production deployment ─┬─> A authenticated E2E ┤
+C active safeguards/telemetry ────────┴───────────────────────┴─> D smoke + rollback ─> M3 MVP gate
 ```
 
 Do not promote to production or begin M4 implementation before this gate unless the product owner explicitly changes the dependency decision.

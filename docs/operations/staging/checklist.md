@@ -1,165 +1,128 @@
-# Staging isolation, deployment, smoke, and teardown checklist
+# Non-production deployment, smoke, and teardown checklist
 
-**Current status:** preparation only. No remote infrastructure was provisioned and no health/config evidence was observed. The unblock condition is an explicitly authorized, disposable non-production Supabase project plus dedicated Vercel/AWS staging resources and a reviewed backend image digest. Development and production are prohibited targets.
+**Current status:** preparation only. No remote Azure, Vercel, GitHub, Supabase, ACR, domain, alert, or billing/credit control is claimed as configured or verified. This checklist targets the approved non-production boundary: the existing shared non-production/dev Supabase Free project, Vercel Preview in the one Vercel project, logical GitHub `nonproduction`, resource group `rotrack-nonproduction`, and Container App `rotrack-api-nonproduction`.
 
-Use `deploy/staging/README.md` for the exact names, renderer, and deploy commands. Record results in `evidence-template.md` without identifiers or secrets.
+Production is a separate release target: `rotrack-prod`, Vercel Production in the same Vercel project, logical GitHub `production`, resource group `rotrack-production`, and Container App `rotrack-api-production`. Never substitute one boundary for another.
+
+Use [`deploy/staging/README.md`](../../../deploy/staging/README.md) for the target contract and [`evidence-template.md`](evidence-template.md) for redacted results. The checked-in AWS/ECS scripts and templates under `deploy/staging/` are historical/unselected and intentionally do not satisfy this checklist.
 
 ## 1. Authorization and identity gate
 
-- [ ] Record the change owner, staging authorization, maintenance window, and teardown owner outside Git.
-- [ ] In a private shell, set `ROTRACK_STAGING_SUPABASE_PROJECT_REF`, `ROTRACK_DEVELOPMENT_SUPABASE_PROJECT_REF`, and `ROTRACK_PRODUCTION_SUPABASE_PROJECT_REF` from authoritative dashboards. Do not paste them into evidence.
-- [ ] Run `./deploy/staging/render.sh`; it must reject equal or malformed refs.
-- [ ] Resolve the selected staging ref through `supabase projects list --output json` as shown in the deployment runbook, without printing the project list into evidence.
-- [ ] Confirm the project organization/environment labels say staging and that no development/production ref, database host, Vercel project, AWS cluster, service, target group, secret ARN, or DNS zone is selected.
-- [ ] Compare the caller AWS account from `aws sts get-caller-identity` with the account embedded in the validated staging role ARNs; require both to differ from the protected production account input. Read ECS/ALB resource tags and require `Environment=staging` before mutation.
-- [ ] Confirm the Supabase project contains only disposable staging users/data and has an assigned teardown date.
+- [ ] Record change owner, non-production authorization, window, teardown owner, and approval outside Git.
+- [ ] Select exactly the existing shared non-production Supabase project. Do not create or select a third project.
+- [ ] Select Vercel Preview in the one approved Vercel project; do not select a dedicated staging project.
+- [ ] Confirm the logical GitHub environment is `nonproduction` and its protected variables/secrets are scoped to non-production. Read back repository visibility/plan and required-reviewer/branch/environment-secret support; if required controls are unavailable, production remains stopped until the plan changes or an independently reviewed equivalent gate is approved.
+- [ ] Confirm Azure subscription, managed environment `rotrack-nonproduction-env`, resource group `rotrack-nonproduction`, and Container App `rotrack-api-nonproduction` from authoritative readback. The managed environment is the Azure security boundary and must not be shared with production. Do not record identifiers in evidence.
+- [ ] Confirm every selected identity is non-production and no production user, secret, API URL, database host, or browser state is selected.
+- [ ] Confirm disposable non-production users/data and a teardown date.
 
-Stop immediately on an identity mismatch. Never “fix” the mismatch by changing the expected development or production ref.
+Stop immediately on an identity mismatch. Never change the expected production or non-production identity to make a check pass.
 
-## 2. Supabase staging database and Auth
+## 2. Supabase database and Auth
 
 ### CA, TLS, and migrations
 
-- [ ] Download the official CA from the selected staging project's Database SSL settings over the authenticated provider dashboard. Record only its redacted source and local checksum result; do not commit the certificate.
-- [ ] Enable provider SSL enforcement after the CA is available.
-- [ ] Store the official CA PEM only in `rotrack/staging/backend/DATABASE_CA_CERTIFICATE_PEM`; confirm the non-root entrypoint materializes it mode `0600` at `/tmp/rotrack-certs/supabase-db-ca.crt` without logging it.
-- [ ] Store `DATABASE_URL` only in `rotrack/staging/backend/DATABASE_URL`; require exactly one `sslmode=verify-full`, exactly one matching `sslrootcert=/tmp/rotrack-certs/supabase-db-ca.crt`, the staging host, and no embedded password.
-- [ ] Build the disposable Supabase CLI workdir exactly as documented, verify its copied files match `database/migrations/`, and link it only after the identity gate. Run the documented `migration list`, `db push --dry-run`, review ordered `001` then `002`, apply, list again, and remove the workdir.
-- [ ] Run migrated-schema verification against staging with the explicit isolated-target acknowledgement:
+- [ ] Obtain the official CA from the selected non-production project's authenticated Database SSL settings. Keep it outside Git and record only redacted provenance/checksum.
+- [ ] Store the CA and `DATABASE_URL` through the approved non-production secret boundary. Require exactly one `sslmode=verify-full`, the matching container-local ephemeral `sslrootcert`, the selected non-production host, and no embedded password.
+- [ ] Apply ordered repository migrations through a disposable Supabase CLI worktree linked to the shared non-production project. Review dry-run output before authorization.
+- [ ] Run migrated-schema verification with the explicit isolated-target acknowledgement. Record only PostgreSQL major version, migration versions, test counts, and pass/fail.
 
-  ```bash
-  cd backend
-  ROTRACK_TEST_DATABASE_ISOLATED=true \
-  ROTRACK_TEST_DATABASE_MODE=verify \
-  ROTRACK_TEST_DATABASE_URL='<staging-jdbc-url-with-verify-full-and-official-ca>' \
-  ROTRACK_TEST_DATABASE_USERNAME='<authorized-staging-verification-role>' \
-  ROTRACK_TEST_DATABASE_PASSWORD='<read-from-private-shell>' \
-    mvn -Drotrack.postgres.integration=true \
-    -Dtest='PostgresMigrationIntegrationTest,TimeEntryRepositoryPostgresIntegrationTest' test
-  ```
+### Runtime role and RLS
 
-  Do not paste the populated command or shell history into evidence. Record only PostgreSQL major version, test counts, migration versions, and pass/fail.
+- [ ] Apply the administrator-only runtime-role setup and set `rotrack_runtime`'s password interactively.
+- [ ] Run the read-only role audit as `rotrack_runtime`; all required least-privilege booleans must be true.
+- [ ] Keep `BYPASSRLS` only for the pooled Spring JDBC boundary; verify ownership-scoped Spring queries and browser/Data API RLS independently.
+- [ ] Create two disposable non-production users through Supabase Auth and confirm signup-trigger profiles without recording emails/UUIDs.
+- [ ] Repeat the two-user Data API matrix and Spring Work/Rot ownership matrix. Foreign reads/stops and forged inserts must fail as contracted.
 
-### Runtime role and RLS boundaries
+### Free-plan pause and backup safeguards
 
-- [ ] Apply `deploy/staging/templates/runtime-role.sql.template` as an authorized staging administrator and set `rotrack_runtime`'s password with interactive `\password`.
-- [ ] Open a separate connection authenticated as `rotrack_runtime`, run `runtime-role-audit.sql.template`, and confirm every boolean is true: dedicated login, non-superuser, `NOINHERIT`, no role memberships, `BYPASSRLS`, no create-db/create-role/replication/schema-create, only required `time_entries` SELECT/INSERT/UPDATE, no DELETE/TRUNCATE, no unrelated public table/sequence access, no direct database CREATE/TEMP grant, and no effective public routine execution outside the allowlisted security-definer signup trigger. Separately review provider-managed PUBLIC database privileges.
-- [ ] Keep `BYPASSRLS`: pooled Spring JDBC cannot set `auth.uid()` from each browser token. This makes Spring's JWT subject and ownership-scoped queries the runtime authorization boundary; never grant schema administration or accept a client `user_id`.
-- [ ] Independently confirm RLS is enabled on `public.users` and `public.time_entries`, and the seven checked-in ownership policies are present. The Data API must use anon/authenticated identities, never `rotrack_runtime`.
-- [ ] Create two disposable staging users through Supabase Auth. Confirm the signup trigger creates matching `public.users` profiles without recording emails or UUIDs.
-- [ ] Repeat the two-user Data API matrix: each user can list only owned rows; foreign filters return zero; forged `user_id` inserts return `403`; User B cannot read/update User A. Pass bearer tokens through private shell variables and discard them after the run.
-- [ ] Repeat the Spring two-user ownership matrix for Work and Rot; cross-user active, stop, and dashboard access must remain empty/`404` as contracted.
+- [ ] Assign an owner for Free-project low-activity pause warnings and resume/recovery. Supabase documents that low-activity Free projects may auto-pause after seven days; see the official [pausing documentation](https://supabase.com/docs/guides/platform/free-project-pausing).
+- [ ] Record that Free projects do not include automatic daily backups or PITR. Do not claim either is configured.
+- [ ] Before production promotion, maintain encrypted, access-controlled off-site logical exports from [`supabase db dump`](https://supabase.com/docs/reference/cli/supabase-db-dump), with retention and a successful restore rehearsal, or obtain explicit product-owner data-loss risk acceptance. See the official [production checklist](https://supabase.com/docs/guides/deployment/going-into-prod).
 
 ### Connection budget
 
-- [ ] Obtain the staging database and pooler caps from the provider dashboard. Select the lower safe application limit after provider-reserved connections.
-- [ ] Set `ROTRACK_STAGING_DATABASE_CONNECTION_LIMIT`, `ROTRACK_STAGING_DATABASE_RESERVED_CONNECTIONS`, `ROTRACK_STAGING_DATABASE_MAXIMUM_POOL_SIZE`, desired tasks, and maximum tasks.
-- [ ] Run deployment validation and record the arithmetic. Default task configuration is bounded (`maximumPoolSize=5`, `minimumIdle=0`, acquisition 5000 ms, validation 2000 ms); these are not permission to exceed the provider cap.
-- [ ] Reserve connections for migrations/administration and budget for two task generations at `maximumPercent=200` during rollout. Register and read back the Application Auto Scaling maximum with the runbook commands; revalidate before any scaling or deployment-percentage change.
+- [ ] Obtain the selected Supabase plan/pooler connection cap through the authenticated provider path.
+- [ ] Set non-production pool/replica inputs and include revision overlap plus migration/operations reserve.
+- [ ] Verify:
 
-## 3. ECS/Fargate backend
+  ```text
+  DATABASE_MAXIMUM_POOL_SIZE × maximum Container App replicas
+    + migration/operations reserve
+    <= approved non-production database capacity
+  ```
 
-- [ ] Verify the artifact by immutable digest, not a tag. Confirm non-root user, read-only root filesystem compatibility, Java 21 runtime, `wget`, port 8080, task-local CA path, and no source, `.env`, token, private key, or browser-auth artifact.
-- [ ] Create/update only the six exact staging secret names in `deploy/staging/README.md`; restrict `secretsmanager:GetSecretValue` to the staging execution role and those resources.
-- [ ] Run `./deploy/staging/aws-preflight.sh`: require distinct task/execution roles, empty attached/inline policies for the task role, caller-account separation, six required secret-access simulations, and the staging service tag. Separately review that the execution role's image/log actions and `secretsmanager:GetSecretValue` resources are limited to the expected staging resources. Confirm logs use `/rotrack/staging/backend`, staging retention, encryption, and redaction.
-- [ ] Render and validate the task definition. Confirm its image equals the reviewed digest.
-- [ ] Use private subnets, no public task IP, ALB-only ingress on container port 8080, TLS listener, outbound TLS limited to required services, and staging-only DNS/certificates.
-- [ ] Container liveness uses unauthenticated `GET /api/v1/health`; ALB readiness uses unauthenticated `GET /api/v1/readiness`. Keep the 60-second startup grace and deployment circuit breaker/rollback.
-- [ ] Register the task and update the staging service with the exact runbook commands. Wait for service stability and verify desired/running task counts without recording account/cluster/task identifiers.
+- [ ] Keep `DATABASE_MINIMUM_IDLE=0` unless a reviewed capacity decision says otherwise.
 
-## 4. Vercel frontend
+## 3. Platform-neutral image and Azure Container App
 
-- [ ] Confirm a dedicated Vercel project/team selection. Validate distinct staging/production team slugs, project names, organization IDs, and project IDs; after `vercel link`, require `.vercel/project.json` to match the protected staging IDs before any environment mutation or `--prod` deployment. Its stable staging origin must differ from development and production.
-- [ ] Configure only `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_KEY`, and `NEXT_PUBLIC_API_URL` in the dedicated project's Vercel production target. The Supabase key must be anon/publishable, never service-role; API URL includes `/api/v1`.
-- [ ] Disable unapproved preview access to the staging API. `CORS_ALLOWED_ORIGINS` contains the one stable HTTPS staging frontend origin, with no wildcard, paths, localhost, development, production, or comma-added preview origins.
-- [ ] Build and deploy with the exact runbook commands. Confirm browser assets refer only to staging Auth/API endpoints using devtools without copying values to evidence.
+- [ ] Build the reviewed Linux/amd64 OCI-compatible image and record its immutable registry digest, manifest media type, and architecture—not a tag or local image ID.
+- [ ] Confirm non-root UID/GID `10001:10001`, Java 21, port `8080`, no source/secrets/browser state, runtime CA injection, graceful shutdown, liveness/readiness probes, and that application writes are limited to `/tmp`. The image is locally read-only-root compatible, but ACA enforcement is not claimed; compensate with non-root execution, no remote debug shell, least-privilege managed identity, and secret isolation.
+- [ ] If ACR is selected, confirm the target Container App managed identity can pull only the approved image repository/digest. ACR choice does not change the OCI contract.
+- [ ] Confirm managed environment `rotrack-nonproduction-env` inside resource group `rotrack-nonproduction` and Container App `rotrack-api-nonproduction` before mutation. The production managed environment/resource group/app must be separate.
+- [ ] Configure HTTPS ingress to port `8080`; exact non-production CORS; `/api/v1/health` liveness; `/api/v1/readiness` readiness; and runtime secret/CA injection.
+- [ ] Configure Consumption scaling. Min replicas `0` is accepted initially. Before production promotion, record at least 10 scale-from-zero trials; keep production at `0` only with explicit product-owner acceptance when p95 readiness is at most 30 seconds and no trial exceeds 60 seconds, otherwise set production minimum replicas to `1`.
+- [ ] Record that Azure budget alerts are notifications, not a hard spending cap, and that cost/credit-expiry data can be delayed. Do not claim alerts are configured until observed.
+- [ ] Configure revision/traffic behavior so an unhealthy rollout cannot cause replacement or database-connection churn.
+- [ ] Verify the running revision reports the reviewed image digest and release ID.
 
-## 5. Exact unauthenticated smoke commands
+## 4. Vercel Preview and GitHub environment
 
-Set origins in a private shell. The API variable is the origin only (no `/api/v1`); never save populated shell output.
+- [ ] Confirm the one Vercel project and select its built-in Preview environment; do not create a staging project.
+- [ ] Confirm the logical GitHub `nonproduction` environment has required approval/branch restrictions and non-production-only values. Settings are external evidence.
+- [ ] Configure only the three frontend names: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_KEY`, and `NEXT_PUBLIC_API_URL`.
+- [ ] Confirm the Supabase URL/key are the shared non-production project and the API URL ends in `/api/v1`.
+- [ ] Build/deploy a Preview and confirm the backend CORS allowlist contains only explicitly approved HTTPS Preview origin(s), never a wildcard or production origin.
+- [ ] Confirm browser assets refer only to non-production Auth/API endpoints.
+- [ ] Record source-commit provenance. Production must build the same reviewed commit with production-scoped `NEXT_PUBLIC_*` values; do not promote Preview bytes because those values are embedded at build time.
+
+## 5. Unauthenticated smoke commands
+
+Set origins in a private shell; never save populated output:
 
 ```bash
-export ROTRACK_STAGING_API_ORIGIN='<staging-api-origin>'
-export ROTRACK_STAGING_FRONTEND_ORIGIN='<staging-frontend-origin>'
+export ROTRACK_NONPRODUCTION_API_ORIGIN='<non-production-api-origin>'
+export ROTRACK_NONPRODUCTION_FRONTEND_ORIGIN='<approved-preview-origin>'
 
 curl --silent --show-error --fail-with-body \
-  "$ROTRACK_STAGING_API_ORIGIN/api/v1/health" \
-  | jq -e '. == {"status":"ok"}'
-
+  "$ROTRACK_NONPRODUCTION_API_ORIGIN/api/v1/health" | jq -e '. == {"status":"ok"}'
 curl --silent --show-error --fail-with-body \
-  "$ROTRACK_STAGING_API_ORIGIN/api/v1/readiness" \
-  | jq -e '. == {"status":"ready"}'
-
+  "$ROTRACK_NONPRODUCTION_API_ORIGIN/api/v1/readiness" | jq -e '. == {"status":"ready"}'
 curl --silent --show-error --fail-with-body \
-  "$ROTRACK_STAGING_FRONTEND_ORIGIN/" >/dev/null
-
-allowed_cors_status="$(curl --silent --show-error --dump-header /tmp/rotrack-staging-cors-allowed.headers \
-  --output /dev/null --write-out '%{http_code}' --request OPTIONS \
-  --header "Origin: $ROTRACK_STAGING_FRONTEND_ORIGIN" \
-  --header 'Access-Control-Request-Method: POST' \
-  --header 'Access-Control-Request-Headers: authorization,content-type' \
-  "$ROTRACK_STAGING_API_ORIGIN/api/v1/time-entries/start")"
-[[ "$allowed_cors_status" == 200 ]]
-tr -d '\r' </tmp/rotrack-staging-cors-allowed.headers \
-  | grep -Fxi "Access-Control-Allow-Origin: $ROTRACK_STAGING_FRONTEND_ORIGIN"
-
-curl --silent --show-error --dump-header /tmp/rotrack-staging-cors-denied.headers \
-  --output /dev/null --request OPTIONS \
-  --header 'Origin: https://denied.invalid' \
-  --header 'Access-Control-Request-Method: POST' \
-  "$ROTRACK_STAGING_API_ORIGIN/api/v1/time-entries/start"
-
-if grep -qi '^Access-Control-Allow-Origin:' /tmp/rotrack-staging-cors-denied.headers; then
-  echo 'denied origin unexpectedly received CORS permission' >&2
-  exit 1
-fi
-rm -f /tmp/rotrack-staging-cors-allowed.headers /tmp/rotrack-staging-cors-denied.headers
+  "$ROTRACK_NONPRODUCTION_FRONTEND_ORIGIN/" >/dev/null
 ```
 
-Then run the authenticated disposable-user critical path with local, external auth-state files that are never inspected or committed:
+Check allowed and denied CORS origins with the exact preflight contract in [`startup-and-health.md`](../startup-and-health.md). Record status codes and allow/deny results only.
+
+Then run the authenticated suite with two external disposable-user storage states:
 
 ```bash
 cd frontend
-ROTRACK_E2E_BASE_URL="$ROTRACK_STAGING_FRONTEND_ORIGIN" \
-ROTRACK_E2E_EXPECTED_API_URL="$ROTRACK_STAGING_API_ORIGIN/api/v1" \
+ROTRACK_E2E_BASE_URL="$ROTRACK_NONPRODUCTION_FRONTEND_ORIGIN" \
+ROTRACK_E2E_EXPECTED_API_URL="$ROTRACK_NONPRODUCTION_API_ORIGIN/api/v1" \
 ROTRACK_E2E_REQUIRE_AUTH=1 \
 ROTRACK_E2E_USER_A_STORAGE_STATE='<external-user-a-state-path>' \
 ROTRACK_E2E_USER_B_STORAGE_STATE='<external-user-b-state-path>' \
   npm run e2e
 ```
 
-Record test counts only. Confirm Work/Rot start, navigation/reload, close/reopen restoration, explicit stop, dashboard deltas, and two-user isolation. Do not claim health, readiness, CORS, Auth, or browser evidence until these commands are actually observed against staging.
+Require four passed Chromium tests, zero skips/unexpected/flaky results. Confirm Work/Rot start, reload/navigation, close/reopen restoration, explicit stop, dashboard deltas, and two-user isolation. Do not claim any result until observed against the selected non-production deployment.
 
-## 6. Failure and rollback boundaries
+## 6. Release safeguards
 
-- [ ] A migration dry run with unexpected versions, identity mismatch, TLS failure, grant/RLS failure, connection-budget failure, unresolved sentinel, mutable image, wildcard CORS, unhealthy readiness, or cross-user access is a deployment blocker.
-- [ ] Migrations are database-first and must remain backward-compatible. Application rollback selects the prior known-good image **digest** and Vercel deployment; it does not automatically reverse migrations.
-- [ ] ECS circuit-breaker rollback may restore the prior task revision. Confirm the prior revision uses staging secrets and the same compatible schema before choosing it.
-- [ ] Never roll back migration files by editing migration history or applying destructive SQL. Escalate schema rollback separately with backup/restore and data-loss review.
+- [ ] Structured application logging is enabled with runtime `staging` metadata (from logical GitHub `nonproduction`) and the image digest as service version.
+- [ ] Collector redaction, telemetry, alert routing, and access/retention controls are observed with synthetic sentinels; no private data is used.
+- [ ] Health, readiness, latency, error, auth, connection, replica/restart, migration, frontend exception, cold-start, Free pause/resume, logical-export freshness/restore, and budget/credit-expiry signals have owners and tested routes. Azure budget alerts remain notifications, not a hard spending cap.
+- [ ] The trusted fleet-wide/authentication-adjacent rate-limit boundary and failure-mode tests pass.
+- [ ] Production promotion remains blocked until non-production smoke, safeguards, exact prior/candidate rollback rehearsal, and all release approvals pass.
 
-## 7. Teardown
+## 7. Failure, rollback, and teardown
 
-Execute only for the authorized staging resources after preserving required redacted evidence:
+- [ ] A migration identity/TLS/RLS failure, pause/resume failure, budget notification, mutable image, wildcard CORS, wrong environment, unhealthy readiness, cross-user access, or unexpected cold-start timeout is an unconditional release blocker. Only missing/stale logical-export or failed restore-rehearsal evidence may proceed under a separately recorded product-owner data-loss risk acceptance.
+- [ ] Migrations are database-first and backward-compatible. Roll back the prior compatible image digest and Vercel deployment only when the matrix permits; never edit migration history or automatically reverse migrations.
+- [ ] Do not mass-stop active timer sessions during rollback.
+- [ ] Preserve redacted evidence before teardown. Remove only the authorized non-production Preview deployment, Container App revision/resources, temporary secret/configuration material, disposable users, and external auth state.
+- [ ] Confirm no non-production route, replica, secret access, disposable data, or billable resource remains, or record an approved retention decision.
 
-```bash
-aws ecs update-service \
-  --region "$ROTRACK_STAGING_AWS_REGION" \
-  --cluster "$ROTRACK_STAGING_ECS_CLUSTER_NAME" \
-  --service "$ROTRACK_STAGING_ECS_SERVICE_NAME" \
-  --desired-count 0
-aws ecs wait services-stable \
-  --region "$ROTRACK_STAGING_AWS_REGION" \
-  --cluster "$ROTRACK_STAGING_ECS_CLUSTER_NAME" \
-  --services "$ROTRACK_STAGING_ECS_SERVICE_NAME"
-
-vercel project rm '<dedicated-staging-project-name>' --scope '<staging-team-slug>' --yes
-supabase projects delete '<staging-project-ref>'
-rm -rf deploy/staging/rendered
-```
-
-- [ ] First rerun the three-ref identity gate and verify every destructive target says staging.
-- [ ] Stop/delete only the staging ECS service/resources through their owning stack or approved AWS procedure; deregister staging task revisions and schedule staging secrets for deletion under retention policy.
-- [ ] Remove staging DNS/certificates/log groups only after retention and incident requirements are met.
-- [ ] Delete the dedicated Vercel staging project and Supabase staging project; never substitute a development or production identifier.
-- [ ] Revoke disposable users/tokens, remove local Auth state files and CA copies, unset private shell variables, and remove ignored renders.
-- [ ] Confirm no running staging tasks, routes, billable project, active secret access, or orphaned disposable data remains. Record yes/no outcomes without identifiers.
+The production checklist must repeat these controls against `rotrack-prod`, Vercel Production, GitHub target `production`, managed environment `rotrack-production-env` inside `rotrack-production`, and `rotrack-api-production`; no production execution is implied by this document.

@@ -39,7 +39,7 @@ The frontend uses Supabase for authentication only. Application data goes throug
 - Node.js and npm
 - Java 21, as selected by `.java-version`
 - Maven 3.9+
-- A Supabase development project with access to its PostgreSQL database and JWT configuration
+- Access to the existing non-production/dev Supabase Free project for local development and approved environment-scoped authenticated E2E; credential-free PR CI uses isolated disposable PostgreSQL instead of hosted Supabase
 - A shell or IDE that can provide environment variables to Spring Boot
 
 The repository pins Node with `.nvmrc` and Java with `.java-version`. Activate those versions with your version manager before running the commands below.
@@ -82,7 +82,7 @@ source backend/.env
 set +a
 ```
 
-The backend variables are documented in [`backend/.env.example`](backend/.env.example): database connection/TLS, pool limits/timeouts, Supabase issuer/JWKS URLs and JWT audience, CORS origins, readiness caching, mutation-rate limits, structured-request-log metadata, and port. `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `SUPABASE_JWKS_URI`, and `SUPABASE_ISSUER_URI` are required; startup fails rather than silently using development credentials. `DATABASE_URL` is the only TLS-mode source and managed PostgreSQL must include `sslmode=verify-full` plus an explicit `sslrootcert` path to the provider's official CA certificate. Only the explicit `local` Spring profile may use `sslmode=disable` for loopback PostgreSQL.
+The backend variables are documented in [`backend/.env.example`](backend/.env.example): database connection/TLS, pool limits/timeouts, Supabase issuer/JWKS URLs and JWT audience, CORS origins, readiness caching, mutation-rate limits, structured-request-log metadata, and port. `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `SUPABASE_JWKS_URI`, and `SUPABASE_ISSUER_URI` are required; startup fails rather than silently using development credentials. `DATABASE_URL` is the only TLS-mode source and managed PostgreSQL must include `sslmode=verify-full` plus an explicit `sslrootcert` path to the provider's official CA certificate. The example uses the container path `/tmp/rotrack-certs/supabase-db-ca.crt`. For a direct local JVM process, replace only that URL parameter with the absolute path where you stored the official CA, for example `/home/YOUR_USER/.config/rotrack/supabase-db-ca.crt`; do not use a literal `$HOME` inside the quoted JDBC URL. Only the explicit `local` Spring profile may use `sslmode=disable` for loopback PostgreSQL.
 
 Never commit populated `.env` files or include their values in issue/PR evidence.
 
@@ -111,7 +111,7 @@ curl --fail-with-body http://localhost:8080/api/v1/health
 curl --fail-with-body http://localhost:8080/api/v1/readiness
 ```
 
-Liveness always performs no dependency calls and returns `200 {"status":"ok"}` while the process can serve HTTP. Readiness validates a database connection and returns either `200 {"status":"ready"}` or `503 {"status":"not_ready"}`. Both endpoints are unauthenticated and intentionally omit dependency details. Use liveness for ECS container restarts and readiness for traffic eligibility; see the [operations runbook](docs/operations/startup-and-health.md).
+Liveness always performs no dependency calls and returns `200 {"status":"ok"}` while the process can serve HTTP. Readiness validates a database connection and returns either `200 {"status":"ready"}` or `503 {"status":"not_ready"}`. Both endpoints are unauthenticated and intentionally omit dependency details. Use liveness for Container App restarts and readiness for traffic eligibility; see the [operations runbook](docs/operations/startup-and-health.md).
 
 ## Validation commands
 
@@ -161,7 +161,9 @@ The backend derives the acting user from the validated JWT subject. Clients must
 The repository is still working toward the production-ready MVP. In particular:
 
 - Empty-database migration application, migrated-database repository checks, the dedicated runtime-role audit, and direct Data API RLS evidence pass against isolated/development targets. A fresh disposable signup reached confirmation, but opening that confirmation email and completing the same user's first sign-in remain externally blocked.
-- The authenticated two-user Spring ownership matrix and required-authenticated Playwright 4/4 flow are recorded as passing. Those local/development results are not deployed-staging evidence.
-- Managed-CA startup, independent liveness/readiness, degraded readiness `503`, and exact CORS behavior are locally verified. Hosted CI/protection, an authorized isolated staging deployment, fleet-wide/authentication-adjacent edge limiting, observed telemetry/alerts, staging smoke, and rollback rehearsal remain open.
+- The authenticated two-user Spring ownership matrix and required-authenticated Playwright 4/4 flow are recorded as passing. Those local/development results are not deployed non-production evidence.
+- Managed-CA startup, independent liveness/readiness, degraded readiness `503`, and exact CORS behavior are locally verified. Hosted CI/protection, an authorized non-production Azure/Vercel deployment, fleet-wide/authentication-adjacent edge limiting, observed telemetry/alerts, staging smoke, budget/credit-expiry alerting, and rollback rehearsal remain open.
+- The approved deployment target is two Supabase Free projects (shared non-production/dev plus `rotrack-prod`), one Vercel project using Preview and Production, target logical GitHub `nonproduction`/`production` environments, and separate Azure managed environments inside separate resource groups with separate Container Apps. The current authenticated workflow/scripts still use legacy staging/three-reference/AWS assumptions. No cloud resource is claimed as configured or verified.
+- Supabase Free projects may auto-pause after seven days of low activity. Free does not include the Pro/Team/Enterprise automatic daily backup feature or PITR; plan encrypted access-controlled off-site `supabase db dump` exports, retention, and a restore rehearsal before production, or obtain explicit product-owner data-loss risk acceptance. See the [Supabase pausing](https://supabase.com/docs/guides/platform/free-project-pausing), [database backups](https://supabase.com/docs/guides/platform/backups), and [CLI dump](https://supabase.com/docs/reference/cli/supabase-db-dump) docs.
 
 Track these items in [`todo.md`](todo.md) rather than treating existing source or old build output as verification evidence.

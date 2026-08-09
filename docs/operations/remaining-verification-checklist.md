@@ -1,6 +1,6 @@
 # Remaining verification checklist
 
-Use this checklist to finish the current disposable development database verification. Do **not** use these steps against production. A separate Supabase project/database should be created later for staging and production.
+Use this checklist to finish the current disposable development database verification. Do **not** use these steps against production. The approved target keeps development and approved environment-scoped authenticated E2E on this existing non-production/dev Supabase Free project; credential-free PR CI uses isolated disposable PostgreSQL instead of hosted Supabase. Production is the separate `rotrack-prod` Supabase Free project. No deployment is implied by this local checklist.
 
 ## Safety rules
 
@@ -434,18 +434,17 @@ Do not include credentials, tokens, storage-state contents, or certificate conte
 
 ---
 
-## 12. After M2 is complete: staging and production
+## 12. After M2 is complete: non-production and production
 
 Do not start deployment until M2 passes.
 
-For staging, create a separate Supabase project and configure:
+For non-production, use the existing shared non-production/dev Supabase Free project with:
 
-- a separate database CA certificate;
-- a separate least-privilege `rotrack_app` role;
-- separate disposable/staging users;
-- staging frontend CORS origin;
-- Vercel frontend configuration;
-- ECS/Fargate backend configuration;
-- CloudWatch health, latency, error-rate, restart, and connection monitoring.
+- its official database CA and least-privilege `rotrack_runtime` role;
+- disposable non-production users/data for development and approved environment-scoped authenticated E2E; credential-free PR CI uses isolated disposable PostgreSQL instead of hosted Supabase;
+- Vercel Preview in the one Vercel project;
+- logical GitHub `nonproduction` environment;
+- Azure Container Apps Consumption in managed environment `rotrack-nonproduction-env` inside resource group `rotrack-nonproduction` with app `rotrack-api-nonproduction`;
+- exact CORS, health/readiness, cold-start, connection, telemetry, and budget/credit-expiry checks.
 
-Production must use another separate Supabase project and repeat the CA, role, migration, RLS, browser, health, and rollback verification process.
+Production must use the separately created `rotrack-prod` Supabase Free project, Vercel Production in the same Vercel project, logical GitHub `production`, and Azure managed environment `rotrack-production-env` inside resource group `rotrack-production` with app `rotrack-api-production`. Repeat the CA, role, migration, RLS, browser, health, monitoring, budget, and rollback process. These are target requirements only; no remote resource is claimed as configured or verified.

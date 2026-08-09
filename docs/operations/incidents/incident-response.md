@@ -7,7 +7,7 @@
 | Role | Placeholder | Responsibility |
 |---|---|---|
 | Incident commander (IC) | `[incident-commander]` | Declares severity, owns decisions/timeline, assigns roles |
-| Operations lead | `[operations-lead]` | ECS/Vercel/Supabase diagnosis and mitigations |
+| Operations lead | `[operations-lead]` | Azure Container Apps/Vercel/Supabase diagnosis and mitigations |
 | Application lead | `[application-lead]` | Frontend/API diagnosis, rollback compatibility |
 | Database lead | `[database-lead]` | Connections, migrations, recovery decisions |
 | Security/privacy lead | `[security-privacy-lead]` | Auth, suspected exposure, evidence handling |
@@ -32,17 +32,18 @@ Any cross-user ownership anomaly, unexpected timer/session mutation, migration m
 3. Freeze deployments, migrations, scaling changes, and unrelated configuration. A release incident is an immediate `STOP` in the release record.
 4. Preserve safe release/deployment identifiers, alert transitions, aggregate metrics, and correlation IDs. Do not copy raw requests, bodies, tokens, cookies, browser storage, database strings, notes/reflections, auth payloads, or complete logs into chat/tickets.
 5. Establish user impact and trust-boundary impact before optimizing recovery speed.
-6. Choose the smallest reversible mitigation: remove an unready task, stop a rollout, restore the prior compatible application release, reduce replacement churn, or isolate telemetry ingestion. Do not improvise a database reverse migration.
+6. Choose the smallest reversible mitigation: remove traffic from an unready revision, stop a rollout, restore the prior compatible application release, reduce replica replacement churn, or isolate telemetry ingestion. Do not improvise a database reverse migration.
 7. Communications lead sets the next-update time even if diagnosis is incomplete.
 
 ## Scenario guides
 
 ### Liveness / ready-capacity failure
 
-- Compare public liveness with dependency readiness and ECS desired/running/ready counts.
-- If liveness fails, inspect task exit/deployment/provider events and restore the prior immutable application release when release-correlated.
-- If liveness is 200 but readiness is 503 across tasks, treat PostgreSQL/connection state as a shared dependency issue. Stop deployment/replacement churn; repeatedly replacing live tasks can worsen connection exhaustion.
-- Never route traffic to unready tasks or weaken readiness to make a deployment appear healthy.
+- Compare public liveness with dependency readiness and Container App desired/ready replica and revision state.
+- If liveness fails, inspect replica exit/revision/provider events and restore the prior immutable application release when release-correlated.
+- If liveness is 200 but readiness is 503 across replicas, treat PostgreSQL/connection state as a shared dependency issue. Stop deployment/replacement churn; repeatedly replacing live replicas can worsen connection exhaustion.
+- If the app has just resumed from scale-to-zero, compare the observation with the approved cold-start grace before paging.
+- Never route traffic to unready replicas or weaken readiness to make a deployment appear healthy.
 
 ### Latency / API 5xx / frontend exceptions
 
@@ -54,7 +55,7 @@ Any cross-user ownership anomaly, unexpected timer/session mutation, migration m
 ### Database connection saturation or exhaustion
 
 - Stop rollout and automatic scale-out/replacement that would open more pools.
-- Compare `maximum pool size × maximum tasks` with the approved app budget and provider connection limit; preserve migration/operations reserve.
+- Compare `maximum pool size × maximum Container App replicas` with the approved app budget and provider connection limit; include revision overlap and preserve migration/operations reserve.
 - Inspect active/pending/acquisition-timeout aggregates and provider state without exporting query text, connection strings, or credentials.
 - Restore the prior app if the new release increased connection demand. Do not raise pool limits without database-lead capacity approval.
 
@@ -65,6 +66,13 @@ Any cross-user ownership anomaly, unexpected timer/session mutation, migration m
 - Keep the old app serving only if compatibility and data integrity are proven.
 - Prefer an independently reviewed forward-fix migration. Manual reverse SQL requires the approvals and proof in the release runbook.
 - Point-in-time restore is a SEV-1 disaster-recovery decision because post-restore writes may be lost or require reconciliation.
+
+### Supabase Free pause or backup failure
+
+- A Free project may auto-pause after seven days of low activity; see the official [Supabase pausing documentation](https://supabase.com/docs/guides/platform/free-project-pausing). Compare provider pause state with the expected project boundary and notify the named resume owner. Do not treat a paused non-production project as evidence that production is available.
+- Resume only through the approved provider procedure and record sanitized timing/outcome. Do not weaken authentication, readiness, or release gates to hide a pause.
+- Free projects do not provide automatic daily backups or PITR in this topology. If an expected encrypted off-site logical export from [`supabase db dump`](https://supabase.com/docs/reference/cli/supabase-db-dump) is missing, stale, inaccessible, or fails restore rehearsal, stop production promotion and escalate to the database lead and product owner.
+- Use a retained `supabase db dump` export for recovery rehearsal; never paste backup contents, credentials, or project identifiers into incident records. An explicit product-owner data-loss risk acceptance is required to proceed without the required restore evidence.
 
 ### Authentication failure spike
 
@@ -106,10 +114,10 @@ Only the communications lead publishes external updates after IC and security/pr
 The incident record contains sanitized:
 
 - stable alert IDs and aggregate observations;
-- release, image digest/task-definition, frontend deployment, and migration identifiers;
+- release, image digest/Container App revision, frontend deployment, and migration identifiers;
 - correlation IDs and normalized routes (no raw URLs/query);
 - UTC timeline, decisions/approvers, mitigations, and verification results;
 - provider evidence links with access restrictions, not copied raw artifacts;
 - notification/rotation actions and known evidence gaps.
 
-After stabilization, rotate any exposed credentials, remove temporary access, verify telemetry deletion/retention actions, and open corrective work. Hold a blameless review for SEV-1/2 with detection, response, rollback, privacy, and recurrence actions, each with owner and due date. A failed staging rehearsal produces a problem record and blocks production even when it caused no production incident.
+After stabilization, rotate any exposed credentials, remove temporary access, verify telemetry deletion/retention actions, and open corrective work. Hold a blameless review for SEV-1/2 with detection, response, rollback, privacy, and recurrence actions, each with owner and due date. A failed non-production rehearsal produces a problem record and blocks production even when it caused no production incident. Budget alerts are notifications rather than hard spending caps, and cost/credit-expiry data can be delayed; use them to stop scale-out and escalate, not to claim spend is technically capped. Repeated cold-start failures, Free-project pause failures, or backup/restore failures are release risks, not reasons to weaken health or readiness.

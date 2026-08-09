@@ -109,10 +109,10 @@ Use these questions to review the completed baseline phases and understand the i
 4. What is the difference between liveness and readiness, and why must liveness avoid database calls?
 5. Why is an unauthenticated readiness endpoint useful to an orchestrator but dangerous if every request checks out a connection?
 6. How do a short result cache and single-flight synchronization bound readiness pressure on the pool?
-7. Why must pool size be budgeted across the maximum ECS task count rather than per process only?
+7. Why must pool size be budgeted across the maximum Container App replica count and revision overlap rather than per process only?
 8. Which CORS origin properties must be rejected even when Java can parse the URI?
 9. Why is HTTP allowed only for loopback development origins while deployed browser origins require HTTPS?
-10. Why can an ALB database-readiness failure still cause ECS replacement churn even when container liveness stays healthy?
+10. Why can a database-readiness failure cause Container App replica/revision churn even when container liveness stays healthy?
 11. What does a `HikariDataSource` binding test prove that reading raw environment properties does not?
 12. Why is `sslrootcert=system` not portable in PostgreSQL JDBC 42.7.x, and what failure does an explicit CA path avoid?
 13. Why is capturing a server certificate from an unverified connection not a safe substitute for obtaining the provider's official CA certificate?
@@ -151,25 +151,27 @@ Use these questions to review the completed baseline phases and understand the i
 6. Why must the JDBC and container-entrypoint guards reject TLS override properties such as `sslfactory` and `sslhostnameverifier` in addition to requiring `sslmode=verify-full`?
 7. What does a SIGTERM smoke test prove about graceful shutdown that a successful `docker stop` command alone may hide?
 8. Why is an immutable registry digest release evidence while a local tag, image ID, or local content digest is not?
-9. How should database connection limits account for desired tasks, maximum tasks, and deployment rollout surge simultaneously?
-10. Why must ECS task and execution roles be separate, narrowly scoped identities?
+9. How should database connection limits account for desired replicas, maximum replicas, and overlapping revisions during rollout?
+10. Why must a Container App's managed identity be narrowly scoped to the selected registry and runtime resources?
 
-## M3.2 — Isolated staging operations
+## M3.2 — Production-separated non-production operations
 
-1. Why must Supabase, Vercel, and AWS staging identities be demonstrably distinct from both development and production?
+1. Why must the shared non-production Supabase/Vercel Preview/Azure managed-environment identities be demonstrably distinct from the production `rotrack-prod`/Vercel Production/Azure managed-environment identities?
 2. Why do placeholder-only templates and committed variable names provide a useful contract without becoming deployment evidence?
-3. What does a read-only AWS preflight verify about the caller, ECS resources, task roles, and secret access before deployment?
+3. What should an Azure read-only preflight verify about the selected subscription, managed environment, resource group, Container App, managed identity, registry pull, and secret boundary before deployment?
 4. Why must the application runtime role be audited for memberships, direct grants, sequence access, routine execution, and `BYPASSRLS` rather than checked only for superuser status?
 5. Why is `BYPASSRLS` intentional for this backend architecture, and which ownership boundary must compensate for it?
 6. Why must the staging CORS allowlist contain exact HTTPS frontend origins rather than wildcards or loosely matched domains?
 7. Why is an official managed-database CA provenance record necessary even after local TLS container tests pass?
-8. Why do successful render and validation scripts not prove that Vercel, ECS, Supabase, IAM, DNS, or TLS are configured remotely?
+8. Why do successful local render and validation steps not prove that Vercel, Container Apps, Supabase, managed identity, DNS, or TLS are configured remotely?
 9. Which values belong in a redacted staging evidence record, and which values must never be committed?
-10. Why must live staging smoke and rollback evidence wait until the container and staging configuration are integrated?
+10. Why must live non-production smoke and rollback evidence wait until the container and target managed-environment configuration are integrated?
+11. Why must Free-plan pause ownership, encrypted logical-export retention, and a restore rehearsal (or explicit product-owner risk acceptance) be release safeguards?
+12. Why are Azure budget alerts notifications rather than a hard spending cap, and why must delayed cost/credit-expiry data be accounted for?
 
 ## M3.3 — Release safeguards and observability
 
-1. Why should a release apply backward-compatible database migrations before deploying application tasks?
+1. Why should a release apply backward-compatible database migrations before deploying application revisions?
 2. Why can an application image usually be rolled back independently while a destructive database migration often cannot?
 3. Why must a rollback rehearsal identify the exact candidate and prior immutable image digests?
 4. Why should rollback hooks be external regular files that are operator-owned and not group- or world-writable?
@@ -177,7 +179,7 @@ Use these questions to review the completed baseline phases and understand the i
 6. Why are documented thresholds insufficient until telemetry ingestion, dashboards, routing, and an alert notification test are observed?
 7. Why is a structured-log allowlist safer than attempting to redact an unlimited set of arbitrary fields after logging?
 8. Which data must never appear in logs, traces, alerts, or monitoring payloads, and how can a redaction sentinel test that boundary?
-9. Why do rate limiting, named incident staffing, staging smoke, and rollback rehearsal remain production blockers even when all source-level safeguards pass?
-10. Why should staging smoke and rollback commands be prepared in advance but not executed against nonexistent or unapproved infrastructure?
+9. Why do rate limiting, named incident staffing, non-production smoke, and rollback rehearsal remain production blockers even when all source-level safeguards pass?
+10. Why should non-production smoke and rollback commands be prepared in advance but not executed against nonexistent or unapproved infrastructure?
 11. What evidence is required to move M3.3 from **In progress** to **Verified**?
 12. Why must M4 feature implementation remain gated until the complete M3 MVP release gate passes?

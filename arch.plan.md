@@ -52,18 +52,18 @@ This section describes what exists in source control today. It is not a completi
 - Supabase migrations defining `users`, `time_entries`, the `ROT|WORK` enum, ownership RLS policies, signup profile creation, timestamp constraints, one-active-session uniqueness, and reporting indexes
 - Source-controlled suites include executable PostgreSQL migration/repository tests, generated signed-JWT filter tests, service/controller ownership tests, Vitest/RTL coverage, and a quarantined external-auth Playwright critical path that can bind observed browser API responses to an approved API base
 - Backend startup rejects PostgreSQL TLS override properties, requires managed JDBC hostname verification with an explicit CA path, validates exact CORS origins, binds bounded Hikari settings, and exposes cached/single-flight database readiness
-- A digest-pinned Java 21 multi-stage container runs as UID/GID `10001:10001`; the deployment contract adds a read-only root filesystem, independent liveness/ALB-readiness probes, task-local provider-CA materialization, bounded shutdown, and placeholder-only ECS/Fargate base and staging overlays
-- Pull-request workflows and local guards cover frontend/backend suites, isolated PostgreSQL migration apply/verify, prospective-tree and history secret scanning, operational contract tests, and a credential-free container build; authenticated E2E remains a separate manually dispatched workflow targeting a named environment intended for protected staging
-- Staging render/validation files enforce distinct Supabase/Vercel/AWS identities, immutable image references, separate task/execution roles, exact HTTPS origins, six secret references, runtime-role boundaries, and rollout-surge-aware database connection budgets without committing actual values
-- Release, rollback, monitoring, structured-logging, and incident-response contracts plus fail-closed staging smoke/rehearsal scripts are tracked. The backend now has a bounded process-local per-user mutation limiter and an allowlisted structured request-completion logger; staging templates fail unless that logger is enabled with staging metadata bound to the immutable image digest. These source controls do not provision a fleet-wide/authentication-adjacent edge limiter, collector redaction, telemetry, alerts, contacts, or infrastructure
+- A digest-pinned Java 21 multi-stage OCI-compatible image runs as UID/GID `10001:10001`; local validation covers read-only-root compatibility, independent liveness/readiness probes, runtime CA injection, bounded shutdown, and a platform-neutral artifact boundary. Strict registry manifest media type/digest readback and ACA-specific hardening remain target work. The checked-in ECS/Fargate templates are historical, unselected AWS artifacts and are not the Azure target
+- Pull-request workflows and local guards cover frontend/backend suites, isolated PostgreSQL migration apply/verify, prospective-tree and history secret scanning, operational contract tests, and a credential-free container build. The checked-in authenticated workflow still uses the `disposable-staging-auth` GitHub Environment and legacy three-Supabase-reference checks; converting it to the target logical `nonproduction` environment is residual work
+- The checked-in staging render/validation and release files are historical AWS-era preparation and remain unselected. They still enforce three Supabase references and AWS assumptions. The approved target uses one shared non-production Supabase identity for approved environment-scoped E2E, one Vercel project with Preview deployments, target logical GitHub environment gates, and separate Azure managed environments/resource groups/apps without claiming any remote configuration or verification
+- Release, rollback, monitoring, structured-logging, and incident-response contracts plus fail-closed non-production smoke/rehearsal scripts are tracked. The backend now has a bounded process-local per-user mutation limiter and an allowlisted structured request-completion logger; legacy staging templates fail unless that logger is enabled with staging metadata bound to the immutable image digest. These source controls do not provision a fleet-wide/authentication-adjacent edge limiter, collector redaction, telemetry, alerts, contacts, or infrastructure
 
 ### Verification boundaries at the current checkpoint
 
 - The PostgreSQL verification suite has rollback-only evidence against the configured development schema and empty-database apply evidence against isolated temporary PostgreSQL; direct Data API RLS is recorded as verified.
 - Spring JDBC does not propagate the user JWT into PostgreSQL. The dedicated `rotrack_runtime` role bypasses RLS with only the required application DML, and the recorded live two-user Spring ownership matrix passes.
 - Generated ES256/RS256 failure tests cover the production decoder/filter boundary, while recorded live Supabase sign-in and two-user authenticated ownership flows pass. Opening a fresh confirmation email and completing that same disposable user's first sign-in remain externally blocked.
-- The Playwright harness has recorded external two-user auth evidence. Managed-CA startup/readiness/CORS and the integrated non-root container are locally verified, but those local results are not deployed-staging evidence.
-- Hosted CI/branch protection, protected-environment settings, an isolated deployed staging environment, an immutable registry digest, fleet-wide/authentication-adjacent edge rate limiting, observed structured-log ingestion and collector redaction, telemetry and alert routing, named incident staffing, staging smoke, and rollback rehearsal remain open. M4 stays gated until the M3 MVP release gate is verified.
+- The Playwright harness has recorded external two-user auth evidence. Managed-CA startup/readiness/CORS and the integrated non-root container are locally verified, but those local results are not deployed non-production evidence.
+- Hosted CI/branch protection, protected-environment settings, an authorized non-production deployment at an immutable registry digest, fleet-wide/authentication-adjacent edge rate limiting, observed structured-log ingestion and collector redaction, telemetry and alert routing, named incident staffing, non-production smoke, and rollback rehearsal remain open. M4 stays gated until the M3 MVP release gate is verified.
 
 ## 3. Target System Architecture
 
@@ -77,6 +77,29 @@ Browser / Next.js
                                      |-- applies domain rules
                                      `-- TLS JDBC ------------------> Supabase PostgreSQL
 ```
+
+### Approved deployment architecture
+
+This is the product-owner-approved target. It is a documentation decision, not evidence that any cloud resource, deployment, registry digest, environment setting, alert, or domain is configured or verified.
+
+| Boundary | Non-production | Production |
+|---|---|---|
+| Supabase | Existing non-production/dev Supabase Free project, shared by development and approved environment-scoped authenticated E2E | Newly created `rotrack-prod` Supabase Free project |
+| Vercel | Preview environment in one Vercel project | Production environment in that same Vercel project |
+| GitHub | Target logical `nonproduction` environment for deployment approvals/secrets | Target logical `production` environment for deployment approvals/secrets |
+| Azure managed environment | Target `rotrack-nonproduction-env` | Target `rotrack-production-env` |
+| Azure resource group / app | Target `rotrack-nonproduction` / `rotrack-api-nonproduction` | Target `rotrack-production` / `rotrack-api-production` |
+| Scaling | Azure Container Apps Consumption, minimum replicas `0`; measure at least 10 wake-ups | Minimum replicas `0` only after explicit acceptance when non-production p95 readiness is ≤30 seconds and no trial exceeds 60 seconds; otherwise `1` |
+
+The shared non-production Supabase project is an accepted development/approved environment-scoped E2E tradeoff. Credential-free pull-request CI uses isolated disposable PostgreSQL and never connects to the hosted Supabase project; approved authenticated E2E may use disposable users/data in the shared non-production project, never `rotrack-prod`. The single Vercel project uses Vercel's built-in Preview and Production environments rather than a dedicated staging Vercel project. The Azure managed environments are the security boundary and each is inside its matching separate resource group; separate Container Apps are also required. GitHub/ACA `nonproduction` maps to the application's existing runtime/telemetry label `staging`; production maps to `production`. GitHub Environment protection capabilities depend on repository visibility and plan; authoritative settings must be read back against the [GitHub Environments documentation](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments). If required reviewers, branch restrictions, or environment secrets are unavailable, production deployment remains stopped until the plan/visibility changes or an independently reviewed equivalent gate is approved. None of these target resources or controls is claimed as created.
+
+The backend image is a platform-neutral OCI-compatible artifact: Linux amd64, immutable registry digest, non-root UID/GID `10001:10001`, writes limited to `/tmp`, port `8080`, process liveness and database readiness probes, graceful shutdown, and runtime CA injection. The current builder can emit Docker media type, so registry manifest media type and digest require deployment readback. The image is locally read-only-root compatible; ACA enforcement is not claimed, so the target requires non-root execution, no remote debug shell, least-privilege managed identity, and isolated secret injection until a supported provider control is verified. If a registry integration must be selected, prefer Azure Container Registry (ACR) with managed identity for Azure pulls; that is an Azure deployment integration, not a change to artifact portability. Consumption scale-to-zero requires the measured acceptance gate in the table plus budget/credit-expiry alerts before production promotion. Azure budget alerts are notifications, not a hard spending cap, and cost/credit-expiry data can be delayed.
+
+### Supabase Free-plan operational constraints
+
+Both target Supabase projects are Free-plan projects. According to the official [Free project pausing documentation](https://supabase.com/docs/guides/platform/free-project-pausing), a low-activity Free project may be automatically paused after a 7-day low-activity period; the owner must monitor pause warnings and own resume/recovery. Supabase's [database backup documentation](https://supabase.com/docs/guides/platform/backups) identifies automatic daily backups as a Pro/Team/Enterprise feature and recommends regular exports for Free projects, so this topology requires encrypted, access-controlled off-site logical exports using [`supabase db dump`](https://supabase.com/docs/reference/cli/supabase-db-dump). PITR is not part of this Free topology.
+
+No backup, pause alert, resume procedure, export retention, or restore evidence is claimed as configured. Before production promotion, complete a restore rehearsal from a retained logical export or record a separate explicit product-owner data-loss risk acceptance.
 
 ### Trust boundaries
 
@@ -104,8 +127,8 @@ Browser / Next.js
 | Frontend tests | Vitest and React Testing Library |
 | Browser tests | Playwright |
 | CI | GitHub Actions with credential-free pull-request jobs and separately environment-scoped authenticated E2E intended for protected staging |
-| Container | Digest-pinned multi-stage Java 21 OCI image, non-root UID/GID `10001:10001` |
-| Hosting | Vercel frontend, AWS ECS Fargate backend, Supabase Auth/PostgreSQL |
+| Container | Digest-pinned multi-stage Java 21 OCI-compatible image, non-root UID/GID `10001:10001` |
+| Hosting | One Vercel project (Preview for non-production, Production for production), Azure Container Apps Consumption backend, two Supabase Free projects |
 
 ## 4. Core Data and Time Model
 
@@ -346,22 +369,24 @@ Tests are delivered with each feature; testing is not a cleanup phase.
 
 - The tracked pull-request workflow runs frontend install/high audit/lint/typecheck/tests/build, backend Java 21 clean tests/package, isolated PostgreSQL migration apply/verify, secret and workflow-policy guards, operational contract tests, and a credential-free non-root container build/inspection.
 - GitHub-hosted success, a deliberately blocking failure, branch protection, and protected-environment restrictions are external state and must be observed before CI is called verified.
-- The staging target is a Vercel frontend and immutable-digest ECS Fargate backend against a separate Supabase project. Source-controlled templates and synthetic validation do not prove that this infrastructure exists or is isolated.
+- The non-production target is the Preview environment of one Vercel project and an immutable-digest Spring backend in the non-production Azure Container App, using the shared non-production Supabase Free project. Production is the same Vercel project's Production environment and a separate production Azure Container App/resource group against `rotrack-prod`. Source-controlled templates and synthetic validation do not prove that any of this infrastructure exists or is isolated.
+- The backend promotes the exact tested image digest. The frontend cannot promote the same Preview bytes because `NEXT_PUBLIC_*` environment values are embedded at build time; Vercel Production must build the same reviewed source commit with production-scoped values, record separate immutable deployment provenance, and pass production-safe verification.
 - Apply database migrations before application versions that depend on them; migrations must be backward-compatible during rollout. Application rollback never implies automatic database rollback.
-- Production promotion requires a deployed immutable staging artifact, redacted smoke evidence, active safeguards/observability, and a rehearsed application rollback.
+- Production promotion requires the tested non-production backend digest, matching source-commit provenance for the environment-specific frontend build, redacted smoke evidence, active safeguards/observability, budget/credit-expiry alerting, and a rehearsed application rollback.
+- Consumption scale-to-zero is initially accepted. Runbooks must account for cold-start latency and distinguish a cold start from an outage before paging.
 
 ### Observability and release safeguards
 
 - Required structured backend logs include request/correlation ID, route template, status, latency, and only explicitly allowlisted identifiers. The backend implements this application boundary with generated request IDs, normalized route allowlisting, stable error/exception categories, and omission-based redaction; staging ingestion and collector-side redaction remain unobserved.
 - Never log bearer tokens, authorization/cookie values, JDBC URLs, credentials, note content, reflections, or private request/response bodies.
-- Production monitoring must cover API health/error rate/latency, ECS restarts, authentication failures, database connection exhaustion, migration status, and frontend exceptions with environment separation, bounded retention, owners, and tested routing.
+- Production monitoring must cover API health/error rate/latency, Container App restarts and replica readiness, authentication failures, database connection exhaustion, migration status, frontend exceptions, Azure budget/credit-expiry risk, cold-start behavior, Supabase Free pause warnings/resume ownership, and logical-backup freshness/restore readiness with environment separation, bounded retention, owners, and tested routing. Azure budget alerts are notifications rather than a hard spending cap, and cost/credit-expiry data can be delayed.
 - Rate limiting is required before public production launch on authentication-adjacent and mutation endpoints, including tested `429`, bypass resistance, and recovery behavior. The process-local authenticated mutation limiter is defense in depth only; a trusted fleet-wide/authentication-adjacent edge control remains required.
-- Health endpoints distinguish liveness from dependency readiness before ECS rollout.
+- Health endpoints distinguish liveness from dependency readiness before Container Apps rollout.
 - Release, rollback, monitoring, structured-log redaction, and incident-response contracts are source controlled, but they are preparation rather than evidence that telemetry, alerts, owners, staging smoke, or rollback rehearsal are active.
 
 ### MVP release boundary
 
-The M3 MVP release gate is currently **not met**. Production promotion and M4 implementation remain stopped until the backlog records all prerequisite milestone gates as **Verified**, hosted CI/protection evidence, a demonstrably isolated staging deployment at an immutable registry digest, active rate limiting/logging/telemetry/alerts with owners, authenticated staging smoke, and an exact candidate-to-prior rollback rehearsal. Any exception requires an explicit product-owner dependency decision in both architecture and backlog.
+The M3 MVP release gate is currently **not met**. Production promotion and M4 implementation remain stopped until the backlog records all prerequisite milestone gates as **Verified**, hosted CI/protection evidence, an authorized non-production backend deployment at an immutable registry digest, environment-specific frontend build provenance, active rate limiting/logging/telemetry/alerts with owners, authenticated non-production smoke, and an exact backend candidate-to-prior rollback rehearsal. Any exception requires an explicit product-owner dependency decision in both architecture and backlog.
 
 ## 10. Architecture Change Rules
 

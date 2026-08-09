@@ -1,6 +1,6 @@
 # Structured logging, correlation, and redaction contract
 
-**Status:** application boundary implemented and staging configuration source-controlled. Do not claim collector redaction, ingestion, telemetry, alerts, or routing are active until deployed staging tests prove them.
+**Status:** application boundary implemented and non-production (`staging` runtime label) configuration source-controlled. Do not claim collector redaction, ingestion, telemetry, alerts, or routing are active until deployed non-production tests prove them.
 
 ## Event envelope
 
@@ -24,10 +24,10 @@ Emit one JSON object per event. Request-completion events use these names and ty
 | `exception.type` | on unexpected server failure | Allowlisted class/category without message |
 | `actor.id_hash` | optional | Environment-scoped pseudonymous hash; never raw JWT `sub` |
 | `resource.id_hash` | optional | Environment-scoped pseudonymous hash only when operationally necessary |
-| `cloud.task_id` | optional | Platform task identifier approved as non-secret |
+| `cloud.instance.id` | optional | ACA replica/runtime instance identifier only when the platform exposes a value approved as non-secret |
 | `trace.id` / `span.id` | optional | Valid telemetry identifiers; never derived from user input |
 
-Do not add arbitrary maps to this envelope. Fields and values are allowlisted; unknown fields are dropped before export. Metrics dimensions use only environment, service, release, route template, method, status class/code, error code, and exception fingerprint. Correlation, actor, resource, trace, and task IDs are searchable fields but never metric labels.
+Do not add arbitrary maps to this envelope. Fields and values are allowlisted; unknown fields are dropped before export. Metrics dimensions use only environment, service, release, route template, method, status class/code, error code, and exception fingerprint. Correlation, actor, resource, trace, and runtime-instance IDs are searchable fields but never metric labels.
 
 A safe request event example uses synthetic values only:
 
@@ -81,7 +81,7 @@ Redaction must replace a forbidden field with omission, not a reversible mask. A
 
 - Expected `4xx` events log status, normalized route, duration, and stable safe error code. They do not log exception stacks.
 - Unexpected `5xx` events log an allowlisted exception type/fingerprint and correlation ID. Exception message and stack are retained only if a scrubber proves forbidden content is absent; the safer initial production setting is type/fingerprint without message and a restricted, scrubbed stack in the error-monitoring provider.
-- Readiness failures log `database.readiness.failed`, duration, task/release, and a coarse reason (`timeout`, `unavailable`, `unknown`). Never log JDBC/SQL/provider messages or dependency host details.
+- Readiness failures log `database.readiness.failed`, duration, runtime instance/release, and a coarse reason (`timeout`, `unavailable`, `unknown`). Never log JDBC/SQL/provider messages or dependency host details.
 - Authentication failures log status and coarse safe reason (`missing_credentials`, `invalid_token`, `insufficient_authority`) after review. They never log token syntax, claims, subject, issuer value, raw IP, or security exception message.
 
 ## Frontend contract
@@ -97,14 +97,14 @@ Session replay and automatic DOM/network instrumentation are disabled. Source ma
 
 ## Enforcement and verification
 
-Before enabling staging ingestion:
+Before enabling non-production ingestion:
 
 1. Unit-test the structured encoder with sentinel values for every forbidden category and assert none appear in serialized output.
 2. Integration-test representative success, validation, auth failure, ownership `404`, conflict `409`, unexpected `500`, and readiness `503` requests.
 3. Search captured events for sentinel bearer/cookie/query/database/body/note/reflection/auth payload values. The test fails on any match.
 4. Verify every HTTP completion has correlation ID, normalized route, status, and duration, and has no raw path/query.
 5. Verify collector rules drop forbidden mixed-case and nested keys and increment a restricted redaction/drop counter.
-6. Verify staging events cannot appear in production projects, dashboards, alerts, or exports.
+6. Verify non-production events cannot appear in production projects, dashboards, alerts, or exports.
 7. Repeat the capture test after logging framework, security, exception handler, ORM, HTTP client, Supabase SDK, or monitoring-agent upgrades.
 
 Production ingestion remains blocked until this evidence and provider access/retention review pass. Never validate redaction with real credentials or private content; use unmistakable synthetic sentinels.

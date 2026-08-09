@@ -1,98 +1,91 @@
-# Staging deployment evidence — template
+# Non-production deployment evidence — template
 
-Copy this template to an approved evidence system only after an authorized staging run. Checked-in copies must remain blank. Public, credential-free staging frontend/API URLs are required release evidence and may be recorded. Never record project refs, account IDs, role/secret ARNs, database hosts or query-bearing URLs, Vercel project IDs, credentials, keys, bearer tokens, user emails/UUIDs, CA contents, browser auth-state paths/content, or private application data.
+Copy this template to an approved evidence system only after an authorized non-production run. Checked-in copies must remain blank. Public credential-free Preview/frontend and API URLs may be recorded only when approved. Never record project refs, subscription/resource IDs, credentials, keys, bearer tokens, user emails/UUIDs, CA contents, browser auth-state paths/content, private application data, or query-bearing URLs.
 
 ## Authorization and separation
 
 - Date/time UTC: pending
 - Operator/reviewer roles (no personal contact data): pending
-- Explicit non-production staging authorization: pending
-- Staging Supabase distinct from development and production (three-ref validator): pending
-- Supabase CLI selected exactly one authorized staging project: pending
-- Vercel project/team plus organization/project ID readback confirmed dedicated staging: pending
-- AWS cluster/service/target group confirmed staging-only: pending
-- Production touched: no
-- Development Supabase touched: no
+- Explicit non-production authorization: pending
+- Shared existing non-production/dev Supabase project selected: pending
+- `rotrack-prod` untouched: yes / no / pending
+- One Vercel project with built-in Preview selected: pending
+- Logical GitHub environment `nonproduction` and protections observed: pending
+- Azure managed environment `rotrack-nonproduction-env` inside resource group `rotrack-nonproduction` / Container App `rotrack-api-nonproduction` readback: pending
+- Production resource group/app untouched: yes / no / pending
+- Remote resources configured by this run: pending
 
 ## Artifact and configuration
 
 - Source revision: pending
-- Public staging frontend URL (no query/user information): pending
-- Public staging API URL (no query/user information): pending
-- Backend image digest (digest only; registry/account redacted): pending
-- Image non-root/read-only-root/CA/wget/artifact checks: pending
-- Official provider CA source verified and local checksum matched: pending
-- TLS `verify-full` plus explicit CA path: pending
-- Exact frontend environment-name and protected Vercel identity check: pending
+- OCI-compatible image registry digest, manifest media type, and architecture (registry/account redacted): pending
+- Image Linux/amd64, non-root, writes limited to `/tmp`, port 8080, probes, graceful shutdown, CA injection: pending
+- ACA read-only-root enforcement: unsupported/unverified; non-root/debug/identity/secret compensating controls reviewed: pending
+- ACR managed-identity pull (only if selected): pending / not applicable
+- Non-production Supabase CA provenance/TLS `verify-full`: pending
+- Exact frontend environment-name check: pending
 - Exact backend environment/secret-name check: pending
-- Restricted single-origin CORS: pending
-- ECS private networking/ALB-only ingress/TLS: pending
-- Container liveness `/api/v1/health`: pending
-- ALB readiness `/api/v1/readiness`: pending
-- Desired/maximum task counts: pending
-- Per-task maximum/minimum pool: pending
-- Provider-approved connection limit and operations reserve: pending
-- Rollout-peak pool arithmetic passed: pending
-- Autoscaling maximum registered/read back: pending
-- Template static validation: pending
-- Deployment render validation: pending
+- Exact HTTPS Preview CORS origin(s): pending
+- Azure Consumption scaling/min replicas plus 10-trial cold-start p95/maximum and production acceptance: pending
+- Database pool/replica/rollout-overlap arithmetic: pending
+- Canonical mapping observed: GitHub/ACA `nonproduction` → runtime/telemetry `staging`; production → `production`: pending
+- Structured logging `staging` metadata and service-version-to-image-digest deployment/readback binding: pending
+- Budget/credit-expiry notifications (not a hard spending cap; delayed data considered): pending
+- Free-project pause-warning/resume owner and outcome: pending
+- Encrypted off-site logical export, retention, and restore rehearsal or explicit product-owner data-loss risk acceptance: pending
+- Automatic daily backups/PITR: not part of Free topology
 
 ## Database/Auth boundary
 
-- Ordered migration dry run (`001`, `002` only): pending
-- Ordered migration apply/list result: pending
+- Ordered migration dry run/apply/list result: pending
 - Migrated-schema test count/result/PostgreSQL major: pending
 - `rotrack_runtime` audit booleans all true: pending
-- `BYPASSRLS` rationale reviewed (Spring ownership boundary): pending
-- Data API RLS enabled/policy count: pending
+- `BYPASSRLS` rationale reviewed and Spring ownership boundary tested: pending
+- Data API RLS policy/read/write matrix: pending
 - Disposable signup-trigger profiles: pending
-- Two-user Data API allow/deny matrix: pending
 - Two-user Spring Work/Rot ownership matrix: pending
 - Disposable user/token cleanup: pending
 
 ## Deploy and smoke
 
-- ECS task registration/service stabilization: pending
-- Vercel staging build/deploy: pending
-- Liveness status/body (`200`, stable status only): pending
-- Readiness status/body (`200`, stable status only): pending
+- Container App managed environment/revision reports exact image digest/release ID: pending
+- Preview deployment status, immutable ID, and reviewed source-commit provenance: pending
+- Production frontend plan acknowledges separate same-commit build for production-scoped `NEXT_PUBLIC_*` values: pending
+- Liveness `200` stable body: pending
+- Readiness `200` stable body: pending
 - Frontend status: pending
 - Allowed CORS exact-origin result: pending
 - Denied CORS no-allow-origin result: pending
-- Authenticated Playwright result/test count: pending
+- Authenticated Playwright result: pending
 - Work/Rot restore/explicit-stop/dashboard result: pending
 - Cross-user isolation result: pending
-- Logs checked for secret/private-content leakage: pending
+- Cold-start result and interpretation: pending
+- Logs/collector checked for secret/private-content leakage: pending
 
 ## Rollback and teardown
 
-- Prior image digest/deployment compatibility checked: pending
-- ECS circuit breaker configured: pending
+- Prior image digest/frontend deployment compatibility checked: pending
+- Revision/traffic rollback control: pending
 - Migration rollback limitation acknowledged: pending
+- Budget/credit-expiry notification route tested (not a hard spending cap): pending
+- Free pause/resume and logical-export/restore safeguards: pending
 - Teardown owner/date: pending
-- ECS/Vercel/Supabase staging resources removed or retained by approval: pending
-- Local rendered config, CA, Auth state, and shell variables removed: pending
-- Orphaned tasks/routes/secrets/disposable data check: pending
+- Non-production temporary resources/auth state removed or retained by approval: pending
+- Orphaned replicas/routes/secrets/disposable data check: pending
 
 ## Commands and concise results
 
 ```text
-./deploy/staging/validate.sh templates
+Local/container contract commands
 Result: pending
 
-./deploy/staging/render.sh
+Supabase migration and role/RLS commands from deploy/staging/README.md
 Result: pending
 
-./deploy/staging/validate.sh deployment deploy/staging/rendered
+Azure managed environment/Container Apps deployment/readback commands
 Result: pending
 
-Supabase migration commands from deploy/staging/README.md
-Result: pending
-
-AWS ECS/ALB commands from deploy/staging/README.md
-Result: pending
-
-Vercel commands from deploy/staging/README.md
+Vercel Preview/GitHub nonproduction checks
 Result: pending
 
 Smoke commands from docs/operations/staging/checklist.md

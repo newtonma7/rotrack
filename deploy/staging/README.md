@@ -1,212 +1,116 @@
-# Staging deployment contract
+# Non-production deployment target
 
-This directory is the staging-only overlay for Vercel, ECS/Fargate, and a separate Supabase project. It contains placeholders and validation tooling, not provisioned infrastructure. **No remote staging environment was created while preparing this contract:** no separately authorized staging project, AWS account resources, Vercel project, or approved image digest was available. Never point these commands at development or production.
+This directory documents the approved non-production deployment boundary. The path name is retained for repository compatibility; **staging is not a third Supabase or a dedicated Vercel project**. Development and approved environment-scoped authenticated E2E use the existing non-production/dev Supabase Free project. Credential-free pull-request CI uses isolated disposable PostgreSQL and never connects to hosted Supabase. Vercel Preview is the non-production environment in the one Vercel project. Production uses the separately created `rotrack-prod` Supabase Free project and that same Vercel project's Production environment.
 
-The checked-in templates deliberately retain `__ROTRACK_STAGING_*__` sentinels. `validate.sh templates` requires them; `render.sh` resolves only the deployment/task inputs into ignored, mode-`0600` files and then invokes the fail-closed deployment validator.
+This document is a target runbook, not deployment evidence. No Azure resource group, Container App, ACR repository, managed identity, Vercel project/environment setting, GitHub environment setting, Supabase project setting, registry digest, domain, alert, or secret is claimed as configured or verified. Never point non-production commands at `rotrack-prod` or production resources.
 
-## Files
+## Target boundary
 
-- `templates/frontend.env.template` — exact Vercel frontend names.
-- `templates/backend.env.template` — exact Spring runtime names.
-- `templates/deployment.env.template` — non-secret local render inputs, including three project refs used only to prove separation.
-- `templates/ecs-task-definition.json.template` — Fargate task definition pinned to an image digest.
-- `templates/runtime-role.sql.template` — administrator-only staging role/grant setup.
-- `templates/runtime-role-audit.sql.template` — read-only boolean audit run while authenticated as `rotrack_runtime`.
-- `validate.sh` / `render.sh` / `tests/validate.sh` — static, render-time, and synthetic validation.
-- `aws-preflight.sh` — read-only caller, task-role, required-secret-access, and ECS staging-tag verification before registration/update.
+| Concern | Non-production | Production |
+|---|---|---|
+| Supabase | Existing non-production/dev Free project, shared by development and approved environment-scoped authenticated E2E | Newly created `rotrack-prod` Free project |
+| Vercel | Preview environment | Production environment |
+| GitHub | Target logical `nonproduction` environment | Target logical `production` environment |
+| Azure managed environment | `rotrack-nonproduction-env` | `rotrack-production-env` |
+| Azure resource group | `rotrack-nonproduction` | `rotrack-production` |
+| Azure Container App | `rotrack-api-nonproduction` | `rotrack-api-production` |
+| Compute | Container Apps Consumption, initially min replicas `0` accepted | Container Apps Consumption, initially min replicas `0` accepted |
 
-Rendered files belong under `deploy/staging/rendered/`, which is ignored. They may contain project/account identifiers and secret ARNs, so do not paste or commit them. Secret **values** never enter these templates or the renderer.
+The non-production sharing tradeoff is intentional for development and approved environment-scoped authenticated E2E only. Credential-free PR CI uses isolated disposable PostgreSQL, not the hosted non-production project. Production migrations, users, secrets, API origins, and browser state remain separate. Do not create a third Supabase project or a dedicated staging Vercel project to satisfy an old checklist.
 
-## Exact environment and secret names
+## Repository artifact status
 
-The dedicated Vercel staging project defines exactly:
+The platform-neutral backend artifact is a Linux/amd64 OCI-compatible image. Its contract is in [`deploy/container/CONTRACT.md`](../container/CONTRACT.md): immutable registry digest/media-type readback, non-root UID/GID `10001:10001`, writes limited to `/tmp`, port `8080`, liveness/readiness, graceful shutdown, runtime CA injection, and exact `LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs` (Elastic Common Schema, not AWS Elastic Container Service). The image is locally read-only-root compatible, but ACA enforcement is not claimed.
 
-```text
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_KEY
-NEXT_PUBLIC_API_URL
-```
+`deploy/ecs/base/*.json`, `templates/ecs-task-definition.json.template`, `validate.sh`, `render.sh`, `tests/validate.sh`, and `aws-preflight.sh` are checked-in legacy/unselected AWS/ECS artifacts. They still contain AWS-era validators and scripts, have not been converted to Azure, and must not be used as the active deployment path. This documentation-only change intentionally does not weaken or rewrite those scripts. Their failures against the approved two-project/one-Vercel/Azure architecture are expected residual work, not evidence of a failed Azure deployment.
 
-`NEXT_PUBLIC_SUPABASE_KEY` is the staging anon/publishable browser key, never a service-role key. `NEXT_PUBLIC_API_URL` includes `/api/v1`.
+If a registry integration must be selected, prefer Azure Container Registry (ACR) with managed identity for the Container Apps pull. ACR is only the Azure delivery integration; the OCI-compatible image remains vendor-neutral and is identified by an immutable registry digest.
 
-The ECS task exposes exactly these Spring names:
+## Supabase Free-plan operating safeguards
 
-```text
-DATABASE_URL
-DATABASE_USERNAME
-DATABASE_PASSWORD
-DATABASE_CA_CERTIFICATE_PEM
-DATABASE_CA_CERTIFICATE_PATH
-DATABASE_CONNECTION_TIMEOUT_MS
-DATABASE_POOL_VALIDATION_TIMEOUT_MS
-DATABASE_MAXIMUM_POOL_SIZE
-DATABASE_MINIMUM_IDLE
-READINESS_CACHE_TTL
-SUPABASE_JWKS_URI
-SUPABASE_ISSUER_URI
-SUPABASE_JWT_AUDIENCE
-CORS_ALLOWED_ORIGINS
-PORT
-SERVER_SHUTDOWN
-SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE
-LOGGING_STRUCTURED_FORMAT_CONSOLE
-ROTRACK_STRUCTURED_LOGGING_ENABLED
-ROTRACK_LOGGING_ENVIRONMENT
-ROTRACK_SERVICE_VERSION
-LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY
-LOGGING_LEVEL_ORG_HIBERNATE_SQL
-LOGGING_LEVEL_ORG_HIBERNATE_ORM_JDBC_BIND
-SPRING_JPA_SHOW_SQL
-```
+Both target Supabase projects are Free-plan projects. The official [Free project pausing documentation](https://supabase.com/docs/guides/platform/free-project-pausing) says low-activity Free projects may be automatically paused after 7 days; assign an owner for pause warnings and resume/recovery. Supabase's [database backup documentation](https://supabase.com/docs/guides/platform/backups) says automatic daily backups are a Pro/Team/Enterprise feature and recommends regular exports for Free projects, so this topology requires encrypted, access-controlled off-site logical exports using [`supabase db dump`](https://supabase.com/docs/reference/cli/supabase-db-dump). PITR is not part of this Free topology.
 
-Create these exact AWS Secrets Manager secret names, with access limited to the staging task execution role:
+No pause alert, resume operation, export retention, backup configuration, PITR, or restore evidence is claimed here. Before production promotion, complete a restore rehearsal from a retained logical export or record an explicit product-owner data-loss risk acceptance.
 
-```text
-rotrack/staging/backend/DATABASE_URL
-rotrack/staging/backend/DATABASE_USERNAME
-rotrack/staging/backend/DATABASE_PASSWORD
-rotrack/staging/backend/DATABASE_CA_CERTIFICATE_PEM
-rotrack/staging/backend/SUPABASE_JWKS_URI
-rotrack/staging/backend/SUPABASE_ISSUER_URI
-```
+## Required logical environment inputs
 
-The task definition receives their full ARNs through local `ROTRACK_STAGING_*_SECRET_ARN` inputs. It must never receive a development or production secret ARN. `DATABASE_URL` must use the staging session/direct endpoint with exactly one `sslmode=verify-full` and `sslrootcert=/tmp/rotrack-certs/supabase-db-ca.crt`. The official provider CA is injected as PEM and materialized into task-local `/tmp` by the non-root entrypoint; it is never committed to or baked into the image. Do not capture a certificate from an unverified connection or use `sslmode=require`.
+Keep populated values in the approved GitHub Environment or an operator-owned secret store; do not commit them.
 
-## Render and validate
+Non-production (`nonproduction`):
 
-Export every name on the left side of `templates/deployment.env.template` in a private operator shell. Values come from the authorized staging resources; project refs are used for comparison and are not committed. Then run:
+- one Supabase project URL, anon/publishable key, database/TLS inputs, issuer/JWKS configuration, and exact Preview API CORS origin(s);
+- the immutable backend image digest and non-secret release ID;
+- Azure subscription/resource-group/app identity and, if selected, ACR managed-identity wiring;
+- Vercel Preview build inputs for the single Vercel project.
+
+Production (`production`):
+
+- the `rotrack-prod` Supabase URL/key/database/TLS inputs and exact Production API CORS origin;
+- a separately approved immutable backend image digest and release ID;
+- production Azure resource-group/app identity and, if selected, production ACR managed-identity wiring;
+- Vercel Production inputs in the same Vercel project.
+
+Do not place database passwords, service-role keys, CA contents, bearer tokens, or Playwright storage state in GitHub PR variables, frontend variables, evidence, or this repository. `NEXT_PUBLIC_SUPABASE_KEY` is only the anon/publishable browser key. `NEXT_PUBLIC_API_URL` includes `/api/v1`.
+
+## Database-first preparation
+
+Apply ordered migrations to exactly one selected Supabase project per environment. For local/non-production work, the selected project is the existing shared non-production/dev project; production uses `rotrack-prod` only after the release gate passes.
+
+Use a disposable Supabase CLI worktree so the linked project cannot be confused with another target. The command shape is illustrative and requires private operator authorization:
 
 ```bash
-./deploy/staging/validate.sh templates
-./deploy/staging/render.sh
-./deploy/staging/validate.sh deployment deploy/staging/rendered
-```
-
-The renderer refuses missing variables, newlines, unresolved sentinels, mutable image tags, missing/placeholder/mutable service versions, duplicate Supabase refs, non-HTTPS origins, inconsistent CORS, identical task/execution roles, non-staging ECS names, a staging AWS account equal to the protected production account, and an unsafe connection budget. Staging always renders `ROTRACK_STRUCTURED_LOGGING_ENABLED=true` and `ROTRACK_LOGGING_ENVIRONMENT=staging`. `ROTRACK_STAGING_SERVICE_VERSION` must be a lowercase 64-hex value equal to the digest suffix in `ROTRACK_STAGING_BACKEND_IMAGE_URI`; this keeps logs tied to the exact immutable image without introducing a secret. The budget is:
-
-```text
-DATABASE_MAXIMUM_POOL_SIZE × (maximum ECS task count × 2 rollout generations)
-  <= staging database connection limit - migration/operations reserve
-```
-
-Set the limit to the lower approved staging database/pooler capacity, not a guessed plan maximum. Keep `DATABASE_MINIMUM_IDLE=0`; reserve capacity for a migration connection, provider/admin operations, and incident access. Scaling beyond the validated maximum requires re-rendering and revalidation first.
-
-## Deployment commands
-
-Run only after completing `docs/operations/staging/checklist.md`, confirming all three Supabase refs are distinct, and receiving explicit authorization for this non-production staging target.
-
-### Database first
-
-The repository stores migrations under `database/migrations/`, not the Supabase CLI's `supabase/migrations/` workdir. Create a disposable CLI workdir and copy the reviewed files there so the project link cannot be confused with development. The commands prompt for the staging database password; do not put it on the command line.
-
-```bash
-export ROTRACK_STAGING_SUPABASE_PROJECT_REF='<staging-project-ref>'
-ROTRACK_STAGING_CLI_WORKDIR="$(mktemp -d)"
-trap 'rm -rf "$ROTRACK_STAGING_CLI_WORKDIR"' EXIT
-supabase init --workdir "$ROTRACK_STAGING_CLI_WORKDIR"
-mkdir -p "$ROTRACK_STAGING_CLI_WORKDIR/supabase/migrations"
-cp database/migrations/*.sql "$ROTRACK_STAGING_CLI_WORKDIR/supabase/migrations/"
-diff -qr database/migrations "$ROTRACK_STAGING_CLI_WORKDIR/supabase/migrations"
-
-supabase projects list --output json \
-  | jq -e --arg ref "$ROTRACK_STAGING_SUPABASE_PROJECT_REF" \
-      '[.[] | select(.id == $ref)] | length == 1'
-supabase link \
-  --workdir "$ROTRACK_STAGING_CLI_WORKDIR" \
-  --project-ref "$ROTRACK_STAGING_SUPABASE_PROJECT_REF"
-supabase migration list --workdir "$ROTRACK_STAGING_CLI_WORKDIR" --linked
-supabase db push --workdir "$ROTRACK_STAGING_CLI_WORKDIR" --linked --include-all --dry-run
-# Review that only ordered repository migrations are pending, then authorize the mutation:
-supabase db push --workdir "$ROTRACK_STAGING_CLI_WORKDIR" --linked --include-all
-supabase migration list --workdir "$ROTRACK_STAGING_CLI_WORKDIR" --linked
-rm -rf "$ROTRACK_STAGING_CLI_WORKDIR"
+export ROTRACK_TARGET_SUPABASE_PROJECT_REF='<one-authorized-project-ref>'
+CLI_WORKDIR="$(mktemp -d)"
+trap 'rm -rf "$CLI_WORKDIR"' EXIT
+supabase init --workdir "$CLI_WORKDIR"
+mkdir -p "$CLI_WORKDIR/supabase/migrations"
+cp database/migrations/*.sql "$CLI_WORKDIR/supabase/migrations/"
+diff -qr database/migrations "$CLI_WORKDIR/supabase/migrations"
+supabase link --workdir "$CLI_WORKDIR" \
+  --project-ref "$ROTRACK_TARGET_SUPABASE_PROJECT_REF"
+supabase migration list --workdir "$CLI_WORKDIR" --linked
+supabase db push --workdir "$CLI_WORKDIR" --linked --include-all --dry-run
+# Review the ordered migration plan before a separately authorized apply.
+# supabase db push --workdir "$CLI_WORKDIR" --linked --include-all
+rm -rf "$CLI_WORKDIR"
 trap - EXIT
 ```
 
-Apply `templates/runtime-role.sql.template` through an authorized administrator `psql` staging connection after migrations, set its password interactively with `\password rotrack_runtime`, then open a separate connection authenticated as `rotrack_runtime` and run `templates/runtime-role-audit.sql.template`. Every audit boolean must be true; never rerun the administrator-only setup file as the runtime role. Spring uses `BYPASSRLS` because pooled JDBC requests do not carry `auth.uid()`; the role has only `SELECT/INSERT/UPDATE` on `time_entries`, while Spring's UUID-scoped repository queries remain the authorization boundary. RLS stays enabled and independently tested for browser/Data API access.
+Use an administrator identity for migrations and the narrow `rotrack_runtime` role for the Spring API. Keep `BYPASSRLS` and ownership-scoped Spring queries as documented in `arch.plan.md`; independently test browser/Data API RLS with anon/authenticated identities. Record only redacted migration versions, role-audit booleans, and test outcomes.
 
-### Backend ECS/Fargate
+## Azure Container Apps integration
 
-The image input must be an immutable registry URI ending in `@sha256:<64 lowercase hex characters>`. Set the service-version render input to the same digest suffix (without `sha256:`). The container must run non-root, include `wget` for the task liveness command, materialize the injected official CA at the declared `/tmp` path, and pass its Lane B artifact checks before registration.
+Before any mutation, confirm the selected subscription, target managed environment, resource group, app name, environment label, and logical GitHub environment match. The managed environment is the Azure security boundary and must be separate for non-production and production, each inside its matching resource group. No command below is evidence until it is actually run and recorded in a redacted release record.
 
-Keep the validated `ROTRACK_STAGING_*` values exported in the same private shell used by `render.sh`; do not `source` a rendered file. Run `./deploy/staging/aws-preflight.sh` immediately before task registration. It fails unless the caller account matches the staging roles and differs from production, the task role has no attached/inline policies, the execution role can read the six exact staging secret inputs, and the existing service has `Environment=staging`. Before mutation, compare `aws sts get-caller-identity --query Account --output text` with the staging account embedded in the validated role ARNs and confirm it differs from `ROTRACK_PRODUCTION_AWS_ACCOUNT_ID`. Read back ECS resource tags and require `Environment=staging`. The task role must have no attached or inline AWS policies; the execution role may have only image/log permissions plus `secretsmanager:GetSecretValue` for the six exact validated secret ARNs. Record boolean results, never policy bodies or ARNs.
+1. Build the OCI-compatible image once from the reviewed commit and retain the immutable registry digest, manifest media type, and architecture readback.
+2. If ACR is selected, push that digest to the target ACR and grant the target Container App's managed identity pull access. Do not replace the digest with a mutable tag.
+3. Create/update only the matching managed environment, resource group, and Container App: `rotrack-nonproduction-env` inside `rotrack-nonproduction` with `rotrack-api-nonproduction` for `nonproduction`, or `rotrack-production-env` inside `rotrack-production` with `rotrack-api-production` for `production`.
+4. Configure HTTPS ingress to container port `8080`, non-root execution, application writes limited to `/tmp`, no remote debug shell, least-privilege identity/secret boundaries, `/api/v1/health` liveness, `/api/v1/readiness` readiness, graceful shutdown, exact CORS, and runtime injection of the official Supabase CA and other secrets. Do not claim ACA read-only-root enforcement until a supported provider control is implemented and observed.
+5. Configure Consumption scaling. Min replicas `0` is accepted initially. Before production promotion, run at least 10 non-production scale-from-zero trials; keep production at `0` only with explicit product-owner acceptance when p95 readiness is at most 30 seconds and no trial exceeds 60 seconds, otherwise set production minimum replicas to `1`. Azure budget alerts are notifications, not a hard spending cap, and cost/credit-expiry data can be delayed. Budget and credit-expiry notifications are required before production promotion, but do not claim they are configured here.
+6. Verify the running revision reports the exact image registry digest and that `ROTRACK_SERVICE_VERSION` equals the approved digest-derived release value. Application startup does not enforce this equality; the ACA deployment/readback adapter must. A successful template render or local image build is not remote deployment evidence.
 
-```bash
-TASK_DEFINITION_ARN="$(aws ecs register-task-definition \
-  --region "$ROTRACK_STAGING_AWS_REGION" \
-  --cli-input-json file://deploy/staging/rendered/ecs-task-definition.json \
-  --query 'taskDefinition.taskDefinitionArn' \
-  --output text)"
+Keep database connection arithmetic within the selected Supabase plan/pooler limit:
 
-aws elbv2 modify-target-group \
-  --region "$ROTRACK_STAGING_AWS_REGION" \
-  --target-group-arn "$ROTRACK_STAGING_ALB_TARGET_GROUP_ARN" \
-  --health-check-protocol HTTP \
-  --health-check-path /api/v1/readiness \
-  --health-check-interval-seconds 30 \
-  --health-check-timeout-seconds 5 \
-  --healthy-threshold-count 2 \
-  --unhealthy-threshold-count 3 \
-  --matcher HttpCode=200
-
-aws application-autoscaling register-scalable-target \
-  --region "$ROTRACK_STAGING_AWS_REGION" \
-  --service-namespace ecs \
-  --scalable-dimension ecs:service:DesiredCount \
-  --resource-id "service/$ROTRACK_STAGING_ECS_CLUSTER_NAME/$ROTRACK_STAGING_ECS_SERVICE_NAME" \
-  --min-capacity "$ROTRACK_STAGING_ECS_DESIRED_TASK_COUNT" \
-  --max-capacity "$ROTRACK_STAGING_ECS_MAX_TASK_COUNT"
-
-aws application-autoscaling describe-scalable-targets \
-  --region "$ROTRACK_STAGING_AWS_REGION" \
-  --service-namespace ecs \
-  --scalable-dimension ecs:service:DesiredCount \
-  --resource-ids "service/$ROTRACK_STAGING_ECS_CLUSTER_NAME/$ROTRACK_STAGING_ECS_SERVICE_NAME" \
-  | jq -e --argjson maximum "$ROTRACK_STAGING_ECS_MAX_TASK_COUNT" \
-      '.ScalableTargets | length == 1 and .[0].MaxCapacity == $maximum'
-
-aws ecs update-service \
-  --region "$ROTRACK_STAGING_AWS_REGION" \
-  --cluster "$ROTRACK_STAGING_ECS_CLUSTER_NAME" \
-  --service "$ROTRACK_STAGING_ECS_SERVICE_NAME" \
-  --task-definition "$TASK_DEFINITION_ARN" \
-  --platform-version 1.4.0 \
-  --desired-count "$ROTRACK_STAGING_ECS_DESIRED_TASK_COUNT" \
-  --deployment-configuration 'deploymentCircuitBreaker={enable=true,rollback=true},minimumHealthyPercent=100,maximumPercent=200' \
-  --force-new-deployment
-
-aws ecs wait services-stable \
-  --region "$ROTRACK_STAGING_AWS_REGION" \
-  --cluster "$ROTRACK_STAGING_ECS_CLUSTER_NAME" \
-  --services "$ROTRACK_STAGING_ECS_SERVICE_NAME"
+```text
+DATABASE_MAXIMUM_POOL_SIZE × maximum Container App replicas
+  + migration/operations reserve
+  <= approved non-production or production database capacity
 ```
 
-Tasks run in private subnets with no public IP. The ALB is the only ingress to the container port; the task security group accepts that port only from the ALB security group. The task uses outbound TLS to Supabase Auth/JWKS, PostgreSQL, and CloudWatch. The public listener redirects HTTP to HTTPS and routes application traffic only to ready targets. Container liveness is `/api/v1/health`; ALB readiness is `/api/v1/readiness`.
+Include revision overlap when a rollout can run old and new replicas together. Recalculate before changing replica limits or rollout behavior.
 
-### Frontend Vercel
+## Vercel and GitHub integration
 
-Use a dedicated Vercel project whose Vercel “production” environment is still rotrack **staging**. The renderer requires staging and production team slugs, project names, organization IDs, and project IDs to be distinct. Link only with the validated staging names, then fail closed unless Vercel's local readback matches the protected staging IDs before any environment mutation or `--prod` deployment:
+Use one Vercel project. Let ordinary branch/PR deployments use Vercel Preview with the `nonproduction` GitHub environment's public values. GitHub/ACA `nonproduction` maps to runtime/telemetry label `staging`; production maps to `production`. Because `NEXT_PUBLIC_*` values are embedded at build time, do not promote Preview bytes to Production. Build Vercel Production from the same reviewed source commit under the `production` GitHub environment, record its separate immutable deployment provenance, and verify its production-scoped values. Do not create or document a dedicated staging project.
 
-```bash
-cd frontend
-vercel link \
-  --scope "$ROTRACK_STAGING_VERCEL_TEAM_SLUG" \
-  --project "$ROTRACK_STAGING_VERCEL_PROJECT_NAME"
-jq -e \
-  --arg org "$ROTRACK_STAGING_VERCEL_ORG_ID" \
-  --arg project "$ROTRACK_STAGING_VERCEL_PROJECT_ID" \
-  '.orgId == $org and .projectId == $project' \
-  .vercel/project.json
-vercel env add NEXT_PUBLIC_SUPABASE_URL production
-vercel env add NEXT_PUBLIC_SUPABASE_KEY production
-vercel env add NEXT_PUBLIC_API_URL production
-vercel pull --yes --environment=production
-vercel build --prod
-vercel deploy --prebuilt --prod
-```
+Both GitHub environments must have protected approvals and separately scoped secrets/variables before they are treated as release controls. The names `nonproduction` and `production` are logical boundaries; their settings are not asserted here.
 
-Each `vercel env add` prompt receives only its staging value. Confirm the linked IDs with the mandatory `jq` gate above and separately inspect the displayed project/team names; never commit `.vercel/project.json` or record its IDs. Set the ECS `CORS_ALLOWED_ORIGINS` to the single stable staging frontend origin, not preview wildcards. Preview deployments must use a separately approved exact origin or remain API-inaccessible.
+The Preview and Production frontend values must point to the matching Supabase project and API. The backend CORS allowlist must contain exact approved HTTPS origins; do not use a wildcard or assume every Vercel preview URL is trusted. If multiple Preview origins are needed, approve them explicitly and include them in the non-production contract without exposing production.
 
-## Smoke and evidence
+## Smoke, rollback, and evidence
 
-Use the exact redacted-safe probes in `docs/operations/staging/checklist.md`. Store only status codes, stable response bodies, image digest, redacted origins, migration versions, boolean grant/RLS results, task counts, and pool arithmetic in the evidence template. Public, credential-free staging frontend/API URLs may be recorded because the milestone requires them. Project refs, account IDs, role/secret ARNs, token values, user emails, database hosts, query-bearing URLs, and storage-state paths or contents remain redacted.
+Use the health, CORS, authenticated browser, release, monitoring, and incident contracts under `docs/operations/`. Run authenticated smoke only with two disposable non-production users and external storage-state files. Never use production credentials or real private data.
+
+A release is database-first and requires a compatible prior image digest. Roll back the application image and Vercel deployment independently only when the compatibility matrix permits it; do not automatically reverse migrations or stop active timer sessions. A scale-to-zero wake-up is not by itself a failed deployment, but repeated cold-start timeout or readiness failure is a stop condition.
+
+Record only redacted evidence: source commit, image digest, release ID, migration versions/checksums, health statuses, CORS allow/deny result, test counts, replica counts, pool arithmetic, alert IDs, and approval outcomes. Do not claim Azure, Vercel, GitHub, Supabase, ACR, monitoring, or billing controls are configured or verified without direct evidence.
