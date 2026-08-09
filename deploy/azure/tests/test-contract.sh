@@ -249,7 +249,7 @@ assert 'databasePassword' not in foundation
 assert publish.index('preflight.sh') < publish.index('build-image.sh') < publish.index('podman login')
 assert 'if [ "$ENGINE" = podman ]; then' in publish
 assert '"$ENGINE" push "$IMAGE_REF" --authfile "$AUTHFILE" --digestfile "$DIGEST_FILE"' in publish
-assert '"$ENGINE" push "$IMAGE_REF" >/dev/null 2>&1' in publish
+assert 'docker --config "$DOCKER_CONFIG_DIR" push "$IMAGE_REF" >/dev/null 2>&1' in publish
 assert 'docker push' not in publish
 assert app.index('preflight.sh') < app.index('az acr manifest show-metadata') < app.index('az deployment group create')
 assert 'AcrPull RBAC propagation did not complete within' in common
@@ -263,7 +263,9 @@ grep -Fq -- '--expose-token' "$SCRIPTS_DIR/publish-image.sh" || fail 'Podman exp
 grep -Fq -- '--password-stdin' "$SCRIPTS_DIR/publish-image.sh" || fail 'Podman password-stdin path missing'
 grep -Fq -- '--authfile "$AUTHFILE"' "$SCRIPTS_DIR/publish-image.sh" || fail 'Podman transient authfile missing'
 grep -Fq -- 'rm -f "$AUTHFILE"' "$SCRIPTS_DIR/publish-image.sh" || fail 'Podman authfile cleanup missing'
-grep -Fq -- 'az acr login --name "$FOUNDATION_ACR_NAME"' "$SCRIPTS_DIR/publish-image.sh" || fail 'Docker ACR login path missing'
+grep -Fq -- 'DOCKER_CONFIG_DIR=$(mktemp -d /tmp/rotrack-azure-docker-config.XXXXXX)' "$SCRIPTS_DIR/publish-image.sh" || fail 'Docker ephemeral config missing'
+grep -Fq -- 'docker --config "$DOCKER_CONFIG_DIR" login' "$SCRIPTS_DIR/publish-image.sh" || fail 'Docker ephemeral login path missing'
+grep -Fq -- 'docker --config "$DOCKER_CONFIG_DIR" push' "$SCRIPTS_DIR/publish-image.sh" || fail 'Docker ephemeral push path missing'
 if grep -Eq 'id:id|resourceId|properties\.secrets' "$SCRIPTS_DIR/readback.sh"; then
   fail 'readback contains a resource identifier or secret collection'
 fi

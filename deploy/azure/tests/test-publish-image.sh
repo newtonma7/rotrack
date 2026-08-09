@@ -72,7 +72,39 @@ chmod +x "$BIN/az"
 
 cat > "$BIN/docker" <<'SH'
 #!/bin/sh
-exit 1
+set -eu
+[ "${FAKE_ENGINE:-podman}" = docker ] || exit 1
+printf '%s\n' "$*" >> "$FAKE_DOCKER_LOG"
+case "${1:-}" in
+  info|build) exit 0 ;;
+  image)
+    case "$*" in
+      *"{{.Id}}"*) printf '%s\n' 'sha256:fake-image-id' ;;
+      *) printf '%s\n' 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' ;;
+    esac
+    ;;
+esac
+case "$*" in
+  *' login '*)
+    config=
+    while [ "$#" -gt 0 ]; do
+      if [ "$1" = --config ]; then config=$2; shift 2; continue; fi
+      shift
+    done
+    [ -n "$config" ] && [ -d "$config" ]
+    [ "$(stat -c '%a' "$config")" = 700 ]
+    cat >/dev/null
+    printf '%s\n' docker-auth > "$config/config.json"
+    ;;
+  *' push '*)
+    config=
+    while [ "$#" -gt 0 ]; do
+      if [ "$1" = --config ]; then config=$2; shift 2; continue; fi
+      shift
+    done
+    [ -n "$config" ] && [ -f "$config/config.json" ]
+    ;;
+esac
 SH
 chmod +x "$BIN/docker"
 
@@ -116,7 +148,9 @@ SH
 chmod +x "$BIN/podman"
 
 run_publish() {
+  FAKE_ENGINE=${FAKE_ENGINE:-podman} \
   FAKE_PODMAN_LOG="$TMP/podman.log" \
+  FAKE_DOCKER_LOG="$TMP/docker.log" \
   FAKE_BUDGET_START="$FAKE_BUDGET_START" \
   FAKE_BUDGET_END="$FAKE_BUDGET_END" \
   FAKE_REGISTRY_DIGEST="$FAKE_REGISTRY_DIGEST" \
@@ -162,5 +196,16 @@ if run_publish >/dev/null 2>&1; then
   printf '%s\n' 'Podman/ACR digest mismatch was accepted' >&2
   exit 1
 fi
+
+FAKE_ENGINE=docker
+FAKE_REGISTRY_DIGEST=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+OUTPUT=$(run_publish)
+case "$OUTPUT" in *token-secret-marker*) printf '%s\n' 'Docker token leaked to output' >&2; exit 1 ;; esac
+DOCKER_LOGIN_LINE=$(grep 'login ' "$TMP/docker.log")
+DOCKER_PUSH_LINE=$(grep 'push ' "$TMP/docker.log")
+case "$DOCKER_LOGIN_LINE" in *--config*) ;; *) printf '%s\n' 'Docker login did not receive a temporary config' >&2; exit 1 ;; esac
+case "$DOCKER_PUSH_LINE" in *--config*) ;; *) printf '%s\n' 'Docker push did not receive the temporary config' >&2; exit 1 ;; esac
+DOCKER_CONFIG_PATH=$(awk '{for (i=1; i<=NF; i++) if ($i == "--config") print $(i+1)}' "$TMP/docker.log" | tail -1)
+[ ! -e "$DOCKER_CONFIG_PATH" ] || { printf '%s\n' 'temporary Docker config was not removed' >&2; exit 1; }
 
 printf '%s\n' 'azure publish-image fake-engine contract: passed'

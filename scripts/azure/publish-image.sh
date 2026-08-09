@@ -38,14 +38,29 @@ REQUIRE_CLEAN=${REQUIRE_CLEAN:-1} \
 IMAGE_REF="$LOCAL_IMAGE_REPOSITORY:$IMAGE_TAG"
 DIGEST_FILE=$(mktemp)
 AUTHFILE=
+DOCKER_CONFIG_DIR=
 cleanup() {
   rm -f "$DIGEST_FILE"
   [ -z "$AUTHFILE" ] || rm -f "$AUTHFILE"
+  [ -z "$DOCKER_CONFIG_DIR" ] || rm -rf "$DOCKER_CONFIG_DIR"
 }
 trap cleanup EXIT HUP INT TERM
 
 if [ "$ENGINE" = docker ]; then
-  az acr login --name "$FOUNDATION_ACR_NAME" --subscription "$AZURE_SUBSCRIPTION_ID" --only-show-errors --output none
+  DOCKER_CONFIG_DIR=$(mktemp -d /tmp/rotrack-azure-docker-config.XXXXXX)
+  chmod 700 "$DOCKER_CONFIG_DIR"
+  # Keep Docker credentials in a private disposable config rather than the user's normal config.
+  az acr login \
+    --name "$FOUNDATION_ACR_NAME" \
+    --subscription "$AZURE_SUBSCRIPTION_ID" \
+    --expose-token \
+    --only-show-errors \
+    --query accessToken \
+    --output tsv \
+    | docker --config "$DOCKER_CONFIG_DIR" login "$LOGIN_SERVER" \
+        --username 00000000-0000-0000-0000-000000000000 \
+        --password-stdin \
+        >/dev/null 2>&1
 else
   # Podman does not use Docker's credential helper. The short-lived ACR token is
   # piped directly to stdin and the transient auth file is removed on every exit.
@@ -75,7 +90,7 @@ if [ "$ENGINE" = podman ]; then
 else
   # Docker's push command has no portable digestfile option. Read the immutable
   # digest back from ACR instead of relying on a local engine-specific artifact.
-  "$ENGINE" push "$IMAGE_REF" >/dev/null 2>&1
+  docker --config "$DOCKER_CONFIG_DIR" push "$IMAGE_REF" >/dev/null 2>&1
   LOCAL_DIGEST=
 fi
 
