@@ -29,6 +29,12 @@
 - Vercel SSO protection remains enabled. A temporary CLI-generated automation-bypass secret was removed immediately; readback reports zero remaining bypass secrets.
 - Direct anonymous frontend smoke is therefore intentionally blocked by Vercel SSO. Browser-asset target inspection and authenticated E2E remain open.
 
+## Fresh-user local acceptance
+
+- The product owner/operator attested that the already-confirmed fresh disposable user completed first sign-in and reached `/dashboard`; passwords, tokens, and account details were not recorded.
+- The local frontend ran at `http://localhost:3001`. Independent preflight readback returned HTTP 200 with exact allow-origin for port 3001 and HTTP 403 with no allow-origin for port 3000.
+- This closes the manual fresh-user first-sign-in step. It is local acceptance evidence, not the still-open automated authenticated non-production Playwright 4/4 run.
+
 ## Smoke results
 
 ```text
@@ -55,17 +61,16 @@ The first deployed revision exposed a contract defect: the application rejected 
 - Dependabot alerts and automated security fixes enabled; open Dependabot alerts: zero at readback.
 - Actions restricted to GitHub-owned actions; checked-in actions are full-SHA pinned and a source guard enforces that policy.
 - CodeQL source is configured to run only when the repository becomes public.
-- Remaining privacy decision: historical commit metadata contains a personal-domain author email. Future local commits use the GitHub noreply address. The owner must approve either retaining or rewriting historical metadata before public visibility.
+- The product owner chose to retain the historical author metadata, including its personal-domain author email. Future local commits use the GitHub noreply address; historical metadata rewriting is no longer a blocker.
 
 ## Open blockers
 
-1. Fresh confirmed user's first sign-in.
-2. Historical author-email decision and deliberate public/paid GitHub protection transition.
-3. Required `main` checks/code-owner review and `nonproduction` reviewer/branch restrictions.
-4. Exact GitHub host variables and disposable storage-state secrets, then authenticated Playwright 4/4.
-5. Collector redaction sentinel, dashboards, alert routing/delivery, and credit-expiry notification.
-6. Complete the remaining nine scale-from-zero trials and calculate readiness p95/maximum; one preliminary wake-up took 28.185 seconds.
-7. Supabase encrypted logical exports and restore rehearsal, or explicit data-loss risk acceptance.
-8. Exact-digest rollback rehearsal.
+1. Deliberate public-or-paid GitHub protection transition; historical author metadata will be retained.
+2. Required `main` checks/code-owner review and `nonproduction` reviewer/branch restrictions.
+3. Exact GitHub host variables and disposable storage-state secrets, then authenticated Playwright 4/4.
+4. Collector redaction sentinel, dashboards, alert routing/delivery, and credit-expiry notification.
+5. Complete the remaining nine scale-from-zero trials and calculate readiness p95/maximum; one preliminary wake-up took 28.185 seconds.
+6. Supabase encrypted logical exports and restore rehearsal, or explicit data-loss risk acceptance.
+7. Exact-digest rollback rehearsal.
 
 Production remains stopped.

@@ -104,7 +104,7 @@ npm ci
 npm run dev
 ```
 
-Open <http://localhost:3000>. The API listens on <http://localhost:8080> by default. Probe it with:
+Open <http://localhost:3000>. The API listens on <http://localhost:8080> by default. `CORS_ALLOWED_ORIGINS` must exactly match the browser origin. In the 2026-08-09 local recheck, port 3001 received HTTP 200 with exact allow-origin while port 3000 received HTTP 403 with no allow-origin. To use port 3000, configure `CORS_ALLOWED_ORIGINS` accordingly; otherwise start with `npm run dev -- -p 3001` and open <http://localhost:3001>. A frontend page loading does not by itself prove that credentialed API CORS succeeds. Probe the API with:
 
 ```bash
 curl --fail-with-body http://localhost:8080/api/v1/health
@@ -160,7 +160,7 @@ The backend derives the acting user from the validated JWT subject. Clients must
 
 The repository is still working toward the production-ready MVP. In particular:
 
-- Empty-database migration application, migrated-database repository checks, the dedicated runtime-role audit, and direct Data API RLS evidence pass against isolated/development targets. A fresh disposable signup reached confirmation, but opening that confirmation email and completing the same user's first sign-in remain externally blocked.
+- Empty-database migration application, migrated-database repository checks, the dedicated runtime-role audit, and direct Data API RLS evidence pass against isolated/development targets. On 2026-08-09 the product owner/operator attested that the already-confirmed fresh disposable user completed first sign-in and reached `/dashboard`; this closes the manual first-sign-in acceptance step but is distinct from automated deployed authenticated E2E.
 - The authenticated two-user Spring ownership matrix and required-authenticated Playwright 4/4 flow are recorded as passing. Those local/development results are not deployed non-production evidence.
 - Managed-CA startup, independent liveness/readiness, degraded readiness `503`, and exact CORS behavior are locally verified. On 2026-08-09, the authorized non-production Azure Container App and Vercel Preview were deployed; immutable digest/service-version readback, HTTPS health/readiness, and exact allow/deny CORS passed. Hosted CI/protection, authenticated deployed smoke, observed telemetry/alert routing, ten cold-start trials, backup/restore, and rollback rehearsal remain open.
 - The approved deployment target is two Supabase Free projects (shared non-production/dev plus `rotrack-prod`), one Vercel project using Preview and Production, logical GitHub `nonproduction`/`production` environments, and separate Azure managed environments/resource groups/apps. The authenticated workflow source now uses trusted-default-branch `repository_dispatch` and the two-project topology. The repository is still private and unprotected; do not add authenticated environment secrets or run that workflow until the public/paid protection gate is observed. See [`docs/operations/azure-nonproduction.md`](docs/operations/azure-nonproduction.md).

@@ -141,6 +141,18 @@ Use these questions to review the completed baseline phases and understand the i
 9. Why do green local CI-equivalent commands not prove that hosted required checks and branch protection are configured correctly?
 10. Which M3.1 evidence still requires a hosted pull request and repository settings rather than source-controlled workflow files?
 
+## M3.1 — GitHub public readiness and protected authenticated E2E
+
+1. Why do `CODEOWNERS`, SHA-pinned workflows, local policy guards, and Dependabot configuration not prove that hosted branch protection or required environment reviewers are active?
+2. Why must the public-or-paid GitHub protection decision precede adding authenticated non-production secrets?
+3. Why does authenticated E2E use `repository_dispatch` from the trusted default branch instead of executing credentialed code from an untrusted pull request?
+4. Why must the workflow bind the exact approved Preview and API hosts as well as the logical `nonproduction` environment?
+5. Why must the two Playwright storage states contain distinct user IDs and access tokens and belong to the approved non-production Supabase project?
+6. Why does a configured CodeQL workflow that skips while the repository is private not count as a successful CodeQL scan?
+7. Why are historical author-email privacy and future GitHub noreply configuration separate decisions, and why would rewriting the former require explicit approval?
+8. What does scheduled Dependabot coverage prove, and what remains unproven about review and merge policy?
+9. Why do one-time Gitleaks and OSV scans not replace recurring secret and backend dependency scanning?
+
 ## M3.2 — Backend container and deployment artifact
 
 1. How does a multi-stage image reduce the runtime attack surface and keep build tools and source out of the final image?
@@ -153,21 +165,36 @@ Use these questions to review the completed baseline phases and understand the i
 8. Why is an immutable registry digest release evidence while a local tag, image ID, or local content digest is not?
 9. How should database connection limits account for desired replicas, maximum replicas, and overlapping revisions during rollout?
 10. Why must a Container App's managed identity be narrowly scoped to the selected registry and runtime resources?
+11. Why must the non-production deployment bind `ROTRACK_SERVICE_VERSION` to the exact deployed `sha256:<64 lowercase hex>` registry digest?
+12. Why can a Docker manifest-v2 image still be OCI-compatible, and why must portability claims distinguish media type from runtime compatibility?
+13. Why should Docker and Podman registry authentication use transient configuration rather than modify the operator's persistent credential store?
+14. Why does locally proving read-only-root compatibility not justify claiming that Azure Container Apps enforces a read-only root filesystem?
 
 ## M3.2 — Production-separated non-production operations
 
-1. Why must the shared non-production Supabase/Vercel Preview/Azure managed-environment identities be demonstrably distinct from the production `rotrack-prod`/Vercel Production/Azure managed-environment identities?
+1. Why must the non-production Supabase project, Vercel Preview values/build, and Azure boundaries be demonstrably separated from `rotrack-prod`, Vercel Production values/build, and the production Azure environment/resource group/app?
 2. Why do placeholder-only templates and committed variable names provide a useful contract without becoming deployment evidence?
 3. What should an Azure read-only preflight verify about the selected subscription, managed environment, resource group, Container App, managed identity, registry pull, and secret boundary before deployment?
 4. Why must the application runtime role be audited for memberships, direct grants, sequence access, routine execution, and `BYPASSRLS` rather than checked only for superuser status?
 5. Why is `BYPASSRLS` intentional for this backend architecture, and which ownership boundary must compensate for it?
-6. Why must the staging CORS allowlist contain exact HTTPS frontend origins rather than wildcards or loosely matched domains?
+6. Why must the non-production CORS allowlist contain exact HTTPS frontend origins rather than wildcards or loosely matched domains?
 7. Why is an official managed-database CA provenance record necessary even after local TLS container tests pass?
 8. Why do successful local render and validation steps not prove that Vercel, Container Apps, Supabase, managed identity, DNS, or TLS are configured remotely?
-9. Which values belong in a redacted staging evidence record, and which values must never be committed?
-10. Why must live non-production smoke and rollback evidence wait until the container and target managed-environment configuration are integrated?
+9. Which values belong in a redacted non-production evidence record, and which values must never be committed?
+10. Why do observed non-production health, readiness, CORS, and Preview build results still not establish authenticated smoke, alerting, cold-start, backup, or rollback readiness?
 11. Why must Free-plan pause ownership, encrypted logical-export retention, and a restore rehearsal (or explicit product-owner risk acceptance) be release safeguards?
 12. Why are Azure budget alerts notifications rather than a hard spending cap, and why must delayed cost/credit-expiry data be accounted for?
+
+## M3.2 — Observed Azure and Vercel non-production checkpoint
+
+1. Why are Azure foundation provisioning, image publication, and application deployment separate ordered steps?
+2. Why should Azure CLI adapters have tests for provider-specific JSON shapes, absent optional scale properties, and normalized budget output?
+3. Why must budget readback check amount, period, and Actual alert thresholds instead of trusting that resource creation succeeded?
+4. What did the initial ACA revision reveal when it rejected digest-form service versions, and why was a failing test needed before the fix?
+5. Why can Vercel Preview and Production not promote identical frontend bytes when `NEXT_PUBLIC_*` values are embedded at build time?
+6. Why was a CLI-generated Vercel automation bypass treated as project-wide risk and removed immediately?
+7. Why is one scale-from-zero wake-up insufficient, and what do ten trials plus p95 and maximum readiness establish?
+8. Why must evidence explicitly record that `rotrack-prod`, Vercel Production values/deployments, and production Azure resources were not mutated?
 
 ## M3.3 — Release safeguards and observability
 
@@ -180,6 +207,9 @@ Use these questions to review the completed baseline phases and understand the i
 7. Why is a structured-log allowlist safer than attempting to redact an unlimited set of arbitrary fields after logging?
 8. Which data must never appear in logs, traces, alerts, or monitoring payloads, and how can a redaction sentinel test that boundary?
 9. Why do rate limiting, named incident staffing, non-production smoke, and rollback rehearsal remain production blockers even when all source-level safeguards pass?
-10. Why should non-production smoke and rollback commands be prepared in advance but not executed against nonexistent or unapproved infrastructure?
+10. Why should authenticated smoke and rollback commands be prepared in advance but executed only after hosts, protection, identities, and candidate/prior digests are approved and read back?
 11. What evidence is required to move M3.3 from **In progress** to **Verified**?
 12. Why must M4 feature implementation remain gated until the complete M3 MVP release gate passes?
+13. Why are successful public health, readiness, HTTPS, and CORS checks insufficient without fresh-user sign-in and authenticated non-production Playwright 4/4?
+14. Why is a process-local per-user mutation limiter not a substitute for a fleet-wide, authentication-adjacent edge control?
+15. Why must the evidence record distinguish source safeguards, configured cloud state, observed runtime behavior, and still-unverified operations?

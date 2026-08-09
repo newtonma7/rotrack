@@ -102,10 +102,10 @@ Vercel Preview currently uses Vercel Authentication. Keep it enabled. Do not gen
 
 Before the M3 gate can pass:
 
-1. decide whether to rewrite historical personal author email metadata, then deliberately make the repository public or upgrade GitHub;
+1. deliberately make the repository public or upgrade GitHub; the product owner has already chosen to retain historical author metadata;
 2. protect `main`, require the named CI/CodeQL checks and code-owner review, and restrict the `nonproduction` environment to protected `main` with a required reviewer;
 3. configure exact approved frontend/API host variables and only then add disposable authenticated-E2E secrets;
-4. complete the fresh confirmed user's first sign-in and run authenticated Playwright 4/4;
+4. retain the completed operator-attested fresh first-sign-in evidence, then run authenticated non-production Playwright 4/4 after GitHub protection, approved host variables, and environment secrets are configured;
 5. observe log ingestion/redaction and route health, readiness, error, restart, auth, connection, budget, and credit-expiry alerts;
 6. run at least ten scale-from-zero trials;
 7. establish encrypted off-site Supabase logical exports and rehearse restore, or record explicit data-loss risk acceptance;

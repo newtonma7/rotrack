@@ -1,7 +1,7 @@
 # rotrack Architecture
 
 **Status:** Living architecture and contract document
-**Last reviewed:** 2026-08-08
+**Last reviewed:** 2026-08-09
 **Delivery backlog:** [`todo.md`](todo.md)
 
 ## 1. Purpose and Product Boundaries
@@ -61,8 +61,8 @@ This section describes what exists in source control today. It is not a completi
 
 - The PostgreSQL verification suite has rollback-only evidence against the configured development schema and empty-database apply evidence against isolated temporary PostgreSQL; direct Data API RLS is recorded as verified.
 - Spring JDBC does not propagate the user JWT into PostgreSQL. The dedicated `rotrack_runtime` role bypasses RLS with only the required application DML, and the recorded live two-user Spring ownership matrix passes.
-- Generated ES256/RS256 failure tests cover the production decoder/filter boundary, while recorded live Supabase sign-in and two-user authenticated ownership flows pass. Opening a fresh confirmation email and completing that same disposable user's first sign-in remain externally blocked.
-- The Playwright harness has recorded external two-user auth evidence. Managed-CA startup/readiness/CORS and the integrated non-root container are locally verified, but those local results are not deployed non-production evidence.
+- Generated ES256/RS256 failure tests cover the production decoder/filter boundary, while recorded live Supabase sign-in and two-user authenticated ownership flows pass. On 2026-08-09 the product owner/operator attested that the already-confirmed fresh disposable user completed first sign-in and reached `/dashboard`; this is manual acceptance evidence rather than an automated authenticated-suite result.
+- The Playwright harness has recorded external two-user auth evidence. Managed-CA startup/readiness/CORS and the integrated non-root container are locally verified, but those local results are not deployed non-production evidence. For the 2026-08-09 local acceptance run, `http://localhost:3001` received the exact allowed CORS origin while `http://localhost:3000` was denied; this origin-specific local configuration does not change the deployed Preview CORS evidence.
 - Hosted CI/branch protection, protected-environment settings, authenticated deployed smoke, fleet-wide/authentication-adjacent edge rate limiting, observed structured-log ingestion and collector redaction, telemetry and alert routing, named incident staffing, cold-start trials, backup/restore safeguards, and rollback rehearsal remain open. The authorized immutable non-production Azure/Vercel deployment itself is observed. M4 stays gated until the M3 MVP release gate is verified.
 
 ## 3. Target System Architecture

@@ -10,7 +10,7 @@ Use this checklist to finish the current disposable development database verific
 - Database verification tests roll back their probe data. Still confirm the target is disposable before running them.
 - Do not change grants or roles in production.
 
-## Verification status — 2026-08-08
+## Verification status — 2026-08-09
 
 **Not fully complete.** The following checks have passing evidence:
 
@@ -24,11 +24,13 @@ Use this checklist to finish the current disposable development database verific
 - degraded dependency-failure probe: liveness 200 and sanitized readiness 503;
 - final frontend/backend validation and clean configured health/readiness run.
 
-The fresh signup trigger gate now passes through a redacted administrative
-read-only query confirming matching `auth.users` and `public.users` rows. The
-only remaining limitation is opening the confirmation email itself; no inbox
-access was available. Existing confirmed disposable users prove the real
-sign-in and Spring ownership flow.
+The fresh signup trigger gate passes through a redacted administrative
+read-only query confirming matching `auth.users` and `public.users` rows. On
+2026-08-09 the product owner/operator attested that the already-confirmed fresh
+disposable user completed first sign-in and reached `/dashboard`; no password or
+account details were recorded. This closes the manual first-sign-in step but is
+not automated deployed Playwright evidence. Existing disposable-user evidence
+separately proves the real sign-in and Spring ownership flow.
 
 ---
 
@@ -269,11 +271,11 @@ Expected:
 
 ### CORS checks
 
-Allowed origin:
+Allowed origin for the current ignored local configuration:
 
 ```bash
 curl --include --request OPTIONS \
-  --header 'Origin: http://localhost:3000' \
+  --header 'Origin: http://localhost:3001' \
   --header 'Access-Control-Request-Method: POST' \
   --header 'Access-Control-Request-Headers: authorization,content-type' \
   http://localhost:8080/api/v1/time-entries/start
@@ -282,8 +284,12 @@ curl --include --request OPTIONS \
 This should include:
 
 ```text
-Access-Control-Allow-Origin: http://localhost:3000
+Access-Control-Allow-Origin: http://localhost:3001
 ```
+
+The 2026-08-09 recheck returned HTTP 200 with that exact header. A preflight
+from `http://localhost:3000` returned HTTP 403 with no allow-origin header.
+`CORS_ALLOWED_ORIGINS` and the actual browser origin must match exactly.
 
 An unconfigured origin must not receive `Access-Control-Allow-Origin`:
 
@@ -298,7 +304,7 @@ curl --include --request OPTIONS \
 
 ## 7. Create two disposable users
 
-1. Open `http://localhost:3000/signup`.
+1. Open `http://localhost:3001/signup` for the currently configured local origin, or use the exact origin configured in `CORS_ALLOWED_ORIGINS`.
 2. Create User A.
 3. Complete email confirmation if enabled.
 4. Sign out.
@@ -325,7 +331,7 @@ Do not record the real email addresses in committed evidence.
 mkdir -p ~/.local/state/rotrack-e2e
 chmod 700 ~/.local/state/rotrack-e2e
 
-export ROTRACK_E2E_BASE_URL=http://localhost:3000
+export ROTRACK_E2E_BASE_URL=http://localhost:3001
 export ROTRACK_E2E_USER_A_STORAGE_STATE="$HOME/.local/state/rotrack-e2e/user-a.json"
 export ROTRACK_E2E_USER_B_STORAGE_STATE="$HOME/.local/state/rotrack-e2e/user-b.json"
 ```
@@ -436,7 +442,7 @@ Do not include credentials, tokens, storage-state contents, or certificate conte
 
 ## 12. Non-production exception and production gate
 
-The product owner authorized non-production M3 setup while M2.3 remained blocked only on the fresh confirmed user's first sign-in. The 2026-08-09 Azure/Vercel checkpoint is recorded in [`azure-nonproduction.md`](azure-nonproduction.md). This exception does not verify M2 or authorize production.
+The product owner previously authorized non-production M3 setup while M2.3 was blocked only on the fresh confirmed user's first sign-in. The operator-attested step is now complete and M2.3 is verified. The 2026-08-09 Azure/Vercel checkpoint is recorded in [`azure-nonproduction.md`](azure-nonproduction.md). Deployed authenticated 4/4 remains separate, and neither the former exception nor the completed local acceptance authorizes production.
 
 For non-production, use the existing shared non-production/dev Supabase Free project with:
 

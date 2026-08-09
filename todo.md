@@ -1,7 +1,7 @@
 # rotrack Development Backlog
 
 **Architecture and contracts:** [`arch.plan.md`](arch.plan.md)
-**Backlog reviewed:** 2026-08-08
+**Backlog reviewed:** 2026-08-09
 **Current release target:** Production-ready personal timer and dashboard MVP
 
 ## 1. Operating Rules
@@ -59,13 +59,13 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 | Area | State | Evidence / gap |
 |---|---|---|
 | Documentation currency | **Verified** | The startup/health runbook is canonical under `docs/operations/`, README links and limitations match current evidence, and a clean-candidate setup/build/startup walkthrough passes. |
-| Frontend routes and auth UI | **Implemented—unverified** | Static build and real sign-in/signup browser checks pass; opening the fresh confirmation email and completing that same disposable user's first sign-in remain externally blocked. |
+| Frontend routes and auth UI | **Implemented—unverified** | Static build and real sign-in/signup browser checks pass, and M2.3 is verified by the combined technical matrix and operator-attested fresh first sign-in. Deployed authenticated UI evidence remains open under M3. |
 | Tracker start/restore/stop UI | **Verified** | M1.3 source, unit tests, and recorded authenticated browser/API evidence cover explicit start, restore, and stop behavior. |
 | Automatic unload stopping | **Verified** | M1.3 removed production unload/keepalive handling; source search finds only the negative unit test. |
 | Dashboard UI and API | **Verified** | M1.4 replaces fixed server-time/minute timelines with validated IANA-zone ranges, timestamp-derived seconds, local daily buckets, tested DST/clipping, and explicit UI states. |
 | Spring Boot API core | **Verified** | Recorded live Supabase JWT sign-in, Spring ownership isolation, timer lifecycle, dashboard flow, health, readiness, TLS, and CORS evidence pass. |
 | Initial schema hardening | **Verified** | Empty-database apply and migrated-database rollback/repository verification pass against isolated PostgreSQL targets. |
-| Supabase development integration | **Blocked** | Migration, runtime role, Data API RLS, signup trigger, Spring ownership, and two-user technical evidence pass; an authorized disposable-inbox operator must complete the fresh confirmation/first-sign-in acceptance step. |
+| Supabase development integration | **Verified** | Migration, runtime role, Data API RLS, signup trigger, Spring ownership, and two-user technical evidence pass. The fresh confirmed-user first-sign-in acceptance step is operator-attested as complete; deployed authenticated E2E remains an M3 boundary. |
 | Automated test suites | **Verified** | The 2026-08-09 candidate run reports frontend 19 passed plus lint/typecheck/build and backend 90 discovered, 86 passed, four expected opt-in integration skips, and zero failures/errors. Migration apply/verify and authenticated Playwright 4/4 remain recorded from prior local/development evidence. |
 | Pull-request CI source | **Implemented—unverified** | Five credential-free jobs use isolated disposable PostgreSQL and do not touch hosted Supabase. The authenticated workflow source now uses trusted-default-branch `repository_dispatch`, logical `nonproduction`, two Supabase project identities, exact provider/host binding, and strict external storage-state handling. Hosted green/blocking checks and repository/environment protection remain unobserved/open; no authenticated environment secrets may be added before that protection exists. |
 | Backend container artifact | **Verified** | The non-root Java 21 image passed local liveness/readiness/SIGTERM and sensitive-content inspection. An immutable Linux/amd64 OCI-compatible image was published to non-production ACR and its registry digest/media type/architecture were read back; production has no published candidate. |
@@ -73,7 +73,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 | Release safeguards and observability | **In progress** | Commit `40d4376` adds a bounded process-local authenticated mutation limiter, allowlisted structured request logging, and fail-closed staging logger wiring. Fleet-wide/authentication-adjacent edge limiting, observed collector redaction/telemetry/alerts/routing, staffing, staging smoke, and rollback rehearsal remain incomplete. |
 | Notes, logs, friends, groups | **Not started** | Architecture defined; implementation follows the verified M3 release gate. |
 
-**Non-production deployment residual gate:** The Azure/Vercel non-production boundary is configured and health/readiness/CORS evidence is recorded in [`docs/operations/azure-nonproduction.md`](docs/operations/azure-nonproduction.md). The remaining owner/unblock conditions are protected public-or-paid GitHub controls, fresh-user first sign-in, authenticated 4/4, alert delivery, cold-start trials, backup/restore or risk acceptance, and rollback rehearsal. Production remains `rotrack-production-env` / `rotrack-production` / `rotrack-api-production` / `rotrack-prod` / Vercel Production and was not mutated.
+**Non-production deployment residual gate:** The Azure/Vercel non-production boundary is configured and health/readiness/CORS evidence is recorded in [`docs/operations/azure-nonproduction.md`](docs/operations/azure-nonproduction.md). The remaining owner/unblock conditions are protected public-or-paid GitHub controls, deployed authenticated 4/4, alert delivery, cold-start trials, backup/restore or risk acceptance, and rollback rehearsal. Production remains `rotrack-production-env` / `rotrack-production` / `rotrack-api-production` / `rotrack-prod` / Vercel Production and was not mutated.
 
 ### Non-production cloud checkpoint — 2026-08-09
 
@@ -413,7 +413,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - The recorded direct Supabase Data API matrix returned User A's 18 owned rows only, returned an empty owned view for User B, returned zero rows for both foreign filters, and rejected forged inserts as both users with `403`. The dedicated `rotrack_runtime` audit also passed.
 - A fresh signup through the real UI returned `200` and reached the confirmation page. Redacted Supabase management SQL confirmed matching `auth.users` and `public.users` rows; the disposable row was removed afterward. The confirmation email itself was not opened because no inbox access was available.
 
-**Remaining evidence:** None for the database/API technical gate. Opening a fresh confirmation email remains an external inbox limitation and is not treated as a failed migration, trigger, RLS, or ownership check.
+**Remaining evidence:** None for the database/API technical gate. The later fresh confirmed-user first-sign-in acceptance evidence is recorded under M2.3; it is separate from migration, trigger, RLS, and ownership verification.
 
 ### M2.2 — Make local startup deterministic
 
@@ -432,32 +432,32 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 **Current verification — 2026-08-08:** A degraded probe-mode startup with an unreachable loopback database returned liveness `200 {"status":"ok"}` and readiness `503 {"status":"not_ready"}` with no dependency details. The normal `ddl-auto=validate` configuration fails fast before HTTP startup when the database is unavailable, preserving schema validation. A final clean Java 21/frontend run passed; health/readiness returned 200 against the configured database. Live CORS preflights passed: configured localhost origin returned exact credentialed CORS headers with HTTP 200; an unconfigured origin returned HTTP 403 without `Access-Control-Allow-Origin`.
 
+**CORS recheck — 2026-08-09 / local workspace:** With the current ignored local configuration, a preflight from `http://localhost:3001` returned HTTP 200 with exact `Access-Control-Allow-Origin: http://localhost:3001`; `http://localhost:3000` returned HTTP 403 with no allow-origin header. The frontend therefore ran on port 3001 for the fresh-user acceptance step.
+
 ### M2.3 — Complete the local critical-path test
 
-**Status:** Blocked
-**Blocker owner:** Authorized disposable-inbox operator
-**Unblock condition:** Open the fresh signup confirmation message and complete first sign-in with that same disposable user, recording redacted evidence.
+**Status:** Verified
 
 - User A signs up/signs in, starts Work, navigates/reloads, restores, explicitly stops, and sees dashboard totals.
 - User B cannot read, stop, or aggregate User A's session.
 - Repeat with Rot and verify it remains private to the owner.
 - Confirm closing the app does not stop an active session.
 
-**Current state — 2026-08-08 / local workspace**
+**Technical evidence — 2026-08-08 / local workspace**
 
 - Added a tracked external-auth Playwright harness for Work/Rot start-stop, reload/navigation, browser-context close/reopen restoration, exact dashboard deltas, and User B read/stop/aggregate isolation for both activity types.
 - The harness lists four Chromium tests and safely quarantines them when external storage state is absent; `ROTRACK_E2E_REQUIRE_AUTH=1` converts missing User A/User B state into a configuration failure.
 - Two existing disposable development users signed in through the real frontend. Their storage states remained outside the repository, and `ROTRACK_E2E_REQUIRE_AUTH=1 npm run e2e` passed all four Chromium tests with zero skips on 2026-08-08. This proves authenticated sign-in, tracker lifecycle, restoration, dashboard deltas, and Spring API ownership isolation for Work and Rot.
-- A fresh signup through the real UI returned `200`, reached `/signup/confirmation`, and sent a confirmation email. A redacted management query confirmed the Auth row and signup-trigger profile; the disposable row was removed. Email confirmation was not opened because no inbox access was available.
+- A fresh signup through the real UI returned `200`, reached `/signup/confirmation`, and sent a confirmation email. A redacted management query confirmed the Auth row and signup-trigger profile; the disposable row was removed. Email confirmation was not opened during that earlier technical run because no inbox access was available.
 - Direct Data API RLS and the final redacted route evidence are recorded in `docs/operations/2026-08-07-local-verification.md`.
 
-**Remaining evidence:** The authenticated tracker/dashboard/ownership technical matrix is complete. To satisfy the task's recorded same-user signup/sign-in acceptance literally, an authorized operator must open the fresh confirmation message and complete that disposable user's first sign-in.
+**Acceptance evidence — 2026-08-09 / local workspace:** The product owner/operator reported that the already-confirmed fresh disposable user signed in through `/signin` and reached `/dashboard`. The password and account details were entered privately and are not recorded. The frontend ran at `http://localhost:3001`; an independent preflight recheck returned exact allow-origin for port 3001 and denied port 3000. This attests the missing fresh-user first-sign-in step; the previously recorded Playwright 4/4 remains the automated local/development technical evidence.
 
 ## 6. Milestone 3 — CI, Staging, and MVP Release
 
 **Goal:** Ship the personal tracker/dashboard safely.
 **Dependencies:** Milestone 2
-**Recorded dependency exception:** The product owner authorized M3 source preparation while M2.3 remains externally blocked on opening the fresh signup confirmation email. This does not satisfy the M2 or MVP release gates.
+**Recorded dependency exception:** The product owner previously authorized M3 source preparation while M2.3 was externally blocked on the fresh first-sign-in step. M2.3 is now verified; the earlier exception did not waive any M3 or MVP release gate.
 
 ### M3.1 — Pull-request CI
 
@@ -518,7 +518,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 The gate requires all of the following:
 
-- Milestones 0–3 are fully **Verified**; currently M2.3 and M3.1–M3.3 remain open or blocked.
+- Milestones 0–3 are fully **Verified**; currently M3.1–M3.3 remain open.
 - No open critical/high security or data-integrity defect.
 - Explicit stop and session restoration behavior match UI copy and documentation.
 - Hosted CI/protection, authorized immutable non-production deployment, fleet-wide/authentication-adjacent rate limiting, observed logging/telemetry/alerts, non-production smoke, and exact application rollback rehearsal pass with redacted evidence.
@@ -692,4 +692,4 @@ Append evidence beneath the completed task; do not create unsupported global che
 
 ## 13. Next Action
 
-The authorized disposable-inbox operator must complete the fresh confirmed user's first sign-in for M2.3, or the product owner must record a separate release-gate waiver. Before making the repository public, decide whether its historical personal author email should be rewritten; then enable public/paid branch and environment protection, required checks/code-owner review, CodeQL/secret scanning, and exact non-production host variables. Only after protection is observed may disposable authenticated-E2E secrets be configured and the trusted `repository_dispatch` run 4/4. In parallel, observe structured-log ingestion/redaction and alert routing, run ten cold-start trials, verify budget/credit-expiry and Supabase pause ownership, establish encrypted logical-export retention plus restore rehearsal or explicit data-loss risk acceptance, and rehearse exact-digest rollback. Do not start M4 or promote to production until the M3 MVP release gate is **Verified**.
+The fresh confirmed-user first-sign-in step is complete, and the product owner chose to retain historical author metadata. The next gate is a deliberate public-or-paid GitHub transition followed immediately by branch and environment protection, required checks/code-owner review, CodeQL/secret scanning, and exact non-production host variables. Only after protection is observed may disposable authenticated-E2E secrets be configured and the trusted `repository_dispatch` run 4/4. In parallel, observe structured-log ingestion/redaction and alert routing, run ten cold-start trials, verify budget/credit-expiry and Supabase pause ownership, establish encrypted logical-export retention plus restore rehearsal or explicit data-loss risk acceptance, and rehearse exact-digest rollback. Do not start M4 or promote to production until the M3 MVP release gate is **Verified**.
