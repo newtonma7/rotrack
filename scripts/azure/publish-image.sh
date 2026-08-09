@@ -51,6 +51,8 @@ else
   # piped directly to stdin and the transient auth file is removed on every exit.
   AUTHFILE=$(mktemp /tmp/rotrack-azure-podman-auth.XXXXXX)
   chmod 600 "$AUTHFILE"
+  # Podman expects a valid auth-file document before reading the token stream.
+  printf '%s\n' '{}' > "$AUTHFILE"
   az acr login \
     --name "$FOUNDATION_ACR_NAME" \
     --subscription "$AZURE_SUBSCRIPTION_ID" \

@@ -95,6 +95,7 @@ case "${1:-}" in
       shift
     done
     [ -n "$authfile" ] && [ -f "$authfile" ]
+    [ "$(cat "$authfile")" = '{}' ] || { printf '%s\n' 'unexpected end of JSON input' >&2; exit 125; }
     cat >/dev/null
     printf '%s\n' transient-auth > "$authfile"
     ;;
