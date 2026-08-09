@@ -16,7 +16,7 @@ fail() {
 for script in foundation-provision publish-image app-deploy readback preflight validate; do
   [ -x "$SCRIPTS_DIR/$script.sh" ] || fail "$script.sh is not executable"
 done
-for test_script in test-publish-image test-rbac-role-scope test-preflight-budget-shape; do
+for test_script in test-publish-image test-rbac-role-scope test-preflight-budget-shape test-readback-scale-shape; do
   [ -x "$AZURE_DIR/tests/$test_script.sh" ] || fail "$test_script.sh is not executable"
 done
 [ "$(grep -Fc 'az rest' "$SCRIPTS_DIR/preflight.sh")" -eq 1 ] || fail 'budget preflight must use az rest exactly once'
