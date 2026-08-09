@@ -42,6 +42,7 @@ elif [ "${1:-}" = group ]; then
 elif [ "${1:-}" = acr ] && [ "${2:-}" = show ]; then
   case "$ARGS" in
     *loginServer*) printf '%s\n' 'rotracknonproductionabc123.azurecr.io' ;;
+    *'--query id'*) printf '%s\n' '/subscriptions/sub/resourceGroups/rotrack-nonproduction/providers/Microsoft.ContainerRegistry/registries/rotracknonproductionabc123' ;;
     *) printf '%s\n' '{"name":"rotracknonproductionabc123","sku":"Basic","adminUserEnabled":false}' ;;
   esac
 elif [ "${1:-}" = resource ]; then
@@ -51,9 +52,9 @@ elif [ "${1:-}" = containerapp ] && [ "${2:-}" = env ]; then
 elif [ "${1:-}" = identity ]; then
   printf '%s\n' fake-principal-id
 elif [ "${1:-}" = role ] && [ "${2:-}" = assignment ]; then
-  printf '%s\n' 1
+  printf '%s\n' '[{"roleDefinitionId":"/subscriptions/sub/providers/Microsoft.Authorization/roleDefinitions/7f951dda-4ed3-4680-a7ca-43fe172d538d","scope":"/subscriptions/sub/resourceGroups/rotrack-nonproduction/providers/Microsoft.ContainerRegistry/registries/rotracknonproductionabc123"}]'
 elif [ "${1:-}" = consumption ]; then
-  printf '%s\n' "{\"amount\":25,\"start\":\"$FAKE_BUDGET_START\",\"end\":\"$FAKE_BUDGET_END\",\"notifications\":{\"actual50\":{\"enabled\":true,\"operator\":\"GreaterThan\",\"threshold\":50,\"thresholdType\":\"Actual\",\"contactEmails\":[\"owner@example.test\"]},\"actual80\":{\"enabled\":true,\"operator\":\"GreaterThan\",\"threshold\":80,\"thresholdType\":\"Actual\",\"contactEmails\":[\"owner@example.test\"]},\"actual100\":{\"enabled\":true,\"operator\":\"GreaterThan\",\"threshold\":100,\"thresholdType\":\"Actual\",\"contactEmails\":[\"owner@example.test\"]}}}"
+  printf '%s\n' "{\"amount\":25,\"timePeriod\":{\"startDate\":\"$FAKE_BUDGET_START\",\"endDate\":\"$FAKE_BUDGET_END\"},\"notifications\":{\"actual50\":{\"enabled\":true,\"operator\":\"GreaterThan\",\"threshold\":50,\"thresholdType\":\"Actual\",\"contactEmails\":[\"owner@example.test\"]},\"actual80\":{\"enabled\":true,\"operator\":\"GreaterThan\",\"threshold\":80,\"thresholdType\":\"Actual\",\"contactEmails\":[\"owner@example.test\"]},\"actual100\":{\"enabled\":true,\"operator\":\"GreaterThan\",\"threshold\":100,\"thresholdType\":\"Actual\",\"contactEmails\":[\"owner@example.test\"]}}}"
 elif [ "${1:-}" = acr ] && [ "${2:-}" = login ]; then
   case "$ARGS" in
     *expose-token*) printf '%s\n' 'token-secret-marker' ;;

@@ -67,21 +67,21 @@ else
     --query principalId \
     --output tsv)
   [ -n "$PRINCIPAL_ID" ] || fail 'managed identity principal readback was empty'
-  ROLE_COUNT=$(az role assignment list \
-    --assignee-object-id "$PRINCIPAL_ID" \
-    --role AcrPull \
-    --all \
+  ACR_SCOPE=$(az acr show \
+    --name "$FOUNDATION_ACR_NAME" \
     --subscription "$AZURE_SUBSCRIPTION_ID" \
-    --query "[?contains(scope, '/registries/$FOUNDATION_ACR_NAME')]|length(@)" \
-    --output tsv)
-  [ "$ROLE_COUNT" -ge 1 ] || fail 'managed identity does not have AcrPull on the target ACR'
+    --query id \
+    --output tsv) || fail 'target ACR scope readback failed'
+  [ -n "$ACR_SCOPE" ] || fail 'target ACR scope readback was empty'
+  ROLE_COUNT=$(acr_pull_role_count "$PRINCIPAL_ID" "$ACR_SCOPE")
+  [ "$ROLE_COUNT" -ge 1 ] || fail 'managed identity does not have the exact AcrPull assignment on the target ACR'
 fi
 
 BUDGET_JSON=$(az consumption budget show \
   --budget-name rotrack-nonproduction-budget \
   --resource-group rotrack-nonproduction \
   --subscription "$AZURE_SUBSCRIPTION_ID" \
-  --query '{amount:properties.amount,start:properties.timePeriod.startDate,end:properties.timePeriod.endDate,notifications:properties.notifications}' \
+  --query '{amount:amount,timePeriod:timePeriod,notifications:notifications}' \
   --output json)
 export BUDGET_JSON
 export FOUNDATION_PARAMETER_FILE
@@ -95,10 +95,11 @@ params = json.load(open(os.environ['FOUNDATION_PARAMETER_FILE'], encoding='utf-8
 expected_amount = params['budgetAmount']['value']
 expected_start = params['budgetStartDate']['value']
 expected_end = params['budgetEndDate']['value']
-if budget.get('amount') != expected_amount or budget.get('start') != expected_start or budget.get('end') != expected_end:
+period = budget.get('timePeriod', {})
+if budget.get('amount') != expected_amount or period.get('startDate') != expected_start or period.get('endDate') != expected_end:
     raise SystemExit('budget amount or bounded period does not match foundation parameters')
-start = datetime.strptime(budget['start'], '%Y-%m-%dT00:00:00Z')
-end = datetime.strptime(budget['end'], '%Y-%m-%dT00:00:00Z')
+start = datetime.strptime(period['startDate'], '%Y-%m-%dT00:00:00Z')
+end = datetime.strptime(period['endDate'], '%Y-%m-%dT00:00:00Z')
 now = datetime.now(timezone.utc).replace(tzinfo=None)
 if not 1 <= (end - start).days <= 366 or not (start <= now < end):
     raise SystemExit('budget period is not current and bounded')

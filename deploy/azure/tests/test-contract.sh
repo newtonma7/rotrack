@@ -16,7 +16,9 @@ fail() {
 for script in foundation-provision publish-image app-deploy readback preflight validate; do
   [ -x "$SCRIPTS_DIR/$script.sh" ] || fail "$script.sh is not executable"
 done
-[ -x "$AZURE_DIR/tests/test-publish-image.sh" ] || fail 'test-publish-image.sh is not executable'
+for test_script in test-publish-image test-rbac-role-scope test-preflight-budget-shape; do
+  [ -x "$AZURE_DIR/tests/$test_script.sh" ] || fail "$test_script.sh is not executable"
+done
 
 # Render/compile is local only. It must not create or update Azure resources.
 FOUNDATION_RENDERED=$(mktemp)

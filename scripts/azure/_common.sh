@@ -205,9 +205,39 @@ require_retry_timeout() {
   export AZURE_RBAC_PROPAGATION_TIMEOUT_SECONDS AZURE_APP_DEPLOY_TIMEOUT_SECONDS
 }
 
+acr_pull_role_count() {
+  principal_id=$1
+  acr_scope=$2
+  role_assignments=$(az role assignment list \
+    --assignee-object-id "$principal_id" \
+    --all \
+    --subscription "$AZURE_SUBSCRIPTION_ID" \
+    --output json 2>/dev/null || printf '[]')
+  EXPECTED_ACR_SCOPE="$acr_scope" ROLE_ASSIGNMENTS="$role_assignments" python3 <<'PY'
+import json
+import os
+
+expected_scope = os.environ['EXPECTED_ACR_SCOPE'].rstrip('/').casefold()
+assignments = json.loads(os.environ['ROLE_ASSIGNMENTS'])
+role_id = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
+count = 0
+for assignment in assignments:
+    scope = str(assignment.get('scope', '')).rstrip('/').casefold()
+    definition = str(assignment.get('roleDefinitionId', '')).rstrip('/').rsplit('/', 1)[-1].casefold()
+    if scope == expected_scope and definition == role_id:
+        count += 1
+print(count)
+PY
+}
+
 wait_for_acr_pull() {
   require_retry_timeout
   deadline=$(( $(date +%s) + AZURE_RBAC_PROPAGATION_TIMEOUT_SECONDS ))
+  acr_scope=$(az acr show \
+    --name "$FOUNDATION_ACR_NAME" \
+    --subscription "$AZURE_SUBSCRIPTION_ID" \
+    --query id \
+    --output tsv 2>/dev/null || true)
   while :; do
     principal_id=$(az identity show \
       --name rotrack-api-nonproduction-identity \
@@ -216,14 +246,8 @@ wait_for_acr_pull() {
       --query principalId \
       --output tsv 2>/dev/null || true)
     role_count=0
-    if [ -n "$principal_id" ]; then
-      role_count=$(az role assignment list \
-        --assignee-object-id "$principal_id" \
-        --role AcrPull \
-        --all \
-        --subscription "$AZURE_SUBSCRIPTION_ID" \
-        --query "[?contains(scope, '/registries/$FOUNDATION_ACR_NAME')]|length(@)" \
-        --output tsv 2>/dev/null || printf '0')
+    if [ -n "$principal_id" ] && [ -n "$acr_scope" ]; then
+      role_count=$(acr_pull_role_count "$principal_id" "$acr_scope")
     fi
     if printf '%s\n' "$role_count" | grep -Eq '^[1-9][0-9]*$'; then
       return 0
