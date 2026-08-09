@@ -21,7 +21,7 @@ blocked merge or failing check before M3.1 is marked verified.
 
 ## CI boundary distinction
 
-The credential-free pull-request jobs use isolated disposable PostgreSQL services and public/nonfunctional placeholders; they do not connect to either hosted Supabase project and do not mutate shared Supabase data. The separately dispatched authenticated workflow is an environment-scoped operation: after its current legacy checks pass, it may use disposable users/data in the shared non-production Supabase project. These are different CI boundaries.
+The credential-free pull-request jobs use isolated disposable PostgreSQL services and public/nonfunctional placeholders; they do not connect to either hosted Supabase project and do not mutate shared Supabase data. The candidate authenticated workflow uses trusted-default-branch `repository_dispatch`, protected logical environment `nonproduction`, exact provider/host binding, and disposable state from the shared non-production Supabase project. These are different CI boundaries. At the 2026-08-09 pre-push review checkpoint, `origin/main` still hosted the superseded legacy workflow; configure no auth secrets and dispatch nothing until the protected candidate source is hosted and read back.
 
 ## What each check proves
 
@@ -83,37 +83,21 @@ will not connect to a non-loopback host.
 
 ## Protected authenticated E2E
 
-Authenticated external-auth Playwright is **not** part of pull-request CI. It is
-quarantined in `.github/workflows/authenticated-e2e.yml`, which runs only through
-manual dispatch and fails closed unless all checks below are met:
+Authenticated external-auth Playwright is **not** part of pull-request CI. The candidate `.github/workflows/authenticated-e2e.yml` uses `repository_dispatch` type `rotrack-authenticated-e2e`, which GitHub resolves from the trusted default branch; it is not the hosted workflow until these reviewed commits are pushed. The fixed non-secret payload confirmation is `nonproduction-authenticated-e2e-only`.
 
-1. The dispatcher explicitly confirms the disposable-staging input.
-2. The `disposable-staging-auth` GitHub Environment approves the job. Configure
-   required reviewers and restrict deployment branches in GitHub settings.
-3. That environment provides all of these values (never repository-level PR
-   secrets):
-   - `ROTRACK_E2E_DISPOSABLE_STAGING_CONFIRMATION` with the exact value
-     `disposable-staging-only`;
-   - `ROTRACK_E2E_BASE_URL`, an HTTPS URL for the approved non-production Vercel Preview frontend;
-   - `ROTRACK_E2E_EXPECTED_API_URL`, the approved HTTPS non-production API base ending in `/api/v1`;
-   - `ROTRACK_STAGING_SUPABASE_PROJECT_REF`, `ROTRACK_DEVELOPMENT_SUPABASE_PROJECT_REF`, and `ROTRACK_PRODUCTION_SUPABASE_PROJECT_REF`, three distinct protected project identities required by the current legacy workflow;
-   - `ROTRACK_PRODUCTION_FRONTEND_URL` and `ROTRACK_PRODUCTION_API_URL`, authoritative protected Production identities that must differ from the current staging targets;
-   - `ROTRACK_E2E_USER_A_STORAGE_STATE_JSON` and
-     `ROTRACK_E2E_USER_B_STORAGE_STATE_JSON`, valid external Playwright storage
-     states for two distinct disposable staging users.
+Before adding any authenticated values, make the repository public or use a plan that supports the required controls, protect `main`, and configure logical environment `nonproduction` with a required reviewer and a deployment-branch restriction to protected `main`. Read back those controls. Then configure only environment-scoped:
 
-Never configure development, personal, or production users in this environment.
-The workflow writes auth states with mode `0600` under `RUNNER_TEMP`, validates
-their JSON shape, binds every captured API response to the approved API base, requires exactly four passed authenticated tests with zero skipped/unexpected/flaky results, and removes storage state plus Playwright failure/report output even when the test fails. Tracing and
-video remain disabled by the Playwright configuration, and no artifact upload is
-permitted.
+- variables `ROTRACK_E2E_APPROVED_FRONTEND_HOST` and `ROTRACK_E2E_APPROVED_API_HOST`, copied from authoritative Vercel Preview/ACA readback;
+- secrets `ROTRACK_E2E_BASE_URL` and `ROTRACK_E2E_EXPECTED_API_URL`;
+- distinct `ROTRACK_NONPRODUCTION_SUPABASE_PROJECT_REF` and `ROTRACK_PRODUCTION_SUPABASE_PROJECT_REF` identities;
+- `ROTRACK_E2E_USER_A_STORAGE_STATE_JSON` and `ROTRACK_E2E_USER_B_STORAGE_STATE_JSON` for two distinct disposable non-production users.
 
-The current workflow still targets the `disposable-staging-auth` GitHub Environment, the `disposable-staging-only` confirmation, and three Supabase project references; the checked-in release/staging scripts likewise retain three-reference and AWS-era assumptions. Converting this workflow and those scripts to the target logical `nonproduction` environment, two-project topology, one Vercel project, and Azure managed environments is residual work.
+Never configure personal or production user state in this environment. The workflow permits only the exact approved `.vercel.app` / `.azurecontainerapps.io` hosts, zero cookies, one exact frontend origin, and one matching non-production Supabase token entry per storage state. It parses the Supabase session JSON and requires distinct nonempty user IDs and access tokens, then exactly four passed tests with zero skipped/unexpected/flaky results, removes all temporary state/output, disables trace/video, and forbids artifact upload. The Azure adapter and workflow now match the two-project topology; legacy AWS files under `deploy/staging/` are not the active path.
 
 Environment approval, branch protection, a real GitHub-hosted run, and external
 non-production availability cannot be validated from a local checkout. Treat
-`nonproduction` and `production` as target logical GitHub environments whose
-settings require independent observation. Required reviewers, branch restrictions,
+`nonproduction` and `production` as existing logical GitHub environments whose
+protection settings still require independent observation. Required reviewers, branch restrictions,
 and environment-secret availability depend on repository visibility and plan; verify
 them against the [GitHub Environments documentation](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments). If the required controls are unavailable, production remains stopped until the plan/visibility changes or an independently reviewed equivalent gate is approved. Credential-free PR CI remains isolated
 from hosted Supabase; only approved environment-scoped authenticated E2E may use

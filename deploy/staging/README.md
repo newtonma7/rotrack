@@ -2,7 +2,7 @@
 
 This directory documents the approved non-production deployment boundary. The path name is retained for repository compatibility; **staging is not a third Supabase or a dedicated Vercel project**. Development and approved environment-scoped authenticated E2E use the existing non-production/dev Supabase Free project. Credential-free pull-request CI uses isolated disposable PostgreSQL and never connects to hosted Supabase. Vercel Preview is the non-production environment in the one Vercel project. Production uses the separately created `rotrack-prod` Supabase Free project and that same Vercel project's Production environment.
 
-This document is a target runbook, not deployment evidence. No Azure resource group, Container App, ACR repository, managed identity, Vercel project/environment setting, GitHub environment setting, Supabase project setting, registry digest, domain, alert, or secret is claimed as configured or verified. Never point non-production commands at `rotrack-prod` or production resources.
+This is the boundary contract; the executable Azure runbook and 2026-08-09 non-production checkpoint are in [`docs/operations/azure-nonproduction.md`](../../docs/operations/azure-nonproduction.md). Azure/ACR/Vercel non-production infrastructure, immutable digest readback, HTTPS health/readiness, and exact CORS are observed. GitHub protection, authenticated smoke, alert routing, cold-start trials, backup/restore, rollback, and all production resources remain open. Never point non-production commands at `rotrack-prod` or production resources.
 
 ## Target boundary
 
@@ -22,7 +22,7 @@ The non-production sharing tradeoff is intentional for development and approved 
 
 The platform-neutral backend artifact is a Linux/amd64 OCI-compatible image. Its contract is in [`deploy/container/CONTRACT.md`](../container/CONTRACT.md): immutable registry digest/media-type readback, non-root UID/GID `10001:10001`, writes limited to `/tmp`, port `8080`, liveness/readiness, graceful shutdown, runtime CA injection, and exact `LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs` (Elastic Common Schema, not AWS Elastic Container Service). The image is locally read-only-root compatible, but ACA enforcement is not claimed.
 
-`deploy/ecs/base/*.json`, `templates/ecs-task-definition.json.template`, `validate.sh`, `render.sh`, `tests/validate.sh`, and `aws-preflight.sh` are checked-in legacy/unselected AWS/ECS artifacts. They still contain AWS-era validators and scripts, have not been converted to Azure, and must not be used as the active deployment path. This documentation-only change intentionally does not weaken or rewrite those scripts. Their failures against the approved two-project/one-Vercel/Azure architecture are expected residual work, not evidence of a failed Azure deployment.
+`deploy/ecs/base/*.json`, `templates/ecs-task-definition.json.template`, `validate.sh`, `render.sh`, `tests/validate.sh`, and `aws-preflight.sh` are checked-in legacy/unselected AWS/ECS artifacts and are not the active path. Use `deploy/azure/` and `scripts/azure/`; failures of legacy AWS validators against the approved two-project/one-Vercel/Azure architecture are not Azure deployment evidence.
 
 If a registry integration must be selected, prefer Azure Container Registry (ACR) with managed identity for the Container Apps pull. ACR is only the Azure delivery integration; the OCI-compatible image remains vendor-neutral and is identified by an immutable registry digest.
 

@@ -434,9 +434,9 @@ Do not include credentials, tokens, storage-state contents, or certificate conte
 
 ---
 
-## 12. After M2 is complete: non-production and production
+## 12. Non-production exception and production gate
 
-Do not start deployment until M2 passes.
+The product owner authorized non-production M3 setup while M2.3 remained blocked only on the fresh confirmed user's first sign-in. The 2026-08-09 Azure/Vercel checkpoint is recorded in [`azure-nonproduction.md`](azure-nonproduction.md). This exception does not verify M2 or authorize production.
 
 For non-production, use the existing shared non-production/dev Supabase Free project with:
 
@@ -447,4 +447,4 @@ For non-production, use the existing shared non-production/dev Supabase Free pro
 - Azure Container Apps Consumption in managed environment `rotrack-nonproduction-env` inside resource group `rotrack-nonproduction` with app `rotrack-api-nonproduction`;
 - exact CORS, health/readiness, cold-start, connection, telemetry, and budget/credit-expiry checks.
 
-Production must use the separately created `rotrack-prod` Supabase Free project, Vercel Production in the same Vercel project, logical GitHub `production`, and Azure managed environment `rotrack-production-env` inside resource group `rotrack-production` with app `rotrack-api-production`. Repeat the CA, role, migration, RLS, browser, health, monitoring, budget, and rollback process. These are target requirements only; no remote resource is claimed as configured or verified.
+Production must use the separately created `rotrack-prod` Supabase Free project, Vercel Production in the same Vercel project, logical GitHub `production`, and Azure managed environment `rotrack-production-env` inside resource group `rotrack-production` with app `rotrack-api-production`. Repeat the CA, role, migration, RLS, browser, health, monitoring, budget, and rollback process. These production requirements remain targets only; no production resource is claimed as configured or verified.

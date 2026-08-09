@@ -1,6 +1,6 @@
 # Non-production deployment evidence — template
 
-Copy this template to an approved evidence system only after an authorized non-production run. Checked-in copies must remain blank. Public credential-free Preview/frontend and API URLs may be recorded only when approved. Never record project refs, subscription/resource IDs, credentials, keys, bearer tokens, user emails/UUIDs, CA contents, browser auth-state paths/content, private application data, or query-bearing URLs.
+Copy this template to an approved evidence system only after an authorized non-production run. Checked-in template fields remain blank; the redacted 2026-08-09 checkpoint is recorded separately in [`2026-08-09-nonproduction-evidence.md`](2026-08-09-nonproduction-evidence.md). Public credential-free Preview/frontend and API URLs may be recorded only when approved. Never record project refs, subscription/resource IDs, credentials, keys, bearer tokens, user emails/UUIDs, CA contents, browser auth-state paths/content, private application data, or query-bearing URLs.
 
 ## Authorization and separation
 

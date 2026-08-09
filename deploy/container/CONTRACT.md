@@ -1,6 +1,6 @@
 # Backend container contract
 
-This directory defines the platform-neutral backend artifact boundary. It does not provision or deploy remote infrastructure. The approved runtime integration is Azure Container Apps Consumption; the checked-in ECS/Fargate templates are historical, unselected AWS artifacts and have not been converted to Azure. The current Docker/Podman builder produces an OCI-compatible container image; strict registry manifest media type and immutable registry digest remain deployment-time checks.
+This directory defines the platform-neutral backend artifact boundary. Azure-specific provisioning remains outside the image under `deploy/azure/` and `scripts/azure/`; the checked-in ECS/Fargate templates are historical, unselected artifacts. The Docker/Podman builder produces an OCI-compatible image, while registry manifest media type, Linux/amd64, immutable digest, and running service-version equality are deployment/readback checks.
 
 ## Artifact and runtime
 
@@ -49,7 +49,7 @@ Size the database for `DATABASE_MAXIMUM_POOL_SIZE × maximum replicas`, includin
 
 The entrypoint materializes the managed CA in container-local ephemeral `/tmp`, verifies that `DATABASE_URL` names the same path and `verify-full`, rejects custom TLS factories/hostname verifiers, unsets the PEM environment variable, and then `exec`s Java. It never prints a secret or URL. The Azure deployment integration must inject the CA and secrets through its approved secret/configuration boundary; no CA is baked into the image.
 
-Do not enable request-header/body dumps, remote shell/debug access, JVM command-line secrets, or environment logging. Logs and deployment evidence must never contain bearer tokens, credentials, JDBC URLs, CA bodies, notes, or reflections. The source implements the application redaction boundary; collector ingestion/redaction, telemetry, alerts/routing, budget alerts, and observed deployment evidence remain unverified. The future ACA deployment/readback check must bind the non-secret service version to the immutable image digest; that binding currently exists only in the legacy AWS validator. GitHub/ACA `nonproduction` maps to runtime/telemetry label `staging`; production maps to `production`.
+Do not enable request-header/body dumps, remote shell/debug access, JVM command-line secrets, or environment logging. Logs and deployment evidence must never contain bearer tokens, credentials, JDBC URLs, CA bodies, notes, or reflections. The source implements the application redaction boundary. The Azure adapter now binds `ROTRACK_SERVICE_VERSION` to the exact image digest and readback verifies equality; observed collector redaction, telemetry dashboards, and alert routing remain unverified. GitHub/ACA `nonproduction` maps to runtime/telemetry label `staging`; production maps to `production`.
 
 ## Azure deployment boundary
 
@@ -58,7 +58,7 @@ The target has two concrete boundaries:
 - Non-production: managed environment `rotrack-nonproduction-env` inside resource group `rotrack-nonproduction`, Container App `rotrack-api-nonproduction`, Azure Container Apps Consumption, Vercel Preview, target logical GitHub environment `nonproduction`, and the shared existing non-production/dev Supabase Free project.
 - Production: managed environment `rotrack-production-env` inside resource group `rotrack-production`, Container App `rotrack-api-production`, Azure Container Apps Consumption, Vercel Production in the same Vercel project, target logical GitHub environment `production`, and the newly created `rotrack-prod` Supabase Free project.
 
-These are target names and separation rules only. No resource, identity, managed identity, ACR repository, Vercel deployment, GitHub environment setting, Supabase setting, or alert is claimed as configured or verified. The Azure managed environment is the security boundary and must remain separate, in its matching resource group, from production/non-production peers. The Azure integration must use HTTPS ingress, port `8080`, liveness/readiness probes, graceful shutdown, exact CORS, non-root execution, writes limited to `/tmp`, no remote debug shell, least-privilege identity/secret boundaries, and a managed-identity pull if ACR is selected. Do not claim ACA read-only-root enforcement until a supported provider control is implemented and observed.
+The non-production resource group/environment/app, Basic ACR, managed `AcrPull` identity, capped Log Analytics workspace, budget, and Vercel Preview were configured and read back on 2026-08-09; HTTPS health/readiness and exact Preview CORS passed. GitHub environment protection and production remain unconfigured. The Azure managed environment is the security boundary and must remain separate from production. Preserve HTTPS ingress, port `8080`, probes, graceful shutdown, exact CORS, non-root execution, writes limited to `/tmp`, no remote debug shell, least-privilege identity/secret boundaries, and managed-identity pull. Do not claim ACA read-only-root enforcement until a supported provider control is implemented and observed.
 
 ## Historical AWS artifacts
 
@@ -76,4 +76,4 @@ ROTRACK_CONTAINER_NETWORK=<isolated-container-network> \
   scripts/container/smoke-image.sh /absolute/path/to/runtime.env
 ```
 
-`build-image.sh` prints the local image ID and content digest. A registry digest and manifest media type exist only after a separately approved push/readback; this lane does not publish or deploy. Any AWS/ECS/Fargate contract checks that remain in the legacy scripts are historical validation and are not Azure deployment verification.
+`build-image.sh` prints the local image ID and content digest. The authorized non-production path uses [`docs/operations/azure-nonproduction.md`](../../docs/operations/azure-nonproduction.md), `scripts/azure/publish-image.sh`, and `scripts/azure/readback.sh` for registry/deployment evidence. AWS/ECS/Fargate checks that remain in legacy scripts are historical validation and are not Azure deployment verification.

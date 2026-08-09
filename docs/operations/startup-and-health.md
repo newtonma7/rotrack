@@ -1,6 +1,6 @@
 # Startup, configuration, and health probes
 
-This runbook defines the M2.2 local and Azure Container Apps-facing configuration contract. It describes the approved target only; no Azure, Vercel, GitHub, or Supabase deployment is claimed as configured or verified. Use only redacted values in logs and deployment evidence.
+This runbook defines the M2.2 local and Azure Container Apps-facing configuration contract. The authorized non-production Azure/Vercel deployment passed configuration readback plus HTTPS health/readiness on 2026-08-09; see [`azure-nonproduction.md`](azure-nonproduction.md). GitHub protection, authenticated smoke, alert routing, rollback, and production remain unverified. Use only redacted values in logs and deployment evidence.
 
 ## Configuration checklist
 

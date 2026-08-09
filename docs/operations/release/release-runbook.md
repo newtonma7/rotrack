@@ -1,8 +1,8 @@
 # Release and rollback runbook
 
-**Status:** preparation only. The approved non-production deployment does not yet have recorded evidence, so the smoke and rollback rehearsal have not been executed. This runbook does not authorize a deployment.
+**Status — 2026-08-09:** the approved non-production deployment has redacted infrastructure, digest, health/readiness, and CORS evidence in [`../staging/2026-08-09-nonproduction-evidence.md`](../staging/2026-08-09-nonproduction-evidence.md). Authenticated smoke, observed alerts, cold-start trials, and rollback rehearsal have not passed. This runbook does not authorize production.
 
-This runbook protects the database-first rotrack rollout: Supabase Auth in the browser, one Vercel project (Preview for non-production, Production for production), Azure Container Apps Consumption for the Spring API, and two Supabase Free projects. Approved environment-scoped authenticated E2E uses the shared existing non-production project; credential-free PR CI uses isolated disposable PostgreSQL; production uses `rotrack-prod`. It preserves explicit timer sessions and the API ownership boundary. Application rollback must not silently rewrite active or completed sessions. This is preparation only; no deployment is claimed as configured or verified.
+This runbook protects the database-first rotrack rollout: Supabase Auth in the browser, one Vercel project (Preview for non-production, Production for production), Azure Container Apps Consumption for the Spring API, and two Supabase Free projects. Approved environment-scoped authenticated E2E uses the shared non-production project; credential-free PR CI uses isolated PostgreSQL; production uses `rotrack-prod`. It preserves explicit timer sessions and the API ownership boundary. Application rollback must not silently rewrite active or completed sessions. Non-production Azure/Vercel deployment evidence is recorded in [`../azure-nonproduction.md`](../azure-nonproduction.md); production is not configured or authorized.
 
 ## Roles and approvals
 

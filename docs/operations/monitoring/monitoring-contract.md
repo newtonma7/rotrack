@@ -1,6 +1,6 @@
 # Monitoring and alert contract
 
-**Status:** infrastructure-neutral preparation for the approved Azure/Vercel/Supabase boundary. No provider dashboard, alert, or telemetry destination is configured by this change. Every threshold below is a **suggested initial threshold**, not a measured rotrack baseline. Consumption scale-to-zero is accepted initially; cold starts and Azure budget/credit-expiry risk require explicit signals.
+**Status:** the non-production API is configured to emit structured logs to its capped Log Analytics workspace and has Azure budget alerts configured. Workspace ingestion/redaction sentinel evidence, dashboards, operational alert rules/routing, credit-expiry notification, and measured baselines remain open. Every threshold below is a **suggested initial threshold**, not a measured rotrack baseline. Consumption scale-to-zero is accepted initially; cold starts and credit-expiry risk still require explicit signals.
 
 ## Ownership and identifiers
 
