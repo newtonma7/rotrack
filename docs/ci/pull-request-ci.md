@@ -6,22 +6,32 @@
 be dispatched manually. It grants only `contents: read` and does not use
 repository or environment secrets.
 
-Configure branch protection to require these job checks after the workflow has
-run successfully on GitHub:
+The public repository's protected `main` currently requires these exact app-bound contexts:
 
 - `Guards and secret scan`
 - `Frontend`
 - `Backend`
 - `Backend container artifact`
 - `PostgreSQL migrations`
+- `Analyze (actions)`
+- `Analyze (java-kotlin)`
+- `Analyze (javascript-typescript)`
 
-The repository cannot prove branch-protection settings or a hosted run by
-itself. A maintainer must capture the first green pull-request URL and observe a
-blocked merge or failing check before M3.1 is marked verified.
+The first five are the Pull request CI jobs. The final three are the sole
+chosen scanner: GitHub default CodeQL setup. The checked-in advanced CodeQL
+workflow was removed after temporary PR #17 showed that its `CodeQL (java)` and
+`CodeQL (javascript-typescript)` jobs fail when default setup is enabled.
+
+PR #17 (temporary, credential-free, empty commit) showed all eight required
+contexts appearing and succeeding. Its read-only protection metadata also
+confirmed pull requests, zero human approvals, strict checks, administrator
+enforcement, linear history, no force pushes/deletion, and advisory
+`CODEOWNERS`. M3.1 remains **Implemented—unverified** because a deliberately
+failing required check that blocks merging has not yet been demonstrated.
 
 ## CI boundary distinction
 
-The credential-free pull-request jobs use isolated disposable PostgreSQL services and public/nonfunctional placeholders; they do not connect to either hosted Supabase project and do not mutate shared Supabase data. The candidate authenticated workflow uses trusted-default-branch `repository_dispatch`, protected logical environment `nonproduction`, exact provider/host binding, and disposable state from the shared non-production Supabase project. These are different CI boundaries. At the 2026-08-09 pre-push review checkpoint, `origin/main` still hosted the superseded legacy workflow; configure no auth secrets and dispatch nothing until the protected candidate source is hosted and read back.
+The credential-free pull-request jobs use isolated disposable PostgreSQL services and public/nonfunctional placeholders; they do not connect to either hosted Supabase project and do not mutate shared Supabase data. The candidate authenticated workflow uses trusted-default-branch `repository_dispatch`, protected logical environment `nonproduction`, exact provider/host binding, and disposable state from the shared non-production Supabase project. These are different CI boundaries. The public-readiness controls are now read back: repository/nonproduction/production auth-secret inventories are empty, `ROTRACK_AUTHENTICATED_E2E_ENABLED` is absent/default-disabled, `nonproduction` allows exactly protected `main`, and the hosted authenticated workflow remains disabled. No authenticated dispatch is performed here.
 
 ## What each check proves
 
@@ -87,10 +97,11 @@ Authenticated external-auth Playwright is **not** part of pull-request CI. `.git
 
 The product owner approved a solo-maintainer equivalent because no second human reviewer is currently available. Under this policy:
 
-- protect public `main` with pull requests and required CI/CodeQL checks, apply the rules to administrators, and block force pushes/deletion;
-- restrict logical environment `nonproduction` to protected `main`;
-- keep `ROTRACK_AUTHENTICATED_E2E_ENABLED` unset and all GitHub environment/repository auth secrets empty;
+- keep public `main` protected with pull requests, zero human approvals, strict required contexts listed above, administrator enforcement, linear history, and blocked force pushes/deletion;
+- keep logical environment `nonproduction` restricted to exactly protected `main`, with no reviewers or secrets;
+- keep `ROTRACK_AUTHENTICATED_E2E_ENABLED` absent/default-disabled and all GitHub repository/nonproduction/production auth-secret inventories empty;
 - treat `CODEOWNERS` as advisory rather than claim an impossible self-approval;
+- retain enabled vulnerability reporting, Dependabot security fixes, secret scanning, and push protection;
 - run authenticated non-production Playwright from a trusted local operator context with disposable users and storage states outside Git, binding the exact approved Vercel Preview/ACA hosts and requiring four passes with no skips, unexpected targets, or flaky results.
 
 The dormant hosted workflow retains exact `.vercel.app` / `.azurecontainerapps.io` host validation, distinct non-production/production project identities, distinct user IDs/access tokens, temporary-state cleanup, disabled trace/video, and no artifact upload. Do not enable it or configure its variables/secrets without a second trusted reviewer and independently read-back environment approval. Personal or production user state is forbidden.

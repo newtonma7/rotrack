@@ -2,7 +2,7 @@
 
 This directory documents the approved non-production deployment boundary. The path name is retained for repository compatibility; **staging is not a third Supabase or a dedicated Vercel project**. Development and approved environment-scoped authenticated E2E use the existing non-production/dev Supabase Free project. Credential-free pull-request CI uses isolated disposable PostgreSQL and never connects to hosted Supabase. Vercel Preview is the non-production environment in the one Vercel project. Production uses the separately created `rotrack-prod` Supabase Free project and that same Vercel project's Production environment.
 
-This is the boundary contract; the executable Azure runbook and 2026-08-09 non-production checkpoint are in [`docs/operations/azure-nonproduction.md`](../../docs/operations/azure-nonproduction.md). Azure/ACR/Vercel non-production infrastructure, immutable digest readback, HTTPS health/readiness, and exact CORS are observed. GitHub protection, authenticated smoke, alert routing, cold-start trials, backup/restore, rollback, and all production resources remain open. Never point non-production commands at `rotrack-prod` or production resources.
+This is the boundary contract; the executable Azure runbook and 2026-08-09 non-production checkpoint are in [`docs/operations/azure-nonproduction.md`](../../docs/operations/azure-nonproduction.md). Azure/ACR/Vercel non-production infrastructure, immutable digest readback, HTTPS health/readiness, exact CORS, and the public GitHub protection/security readbacks are observed. Authenticated smoke, alert routing, cold-start trials, backup/restore, rollback, and all production resources remain open. Never point non-production commands at `rotrack-prod` or production resources.
 
 ## Target boundary
 
@@ -10,7 +10,7 @@ This is the boundary contract; the executable Azure runbook and 2026-08-09 non-p
 |---|---|---|
 | Supabase | Existing non-production/dev Free project, shared by development and approved environment-scoped authenticated E2E | Newly created `rotrack-prod` Free project |
 | Vercel | Preview environment | Production environment |
-| GitHub | Target logical `nonproduction` environment | Target logical `production` environment |
+| GitHub | Observed logical `nonproduction`: exactly protected `main`, no reviewers/secrets | Logical `production`; unchanged and secrets empty |
 | Azure managed environment | `rotrack-nonproduction-env` | `rotrack-production-env` |
 | Azure resource group | `rotrack-nonproduction` | `rotrack-production` |
 | Azure Container App | `rotrack-api-nonproduction` | `rotrack-api-production` |
@@ -103,7 +103,7 @@ Include revision overlap when a rollout can run old and new replicas together. R
 
 Use one Vercel project. Let ordinary branch/PR deployments use Vercel Preview with Preview-scoped public values. GitHub/ACA `nonproduction` maps to runtime/telemetry label `staging`; production maps to `production`. Because `NEXT_PUBLIC_*` values are embedded at build time, do not promote Preview bytes to Production. Build Vercel Production from the same reviewed source commit under production-scoped values, record its separate immutable deployment provenance, and verify those values. Do not create or document a dedicated staging project.
 
-Under the approved solo-maintainer equivalent, public `main` requires automated checks and blocks force pushes/deletion; logical `nonproduction` is restricted to protected `main`, `CODEOWNERS` is advisory, GitHub auth secrets remain empty, and authenticated E2E runs from a trusted local operator context. A future credentialed hosted workflow or production deployment requires separately approved controls. The environment names are logical boundaries; their settings are not asserted here.
+Under the approved solo-maintainer equivalent, public `main` requires pull requests, zero human approvals, strict app-bound checks, administrator enforcement, linear history, and no force pushes/deletion; logical `nonproduction` is restricted to exactly protected `main` with no reviewers or secrets; and `CODEOWNERS` is advisory. The required contexts are the five Pull request CI jobs plus default CodeQL setup's `Analyze (actions)`, `Analyze (java-kotlin)`, and `Analyze (javascript-typescript)`. Repository/nonproduction/production auth-secret inventories are empty and `ROTRACK_AUTHENTICATED_E2E_ENABLED` is absent/default-disabled. Vulnerability reporting, Dependabot security fixes, secret scanning, and push protection are enabled. Authenticated E2E runs from a trusted local operator context until a second trusted reviewer exists. A future credentialed hosted workflow or production deployment requires separately approved controls. Production was untouched.
 
 The Preview and Production frontend values must point to the matching Supabase project and API. The backend CORS allowlist must contain exact approved HTTPS origins; do not use a wildcard or assume every Vercel preview URL is trusted. If multiple Preview origins are needed, approve them explicitly and include them in the non-production contract without exposing production.
 
