@@ -68,7 +68,7 @@ The release owner verifies, with separate staging and production inventories:
 - Migration locks/runtime/backfill behavior and checksums were reviewed; a forward-fix owner and decision deadline are named.
 - Incident roles, communication channel, and provider access are staffed for the rollout and observation window.
 - The monitoring owner has tested alert routing in the target environment without generating a production incident.
-- Approved edge/backend rate limits protect authentication-adjacent and mutation endpoints. Staging evidence covers expected `429` responses, trusted client-identity handling, recovery after the window, and proxy/backend failure behavior without bypass or fail-open exposure. Rate limiting is not implemented yet, so this item is currently **STOP**.
+- Approved edge/backend rate limits protect authentication-adjacent and mutation endpoints. Staging evidence covers expected `429` responses, trusted client-identity handling, recovery after the window, and proxy/backend failure behavior without bypass or fail-open exposure. A process-local authenticated mutation limiter is implemented as defense in depth; the trusted fleet-wide/authentication-adjacent edge control and staging failure-mode evidence remain incomplete, so this item is currently **STOP**.
 
 Any mismatch, unavailable rollback artifact, unknown migration state, failed readiness, missing required-auth test configuration, or missing approval is **STOP**.
 

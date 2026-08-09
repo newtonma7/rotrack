@@ -190,7 +190,7 @@ page background.
   *"two taps. one honest picture."*, *"every minute lands in one of
   two places."*
 - Label the two buckets consistently: **rot** and **work**.
-  If not actively working, time defaults to rot. Capitalize only as section headings.
+  Untracked time remains untracked; Rot begins only after an explicit start. Capitalize only as section headings.
 
 ---
 

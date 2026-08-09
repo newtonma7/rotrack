@@ -1,0 +1,36 @@
+<configuration>
+    <!-- Spring Boot maps LOGGING_STRUCTURED_FORMAT_CONSOLE to this property (ecs in staging). -->
+    <springProperty scope="context"
+                    name="consoleStructuredFormat"
+                    source="logging.structured.format.console"
+                    defaultValue="ecs"/>
+
+    <!-- Request events are already allowlisted JSON; this appender emits the message without a text prefix. -->
+    <appender name="REQUEST_JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+            <format>${consoleStructuredFormat}</format>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <logger name="com.rotrack.observability.StructuredRequestLoggingFilter"
+            level="INFO"
+            additivity="false">
+        <appender-ref ref="REQUEST_JSON"/>
+    </logger>
+
+    <!-- Serialization/appender failures must not contaminate the bare JSON event stream. -->
+    <logger name="com.rotrack.observability.StructuredRequestLoggingFallback"
+            level="ERROR"
+            additivity="true"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

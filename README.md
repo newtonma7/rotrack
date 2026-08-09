@@ -82,7 +82,7 @@ source backend/.env
 set +a
 ```
 
-The backend variables are documented in [`backend/.env.example`](backend/.env.example): database connection/TLS, pool limits/timeouts, Supabase issuer/JWKS URLs and JWT audience, CORS origins, readiness caching, and port. `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `SUPABASE_JWKS_URI`, and `SUPABASE_ISSUER_URI` are required; startup fails rather than silently using development credentials. `DATABASE_URL` is the only TLS-mode source and managed PostgreSQL must include `sslmode=verify-full` plus an explicit `sslrootcert` path to the provider's official CA certificate. Only the explicit `local` Spring profile may use `sslmode=disable` for loopback PostgreSQL.
+The backend variables are documented in [`backend/.env.example`](backend/.env.example): database connection/TLS, pool limits/timeouts, Supabase issuer/JWKS URLs and JWT audience, CORS origins, readiness caching, mutation-rate limits, structured-request-log metadata, and port. `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `SUPABASE_JWKS_URI`, and `SUPABASE_ISSUER_URI` are required; startup fails rather than silently using development credentials. `DATABASE_URL` is the only TLS-mode source and managed PostgreSQL must include `sslmode=verify-full` plus an explicit `sslrootcert` path to the provider's official CA certificate. Only the explicit `local` Spring profile may use `sslmode=disable` for loopback PostgreSQL.
 
 Never commit populated `.env` files or include their values in issue/PR evidence.
 
@@ -131,7 +131,7 @@ mvn test
 mvn package
 ```
 
-The repository has focused Vitest and JUnit suites for the timer, API/security boundaries, and dashboard semantics. Database-backed migration/repository checks and authenticated browser coverage require explicit local development setup and remain open. Do not report tests, typechecking, builds, migrations, or browser flows as passing unless they were actually run. Behavior changes must add tests as part of the same change.
+The repository has focused Vitest and JUnit suites for the timer, API/security boundaries, dashboard semantics, mutation rate limiting, and structured-log redaction. Opt-in PostgreSQL migration/repository checks and authenticated browser coverage require explicit isolated targets and external auth state; their latest evidence is recorded in [`todo.md`](todo.md). Do not report tests, typechecking, builds, migrations, or browser flows as passing unless they were actually run. Behavior changes must add tests as part of the same change.
 
 ## Current API surface
 
@@ -160,8 +160,8 @@ The backend derives the acting user from the validated JWT subject. Clients must
 
 The repository is still working toward the production-ready MVP. In particular:
 
-- Repeatable opt-in PostgreSQL migration/repository tests now exist and have current rollback-only verification evidence against the configured development database; empty-database application and direct Data API RLS evidence remain open.
-- The dedicated runtime role and authenticated two-user Spring ownership flow are locally verified; fresh signup, direct Data API RLS, and redacted direct-token evidence remain incomplete.
-- Test coverage is focused rather than complete; authenticated Playwright execution and managed-CA startup are locally verified, while dependency-failure readiness, CI, staging deployment, and deployed health-probe evidence remain open.
+- Empty-database migration application, migrated-database repository checks, the dedicated runtime-role audit, and direct Data API RLS evidence pass against isolated/development targets. A fresh disposable signup reached confirmation, but opening that confirmation email and completing the same user's first sign-in remain externally blocked.
+- The authenticated two-user Spring ownership matrix and required-authenticated Playwright 4/4 flow are recorded as passing. Those local/development results are not deployed-staging evidence.
+- Managed-CA startup, independent liveness/readiness, degraded readiness `503`, and exact CORS behavior are locally verified. Hosted CI/protection, an authorized isolated staging deployment, fleet-wide/authentication-adjacent edge limiting, observed telemetry/alerts, staging smoke, and rollback rehearsal remain open.
 
 Track these items in [`todo.md`](todo.md) rather than treating existing source or old build output as verification evidence.

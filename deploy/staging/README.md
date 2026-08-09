@@ -50,6 +50,9 @@ PORT
 SERVER_SHUTDOWN
 SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE
 LOGGING_STRUCTURED_FORMAT_CONSOLE
+ROTRACK_STRUCTURED_LOGGING_ENABLED
+ROTRACK_LOGGING_ENVIRONMENT
+ROTRACK_SERVICE_VERSION
 LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY
 LOGGING_LEVEL_ORG_HIBERNATE_SQL
 LOGGING_LEVEL_ORG_HIBERNATE_ORM_JDBC_BIND
@@ -79,7 +82,7 @@ Export every name on the left side of `templates/deployment.env.template` in a p
 ./deploy/staging/validate.sh deployment deploy/staging/rendered
 ```
 
-The renderer refuses missing variables, newlines, unresolved sentinels, mutable image tags, duplicate Supabase refs, non-HTTPS origins, inconsistent CORS, identical task/execution roles, non-staging ECS names, a staging AWS account equal to the protected production account, and an unsafe connection budget. The budget is:
+The renderer refuses missing variables, newlines, unresolved sentinels, mutable image tags, missing/placeholder/mutable service versions, duplicate Supabase refs, non-HTTPS origins, inconsistent CORS, identical task/execution roles, non-staging ECS names, a staging AWS account equal to the protected production account, and an unsafe connection budget. Staging always renders `ROTRACK_STRUCTURED_LOGGING_ENABLED=true` and `ROTRACK_LOGGING_ENVIRONMENT=staging`. `ROTRACK_STAGING_SERVICE_VERSION` must be a lowercase 64-hex value equal to the digest suffix in `ROTRACK_STAGING_BACKEND_IMAGE_URI`; this keeps logs tied to the exact immutable image without introducing a secret. The budget is:
 
 ```text
 DATABASE_MAXIMUM_POOL_SIZE × (maximum ECS task count × 2 rollout generations)
@@ -124,7 +127,7 @@ Apply `templates/runtime-role.sql.template` through an authorized administrator 
 
 ### Backend ECS/Fargate
 
-The image input must be an immutable registry URI ending in `@sha256:<64 lowercase hex characters>`. The container must run non-root, include `wget` for the task liveness command, materialize the injected official CA at the declared `/tmp` path, and pass its Lane B artifact checks before registration.
+The image input must be an immutable registry URI ending in `@sha256:<64 lowercase hex characters>`. Set the service-version render input to the same digest suffix (without `sha256:`). The container must run non-root, include `wget` for the task liveness command, materialize the injected official CA at the declared `/tmp` path, and pass its Lane B artifact checks before registration.
 
 Keep the validated `ROTRACK_STAGING_*` values exported in the same private shell used by `render.sh`; do not `source` a rendered file. Run `./deploy/staging/aws-preflight.sh` immediately before task registration. It fails unless the caller account matches the staging roles and differs from production, the task role has no attached/inline policies, the execution role can read the six exact staging secret inputs, and the existing service has `Environment=staging`. Before mutation, compare `aws sts get-caller-identity --query Account --output text` with the staging account embedded in the validated role ARNs and confirm it differs from `ROTRACK_PRODUCTION_AWS_ACCOUNT_ID`. Read back ECS resource tags and require `Environment=staging`. The task role must have no attached or inline AWS policies; the execution role may have only image/log permissions plus `secretsmanager:GetSecretValue` for the six exact validated secret ARNs. Record boolean results, never policy bodies or ARNs.
 

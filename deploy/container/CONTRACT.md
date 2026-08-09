@@ -36,6 +36,9 @@ Non-secret task configuration:
 - `SERVER_SHUTDOWN=graceful`
 - `SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE=25s`
 - `LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs`
+- `ROTRACK_STRUCTURED_LOGGING_ENABLED` — must be explicitly `true` for staging/production request logging
+- `ROTRACK_LOGGING_ENVIRONMENT` — must be `staging` or `production`; staging sets `staging`
+- `ROTRACK_SERVICE_VERSION` — non-secret immutable release ID; the staging contract binds it to the backend image digest
 - `LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY=WARN`
 - `LOGGING_LEVEL_ORG_HIBERNATE_SQL=OFF`, `LOGGING_LEVEL_ORG_HIBERNATE_ORM_JDBC_BIND=OFF`, and `SPRING_JPA_SHOW_SQL=false` — prevent SQL/bind payload logging
 
@@ -45,7 +48,7 @@ Size the database for `DATABASE_MAXIMUM_POOL_SIZE × maximum running tasks`, inc
 
 The entrypoint materializes the managed CA in task-local `/tmp`, verifies that `DATABASE_URL` names the same path and `verify-full`, rejects custom TLS factories/hostname verifiers, unsets the PEM environment variable, and then `exec`s Java. It never prints a secret or URL. The task uses the ECS JSON console format and CloudWatch `awslogs`; Spring Security logging is WARN.
 
-Do not enable request-header/body dumps, ECS Exec, JVM command-line secrets, or environment logging. Logs and deployment evidence must never contain bearer tokens, credentials, JDBC URLs, CA bodies, notes, or reflections. Correlation IDs and route/status/latency may be logged only after a separately reviewed application-level redaction implementation; this artifact does not claim that application observability work.
+Do not enable request-header/body dumps, ECS Exec, JVM command-line secrets, or environment logging. Logs and deployment evidence must never contain bearer tokens, credentials, JDBC URLs, CA bodies, notes, or reflections. The source/templates implement and enable the application redaction boundary; collector ingestion/redaction, telemetry, alerts/routing, and observed staging evidence remain unverified. The staging task explicitly enables the reviewed structured request logger and fails validation unless its environment is `staging` and its service version is the lowercase 64-hex digest suffix of the immutable backend image URI.
 
 ## Base templates
 

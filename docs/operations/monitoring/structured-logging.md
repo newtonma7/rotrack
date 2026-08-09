@@ -1,6 +1,6 @@
 # Structured logging, correlation, and redaction contract
 
-**Status:** target contract for staging observability. The current application has not been changed by this lane, so do not claim these fields or collector rules are active until implementation and ingestion tests prove them.
+**Status:** application boundary implemented and staging configuration source-controlled. Do not claim collector redaction, ingestion, telemetry, alerts, or routing are active until deployed staging tests prove them.
 
 ## Event envelope
 

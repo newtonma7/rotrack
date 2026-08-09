@@ -127,3 +127,57 @@ Use these questions to review the completed baseline phases and understand the i
 3. Why is `BYPASSRLS` expected for Spring's pooled application role in this architecture, and where must ownership authorization then be enforced?
 4. Why is a database identity still overprivileged if it is not a superuser but can create roles/databases, replicate, create schema objects, or hold table-administration privileges?
 5. Why must grant remediation be reviewed and applied as an explicit operational migration rather than silently changed by a verification test?
+
+## M3.1 — Pull-request CI
+
+1. Why should third-party GitHub Actions be pinned to immutable commit SHAs instead of mutable version tags?
+2. Why is a credential-free pull-request pipeline safer than making authenticated staging E2E part of every pull request?
+3. What does the protected authenticated-E2E quarantine prevent, and why must required-auth mode fail on skips or an unexpected API target?
+4. Why must migration CI apply the ordered migrations to an isolated PostgreSQL service instead of only parsing the SQL files?
+5. Why should CI run both `mvn clean test` and `mvn package` when packaging can expose failures outside focused tests?
+6. Why does scanning Git history alone miss secrets in the proposed change, and how can a prospective index/tree be scanned without modifying the developer's real index?
+7. Why should artifact-upload and workflow-policy guards reject `.env` files, certificates, storage states, and mutable reusable-workflow references?
+8. What does a deliberately failing required check prove that a locally failing script does not?
+9. Why do green local CI-equivalent commands not prove that hosted required checks and branch protection are configured correctly?
+10. Which M3.1 evidence still requires a hosted pull request and repository settings rather than source-controlled workflow files?
+
+## M3.2 — Backend container and deployment artifact
+
+1. How does a multi-stage image reduce the runtime attack surface and keep build tools and source out of the final image?
+2. Why is a deny-by-default `.dockerignore` safer than trying to enumerate every possible secret or generated file?
+3. What risks remain if a container declares a non-root user but the orchestrator can still grant a writable root filesystem or extra Linux capabilities?
+4. Why must container liveness avoid the database while readiness verifies that the application can serve database-backed traffic?
+5. Why should the provider CA be injected at runtime rather than copied from a developer machine into the image?
+6. Why must the JDBC and container-entrypoint guards reject TLS override properties such as `sslfactory` and `sslhostnameverifier` in addition to requiring `sslmode=verify-full`?
+7. What does a SIGTERM smoke test prove about graceful shutdown that a successful `docker stop` command alone may hide?
+8. Why is an immutable registry digest release evidence while a local tag, image ID, or local content digest is not?
+9. How should database connection limits account for desired tasks, maximum tasks, and deployment rollout surge simultaneously?
+10. Why must ECS task and execution roles be separate, narrowly scoped identities?
+
+## M3.2 — Isolated staging operations
+
+1. Why must Supabase, Vercel, and AWS staging identities be demonstrably distinct from both development and production?
+2. Why do placeholder-only templates and committed variable names provide a useful contract without becoming deployment evidence?
+3. What does a read-only AWS preflight verify about the caller, ECS resources, task roles, and secret access before deployment?
+4. Why must the application runtime role be audited for memberships, direct grants, sequence access, routine execution, and `BYPASSRLS` rather than checked only for superuser status?
+5. Why is `BYPASSRLS` intentional for this backend architecture, and which ownership boundary must compensate for it?
+6. Why must the staging CORS allowlist contain exact HTTPS frontend origins rather than wildcards or loosely matched domains?
+7. Why is an official managed-database CA provenance record necessary even after local TLS container tests pass?
+8. Why do successful render and validation scripts not prove that Vercel, ECS, Supabase, IAM, DNS, or TLS are configured remotely?
+9. Which values belong in a redacted staging evidence record, and which values must never be committed?
+10. Why must live staging smoke and rollback evidence wait until the container and staging configuration are integrated?
+
+## M3.3 — Release safeguards and observability
+
+1. Why should a release apply backward-compatible database migrations before deploying application tasks?
+2. Why can an application image usually be rolled back independently while a destructive database migration often cannot?
+3. Why must a rollback rehearsal identify the exact candidate and prior immutable image digests?
+4. Why should rollback hooks be external regular files that are operator-owned and not group- or world-writable?
+5. What distinct failures are detected by health, latency, error-rate, restart, authentication-failure, and connection-exhaustion alerts?
+6. Why are documented thresholds insufficient until telemetry ingestion, dashboards, routing, and an alert notification test are observed?
+7. Why is a structured-log allowlist safer than attempting to redact an unlimited set of arbitrary fields after logging?
+8. Which data must never appear in logs, traces, alerts, or monitoring payloads, and how can a redaction sentinel test that boundary?
+9. Why do rate limiting, named incident staffing, staging smoke, and rollback rehearsal remain production blockers even when all source-level safeguards pass?
+10. Why should staging smoke and rollback commands be prepared in advance but not executed against nonexistent or unapproved infrastructure?
+11. What evidence is required to move M3.3 from **In progress** to **Verified**?
+12. Why must M4 feature implementation remain gated until the complete M3 MVP release gate passes?

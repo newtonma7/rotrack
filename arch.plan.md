@@ -43,6 +43,7 @@ This section describes what exists in source control today. It is not a completi
 - API client using native `fetch` and Supabase bearer tokens
 - Tracker UI with start, active-session restore, elapsed display, and explicit stop; sessions remain active across reload, navigation, tab changes, minimization, and browser closure until explicitly stopped
 - Dashboard using the timestamp-derived daily contract from `GET /api/v1/dashboard/stats`, with the browser IANA timezone
+- [`frontend/DESIGN.md`](frontend/DESIGN.md) is the visual UI source of truth; product/domain behavior remains governed by this architecture. The checked-in frontend uses local Figtree for display/body text and Digital-7 only for timer-style readouts
 
 ### Backend and database
 
@@ -50,16 +51,19 @@ This section describes what exists in source control today. It is not a completi
 - Implemented endpoints: independent liveness/readiness, start session, get active session, ID-based stop, and dashboard stats
 - Supabase migrations defining `users`, `time_entries`, the `ROT|WORK` enum, ownership RLS policies, signup profile creation, timestamp constraints, one-active-session uniqueness, and reporting indexes
 - Source-controlled suites include executable PostgreSQL migration/repository tests, generated signed-JWT filter tests, service/controller ownership tests, Vitest/RTL coverage, and a quarantined external-auth Playwright critical path that can bind observed browser API responses to an approved API base
-- Backend startup validates managed JDBC hostname verification with an explicit CA path, exact CORS origins, bounded Hikari settings, and cached/single-flight database readiness
-- A pinned Java 21 multi-stage container runs as UID/GID `10001:10001`, separates liveness from readiness, materializes an injected provider CA in task-local `/tmp`, and has placeholder-only ECS/Fargate base and staging overlays
-- Pull-request workflows and local guards cover frontend/backend suites, isolated PostgreSQL migration apply/verify, secret scanning, operational contract tests, and a credential-free container build; authenticated E2E remains a separate protected staging workflow
+- Backend startup rejects PostgreSQL TLS override properties, requires managed JDBC hostname verification with an explicit CA path, validates exact CORS origins, binds bounded Hikari settings, and exposes cached/single-flight database readiness
+- A digest-pinned Java 21 multi-stage container runs as UID/GID `10001:10001`; the deployment contract adds a read-only root filesystem, independent liveness/ALB-readiness probes, task-local provider-CA materialization, bounded shutdown, and placeholder-only ECS/Fargate base and staging overlays
+- Pull-request workflows and local guards cover frontend/backend suites, isolated PostgreSQL migration apply/verify, prospective-tree and history secret scanning, operational contract tests, and a credential-free container build; authenticated E2E remains a separate manually dispatched workflow targeting a named environment intended for protected staging
+- Staging render/validation files enforce distinct Supabase/Vercel/AWS identities, immutable image references, separate task/execution roles, exact HTTPS origins, six secret references, runtime-role boundaries, and rollout-surge-aware database connection budgets without committing actual values
+- Release, rollback, monitoring, structured-logging, and incident-response contracts plus fail-closed staging smoke/rehearsal scripts are tracked. The backend now has a bounded process-local per-user mutation limiter and an allowlisted structured request-completion logger; staging templates fail unless that logger is enabled with staging metadata bound to the immutable image digest. These source controls do not provision a fleet-wide/authentication-adjacent edge limiter, collector redaction, telemetry, alerts, contacts, or infrastructure
 
-### Known baseline problems
+### Verification boundaries at the current checkpoint
 
-- The PostgreSQL verification suite has rollback-only evidence against the configured development schema and empty-database apply evidence against an isolated temporary PostgreSQL cluster; direct Data API RLS is also verified.
-- Spring JDBC does not propagate the user JWT into PostgreSQL. The dedicated `rotrack_runtime` role bypasses RLS with only the required application DML, and the live two-user Spring ownership matrix passes.
-- Generated ES256/RS256 failure tests cover the production decoder/filter boundary, while live Supabase sign-in and two-user authenticated ownership flow pass. Fresh confirmation-email opening remains an external inbox limitation.
-- The Playwright harness has external two-user auth states and a passing authenticated run. Managed-CA startup/readiness/CORS and the integrated non-root container are locally verified. Hosted CI/branch protection, an isolated deployed staging environment, rate limiting, active structured-log redaction, monitoring/alert routing, and rollback rehearsal remain open.
+- The PostgreSQL verification suite has rollback-only evidence against the configured development schema and empty-database apply evidence against isolated temporary PostgreSQL; direct Data API RLS is recorded as verified.
+- Spring JDBC does not propagate the user JWT into PostgreSQL. The dedicated `rotrack_runtime` role bypasses RLS with only the required application DML, and the recorded live two-user Spring ownership matrix passes.
+- Generated ES256/RS256 failure tests cover the production decoder/filter boundary, while recorded live Supabase sign-in and two-user authenticated ownership flows pass. Opening a fresh confirmation email and completing that same disposable user's first sign-in remain externally blocked.
+- The Playwright harness has recorded external two-user auth evidence. Managed-CA startup/readiness/CORS and the integrated non-root container are locally verified, but those local results are not deployed-staging evidence.
+- Hosted CI/branch protection, protected-environment settings, an isolated deployed staging environment, an immutable registry digest, fleet-wide/authentication-adjacent edge rate limiting, observed structured-log ingestion and collector redaction, telemetry and alert routing, named incident staffing, staging smoke, and rollback rehearsal remain open. M4 stays gated until the M3 MVP release gate is verified.
 
 ## 3. Target System Architecture
 
@@ -99,6 +103,8 @@ Browser / Next.js
 | Backend tests | JUnit 5, MockMvc, repository integration tests |
 | Frontend tests | Vitest and React Testing Library |
 | Browser tests | Playwright |
+| CI | GitHub Actions with credential-free pull-request jobs and separately environment-scoped authenticated E2E intended for protected staging |
+| Container | Digest-pinned multi-stage Java 21 OCI image, non-root UID/GID `10001:10001` |
 | Hosting | Vercel frontend, AWS ECS Fargate backend, Supabase Auth/PostgreSQL |
 
 ## 4. Core Data and Time Model
@@ -172,13 +178,14 @@ Production requirements:
 
 | Method and path | Auth | Behavior |
 |---|---:|---|
-| `GET /health` | No | Liveness response; must not require the database |
+| `GET /health` | No | Liveness response `200 {"status":"ok"}`; must not require the database |
+| `GET /readiness` | No | Database readiness; returns sanitized `200 {"status":"ready"}` or `503 {"status":"not_ready"}` |
 | `POST /time-entries/start` | Yes | Starts one session; returns `201`; concurrent/duplicate active start returns `409` |
 | `GET /time-entries/active` | Yes | Returns the active owned entry or `null` |
 | `PUT /time-entries/{id}/stop` | Yes | Stops the owned entry; repeated calls return the unchanged stopped resource |
 | `GET /dashboard/stats` | Yes | Returns personal totals and daily buckets for a validated range/timezone |
 
-The frontend and API use `PUT /time-entries/{id}/stop`; the former active-stop compatibility endpoint has been retired after the ID-based path became the only caller contract.
+The frontend and API use `PUT /time-entries/{id}/stop`; the former active-stop compatibility endpoint has been retired after the ID-based path became the only caller contract. Liveness is process-only. Readiness performs a bounded database validation, caches/single-flights the result to limit pool pressure, and never returns dependency or credential details.
 
 Dashboard requests require `timeZone=<IANA identifier>`. Optional `start` and `end` query parameters are paired ISO local dates, with `end` exclusive; omitting both selects the previous seven local calendar days including today. The response `range.start` and `range.end` are the corresponding UTC instants. Ranges must contain 1–366 local days.
 
@@ -337,18 +344,24 @@ Tests are delivered with each feature; testing is not a cleanup phase.
 
 ### CI and deployment
 
-- Pull requests run frontend install/audit/lint/typecheck/tests/build, backend Java 21 tests/package, isolated PostgreSQL migration checks, secret and workflow-policy guards, operational contract tests, and a credential-free non-root container build/inspection.
-- Staging deploys the frontend to Vercel and the containerized backend to ECS Fargate against a separate Supabase project.
-- Production promotion requires staging smoke evidence and a documented rollback.
-- Apply database migrations before application versions that depend on them; migrations must be backward-compatible during rollout.
+- The tracked pull-request workflow runs frontend install/high audit/lint/typecheck/tests/build, backend Java 21 clean tests/package, isolated PostgreSQL migration apply/verify, secret and workflow-policy guards, operational contract tests, and a credential-free non-root container build/inspection.
+- GitHub-hosted success, a deliberately blocking failure, branch protection, and protected-environment restrictions are external state and must be observed before CI is called verified.
+- The staging target is a Vercel frontend and immutable-digest ECS Fargate backend against a separate Supabase project. Source-controlled templates and synthetic validation do not prove that this infrastructure exists or is isolated.
+- Apply database migrations before application versions that depend on them; migrations must be backward-compatible during rollout. Application rollback never implies automatic database rollback.
+- Production promotion requires a deployed immutable staging artifact, redacted smoke evidence, active safeguards/observability, and a rehearsed application rollback.
 
-### Observability
+### Observability and release safeguards
 
-- Structured backend logs include request/correlation ID, route, status, latency, and safe user/resource identifiers.
-- Never log bearer tokens, note content, reflections, or credentials.
-- Monitor API error rate/latency, ECS health, database connections, migration status, and frontend exceptions.
+- Required structured backend logs include request/correlation ID, route template, status, latency, and only explicitly allowlisted identifiers. The backend implements this application boundary with generated request IDs, normalized route allowlisting, stable error/exception categories, and omission-based redaction; staging ingestion and collector-side redaction remain unobserved.
+- Never log bearer tokens, authorization/cookie values, JDBC URLs, credentials, note content, reflections, or private request/response bodies.
+- Production monitoring must cover API health/error rate/latency, ECS restarts, authentication failures, database connection exhaustion, migration status, and frontend exceptions with environment separation, bounded retention, owners, and tested routing.
+- Rate limiting is required before public production launch on authentication-adjacent and mutation endpoints, including tested `429`, bypass resistance, and recovery behavior. The process-local authenticated mutation limiter is defense in depth only; a trusted fleet-wide/authentication-adjacent edge control remains required.
 - Health endpoints distinguish liveness from dependency readiness before ECS rollout.
 - Release, rollback, monitoring, structured-log redaction, and incident-response contracts are source controlled, but they are preparation rather than evidence that telemetry, alerts, owners, staging smoke, or rollback rehearsal are active.
+
+### MVP release boundary
+
+The M3 MVP release gate is currently **not met**. Production promotion and M4 implementation remain stopped until the backlog records all prerequisite milestone gates as **Verified**, hosted CI/protection evidence, a demonstrably isolated staging deployment at an immutable registry digest, active rate limiting/logging/telemetry/alerts with owners, authenticated staging smoke, and an exact candidate-to-prior rollback rehearsal. Any exception requires an explicit product-owner dependency decision in both architecture and backlog.
 
 ## 10. Architecture Change Rules
 

@@ -88,6 +88,18 @@
           "value": "ecs"
         },
         {
+          "name": "ROTRACK_STRUCTURED_LOGGING_ENABLED",
+          "value": "${STRUCTURED_LOGGING_ENABLED}"
+        },
+        {
+          "name": "ROTRACK_LOGGING_ENVIRONMENT",
+          "value": "${LOGGING_ENVIRONMENT}"
+        },
+        {
+          "name": "ROTRACK_SERVICE_VERSION",
+          "value": "${SERVICE_VERSION}"
+        },
+        {
           "name": "LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY",
           "value": "WARN"
         },

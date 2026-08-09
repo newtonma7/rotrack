@@ -1,6 +1,7 @@
 package com.rotrack.exception;
 
 import com.rotrack.dto.ApiErrorResponse;
+import com.rotrack.observability.RequestLogAttributes;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -121,7 +122,11 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiErrorResponse> handleUnexpected(HttpServletRequest request) {
+    public ResponseEntity<ApiErrorResponse> handleUnexpected(
+            Exception exception,
+            HttpServletRequest request
+    ) {
+        request.setAttribute(RequestLogAttributes.EXCEPTION_TYPE, RequestLogAttributes.UNEXPECTED_SERVER_ERROR);
         return error(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "INTERNAL_ERROR",
@@ -138,6 +143,7 @@ public class GlobalExceptionHandler {
             Map<String, String> fieldErrors,
             HttpServletRequest request
     ) {
+        request.setAttribute(RequestLogAttributes.ERROR_CODE, code);
         return ResponseEntity.status(status).body(
                 ApiErrorResponse.of(code, message, fieldErrors, request.getRequestURI())
         );

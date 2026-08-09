@@ -1,7 +1,7 @@
 # rotrack Development Backlog
 
 **Architecture and contracts:** [`arch.plan.md`](arch.plan.md)
-**Backlog reviewed:** 2026-08-07
+**Backlog reviewed:** 2026-08-08
 **Current release target:** Production-ready personal timer and dashboard MVP
 
 ## 1. Operating Rules
@@ -58,26 +58,37 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 | Area | State | Evidence / gap |
 |---|---|---|
-| Documentation currency | **Verified** | M0.5 reconciles current source, API status/DTO contracts, tests, migrations, and remaining integration gaps across architecture, README, and backlog. |
-| Frontend routes and auth UI | **Implemented—unverified** | Static build and real sign-in/signup browser checks pass; confirmation-email opening remains an external inbox limitation. |
+| Documentation currency | **Verified** | The startup/health runbook is canonical under `docs/operations/`, README links and limitations match current evidence, and a clean-candidate setup/build/startup walkthrough passes. |
+| Frontend routes and auth UI | **Implemented—unverified** | Static build and real sign-in/signup browser checks pass; opening the fresh confirmation email and completing that same disposable user's first sign-in remain externally blocked. |
 | Tracker start/restore/stop UI | **Verified** | M1.3 source, unit tests, and recorded authenticated browser/API evidence cover explicit start, restore, and stop behavior. |
 | Automatic unload stopping | **Verified** | M1.3 removed production unload/keepalive handling; source search finds only the negative unit test. |
 | Dashboard UI and API | **Verified** | M1.4 replaces fixed server-time/minute timelines with validated IANA-zone ranges, timestamp-derived seconds, local daily buckets, tested DST/clipping, and explicit UI states. |
-| Spring Boot API core | **Verified** | Live Supabase JWT sign-in, Spring ownership isolation, timer lifecycle, dashboard flow, health, readiness, TLS, and CORS evidence pass. |
+| Spring Boot API core | **Verified** | Recorded live Supabase JWT sign-in, Spring ownership isolation, timer lifecycle, dashboard flow, health, readiness, TLS, and CORS evidence pass. |
 | Initial schema hardening | **Verified** | Empty-database apply and migrated-database rollback/repository verification pass against isolated PostgreSQL targets. |
-| Supabase development integration | **In progress** | Migration, role, Data API RLS, signup-trigger, Spring ownership, and two-user technical evidence pass; the recorded fresh signup has not completed confirmation and sign-in because opening the confirmation email remains an external inbox limitation. |
-| Automated test suites | **Verified** | Frontend 19/19 and backend 65/65 pass with four expected default opt-in skips; migration apply/verify and the latest authenticated Playwright 4/4 evidence also pass. |
-| CI and deployment | **In progress** | Tracked PR/protected-E2E workflows, a non-root backend image, staging overlays, and release/monitoring runbooks pass local contract checks; deployment, active observability, hosted CI, branch protection, registry digest, smoke, and rollback remain incomplete. |
-| Notes, logs, friends, groups | **Not started** | Architecture defined; implementation follows the core MVP. |
+| Supabase development integration | **Blocked** | Migration, runtime role, Data API RLS, signup trigger, Spring ownership, and two-user technical evidence pass; an authorized disposable-inbox operator must complete the fresh confirmation/first-sign-in acceptance step. |
+| Automated test suites | **Verified** | A clean-candidate run reports frontend 19 passed plus lint/typecheck/build and backend 88 discovered, 84 passed, four expected opt-in integration skips, and zero failures/errors. Migration apply/verify and authenticated Playwright 4/4 remain recorded from prior integrated evidence. |
+| Pull-request CI source | **Implemented—unverified** | Five credential-free jobs and an environment-scoped authenticated-E2E workflow intended for protected staging are tracked and pass local policy/contract checks; hosted green/blocking checks and repository/environment protection are not observed. |
+| Backend container artifact | **Verified** | The committed M3 image was built and inspected locally as non-root, passed liveness/readiness and SIGTERM smoke, and excluded source/sensitive files; it has not been published as a registry release artifact. |
+| Isolated staging deployment | **Blocked** | Redacted templates, validation, IAM/runtime-role checks, and checklists exist, but an authorized separate Supabase/Vercel/AWS staging environment and immutable registry digest do not. |
+| Release safeguards and observability | **In progress** | The working tree adds a bounded process-local authenticated mutation limiter, allowlisted structured request logging, and fail-closed staging logger wiring. Fleet-wide/authentication-adjacent edge limiting, observed collector redaction/telemetry/alerts/routing, staffing, staging smoke, and rollback rehearsal remain incomplete. |
+| Notes, logs, friends, groups | **Not started** | Architecture defined; implementation follows the verified M3 release gate. |
 
-### Current audit — 2026-08-07 / local workspace
+**Isolated-staging blocker:** The authorized non-production Supabase/Vercel/AWS infrastructure owner must provision demonstrably separate identities and authorize immutable registry publication/deployment; all evidence committed here remains redacted.
 
-- Audited `main` at `2fc7cff` (the pre-change HEAD) from a clean worktree before this documentation change.
-- Node `v24.18.0`, npm `11.16.0`, Maven `3.9.12`, and Temurin Java `21.0.12` were available; Java 21 was selected explicitly for Maven.
-- `cd frontend && npm ci && npm run lint && npm run typecheck && npm test && npm run build` passed; the current Vitest suite reports 11 passing tests.
-- `cd backend && export JAVA_HOME=/home/newton/.local/jdk-21.0.12+8 && export PATH="$JAVA_HOME/bin:$PATH" && mvn test && mvn package` passed with 32 tests; no database-backed check was run.
-- `git diff --check` passed and `git ls-files backend/target` returned no files. `npm ci` still reports 11 dependency audit findings and two pending install-script approvals; no automatic remediation was applied.
-- No remote database, RLS, or two-user scenario was re-run in this audit. Dated remote evidence below remains historical until re-attested.
+### Current integrated checkpoint — 2026-08-08 / local workspace
+
+- M3 delivery foundations were committed and pushed as `15997ea` (`Implement Milestone 3 delivery foundations`); the later `1347172` commit changes frontend typography from Migha to local Figtree and does not alter M3 contracts.
+- M3 source adds five credential-free pull-request jobs, a separately environment-scoped authenticated-E2E workflow intended for protected staging, isolated PostgreSQL migration apply/verify, prospective-tree/history secret scanning, a non-root Java 21 container, staging render/validation and IAM/runtime-role checks, and release/rollback/monitoring/incident contracts.
+- Commit-time validation recorded frontend `npm ci`, high audit, lint, typecheck, 19 Vitest passes, and build; backend Java 21 `mvn clean test`/`mvn package` discovered 65 tests with 61 passes, four expected opt-in skips, and zero failures/errors.
+- A disposable PostgreSQL 17.6 run recorded migration apply 1/1 and migrated verify/repository 4/4. The final clean committed container build recorded non-root UID/GID `10001:10001`, liveness/readiness `200`, SIGTERM exit `143`, and no source, `.env`, auth-state, token, or credential artifacts.
+- Local action/workflow, sensitive-path, migration-order, container, staging, release, and Gitleaks guards passed, including deliberate negative fixtures. These are local/commit-time attestations, not hosted CI, registry, cloud, or deployed-staging evidence.
+- The current working tree continues Lane C source preparation with a process-local authenticated mutation limiter, omission-based structured request logging, and staging template validation that binds enabled logging metadata to the immutable image digest. Java 21 `mvn clean package` discovers 88 tests: 84 pass, four opt-in PostgreSQL tests skip as expected, and none fail; staging/container positive and negative contract tests and `git diff --check` pass.
+- Documentation is reconciled: the startup/health runbook remains under `docs/operations/`, README current-state limitations and environment guidance match the source/evidence, and local Markdown links pass.
+
+### Pre-M3 audit — 2026-08-07 / historical local workspace
+
+- Audited `main` at `2fc7cff`; frontend lint/typecheck/11 tests/build and backend Java 21 test/package with 32 tests passed at that checkpoint.
+- No database-backed check was run in that audit. Its dependency findings and test counts were superseded by the 2026-08-08 integrated validation above.
 
 ### Historical baseline evidence captured during the 2026-08-01 audit
 
@@ -144,7 +155,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 ### M0.3 — Create the development runbook
 
-**Status:** Implemented—unverified
+**Status:** Verified
 **Dependencies:** M0.1
 
 **Deliverable**
@@ -163,12 +174,12 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 - Replaced the create-next-app README with repository setup, Supabase configuration, environment handling, run commands, API routes, conventions, and known limitations.
 - Verified README links, package scripts, Maven/API mappings, and `git diff --check`.
-- A clean-clone walkthrough has not yet been recorded; keep this task unverified until one is completed.
+- **Revalidation — 2026-08-08 / clean candidate:** Built a credential-free candidate tree from the current index, confirmed it initially contained no ignored environment files or build output, then followed the README with private ignored development configuration. Frontend `npm ci`, lint, typecheck, 19 tests, build, and startup passed; Java 21 backend clean package discovered 88 tests with 84 passes and four expected opt-in skips, then liveness/readiness returned `200`. Isolated ports 13000/18080 were used because an existing healthy Java process owned 8080.
 
 ### M0.4 — Pin and verify toolchains
 
 **Status:** Verified
-**Dependencies:** M0.3 implementation (the clean-clone verification remains open)
+**Dependencies:** M0.3
 
 **Deliverable**
 
@@ -216,6 +227,8 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - Kept the architecture's `201 Created` decision and added `@ResponseStatus(HttpStatus.CREATED)` plus a failing-first MockMvc status test.
 - Updated the shared time-entry DTO from transitional `durationMinutes` to timestamp-derived `durationSeconds` across Java, TypeScript, and tests.
 - `mvn clean package`, frontend lint/typecheck/test/build, contract searches, and `git diff --check` passed; current suites report 33 backend and 11 frontend tests.
+
+**Revalidation — 2026-08-08:** Restored the canonical startup/health runbook under `docs/operations/`, updated its rate-limit/logging environment contract, and reconciled README limitations with completed empty-database, Data API RLS, authenticated Playwright, managed-CA, degraded-readiness, and CORS evidence. Clean-candidate setup/build/startup, Markdown links, source/API/script checks, and `git diff --check` pass.
 
 ## 4. Milestone 1 — Secure and Correct Timer MVP
 
@@ -389,7 +402,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 - Rollback-only verification re-attested the migrated catalog, RLS enabled on both application tables, all seven named policies, the enabled signup trigger/security-definer function, and profile creation for two fixture auth rows.
 - A read-only redacted role audit first found the original backend identity overprivileged. A dedicated `rotrack_runtime` role was then created and re-audited: non-superuser, `BYPASSRLS`, required time-entry DML, no delete, no schema creation, and no role/database/replication privileges. The backend now starts with that role. See `database/verification/2026-08-07-application-role-audit.md` for the original finding and the local validation notes for the corrected runtime result.
-- The direct Supabase Data API two-user matrix passed: each user read only owned rows, foreign filters returned zero rows, and forged inserts returned `403` for both users. The dedicated `rotrack_runtime` audit also passed.
+- The recorded direct Supabase Data API matrix returned User A's 18 owned rows only, returned an empty owned view for User B, returned zero rows for both foreign filters, and rejected forged inserts as both users with `403`. The dedicated `rotrack_runtime` audit also passed.
 - A fresh signup through the real UI returned `200` and reached the confirmation page. Redacted Supabase management SQL confirmed matching `auth.users` and `public.users` rows; the disposable row was removed afterward. The confirmation email itself was not opened because no inbox access was available.
 
 **Remaining evidence:** None for the database/API technical gate. Opening a fresh confirmation email remains an external inbox limitation and is not treated as a failed migration, trigger, RLS, or ownership check.
@@ -413,7 +426,9 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 ### M2.3 — Complete the local critical-path test
 
-**Status:** In progress
+**Status:** Blocked
+**Blocker owner:** Authorized disposable-inbox operator
+**Unblock condition:** Open the fresh signup confirmation message and complete first sign-in with that same disposable user, recording redacted evidence.
 
 - User A signs up/signs in, starts Work, navigates/reloads, restores, explicitly stops, and sees dashboard totals.
 - User B cannot read, stop, or aggregate User A's session.
@@ -434,6 +449,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 **Goal:** Ship the personal tracker/dashboard safely.
 **Dependencies:** Milestone 2
+**Recorded dependency exception:** The product owner authorized M3 source preparation while M2.3 remains externally blocked on opening the fresh signup confirmation email. This does not satisfy the M2 or MVP release gates.
 
 ### M3.1 — Pull-request CI
 
@@ -443,11 +459,11 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - Cache dependencies without caching generated source artifacts into Git.
 - Require green checks before merge.
 
-**Evidence — 2026-08-08 / integrated local workspace**
+**Evidence — 2026-08-08 / committed M3 foundation (`15997ea`)**
 
-- Added commit-pinned pull-request jobs for frontend install/high audit/lint/typecheck/Vitest/build, Java 21 backend test/package, isolated PostgreSQL apply/verify, workflow/secret/operational guards, and a credential-free container build/inspection. Authenticated Playwright is manual, protected-environment-only, fail-closed, API-target-bound, and requires exactly four passes with no skipped/unexpected/flaky results.
-- Local CI equivalents passed: frontend `npm ci`, `npm audit --audit-level=high`, lint, typecheck, 19 Vitest tests, build, and four-test Playwright listing; backend `mvn clean test` and `mvn package` each passed with 65 tests and four expected default integration skips.
-- Against a disposable PostgreSQL 17.6 container, migration `apply` passed 1/1, ordered migration application passed, and migrated `verify`/repository coverage passed 4/4. Actionlint, the workflow pin/policy guard, operational safeguard suites, and Gitleaks over 50 commits passed.
+- Added commit-pinned pull-request jobs for frontend install/high audit/lint/typecheck/Vitest/build, Java 21 backend test/package, isolated PostgreSQL apply/verify, workflow/secret/operational guards, and a credential-free container build/inspection. Authenticated Playwright is manual, targets the named `disposable-staging-auth` environment, fails closed, binds the approved API target, and requires exactly four passes with no skipped/unexpected/flaky results; environment reviewer/branch restrictions remain external configuration.
+- Local CI equivalents passed: frontend `npm ci`, `npm audit --audit-level=high`, lint, typecheck, 19 Vitest tests, build, and four-test Playwright listing; backend `mvn clean test` and `mvn package` each discovered 65 tests with 61 passes, four expected default integration skips, and zero failures/errors.
+- Against a disposable PostgreSQL 17.6 container, migration `apply` passed 1/1, ordered migration application passed, and migrated `verify`/repository coverage passed 4/4. Actionlint, the workflow pin/policy guard, operational safeguard suites, and Gitleaks over 50 commits plus the prospective candidate tree passed.
 - Deliberate local negative fixtures rejected a forbidden `.env`/certificate path, mutable reusable-workflow reference, privileged trigger, artifact upload, unresolved staging sentinel, malformed staging identities, skipped Playwright result, and release target mismatch.
 - Missing required evidence: a hosted green PR URL, a deliberately failing required GitHub check that blocks merge, configured branch protection, and protected-environment reviewer/branch restrictions. Keep this task unverified until those external controls are observed.
 
@@ -459,10 +475,10 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - Deploy frontend to Vercel, API to ECS Fargate, and use a separate Supabase staging project.
 - Configure secrets, TLS, restricted CORS, structured logs, and database connection limits.
 
-**Evidence — 2026-08-08 / integrated local workspace**
+**Evidence — 2026-08-08 / committed M3 foundation (`15997ea`)**
 
-- Added a pinned multi-stage Java 21 image, fixed UID/GID `10001:10001`, read-only-root/Fargate contract, exact liveness/readiness probes, SIGTERM shutdown, injected provider-CA materialization, immutable image references, ECS base inputs, and staging-only render/validation/checklist/evidence files.
-- Local Podman no-cache build and image inspection passed. The integrated local image ID was `fbd4fc7bf0ba2b9547247c949372b2388b5974e8d920b17275f43d75e41f0927` with local content digest `sha256:5c12238002411ba0e589c0c3b72d3afccb6b2a68fd007e91a594e8c2569fb82d`; this was not pushed and is not a registry digest or release artifact.
+- Added a digest-pinned multi-stage Java 21 image, fixed UID/GID `10001:10001`, read-only-root/Fargate contract, Docker liveness and ALB database-readiness probes, SIGTERM shutdown, injected provider-CA materialization, immutable image references, ECS base inputs, and staging-only render/validation/checklist/evidence files.
+- A no-cache image build from the clean committed revision passed inspection. Tag `localhost/rotrack-api:15997ea` produced local image ID `1dc95ecdc5519ccfd62ee10efb4561793906c7bf7069d550ed35b1b4cc549481`, local content digest `sha256:c5b24a5bc2603e8ac57355fc267d31b2aac6f9b4a758fe39049c8452da8592ea`, and OCI revision `15997ea40e7bbf8e4841ca58e0c4da81ddd77bfb`; none is a registry digest or release artifact.
 - A disposable local TLS PostgreSQL 17.6 service accepted ordered migrations; the separate `rotrack_runtime` audit returned all true for identity, memberships, RLS bypass, relation/sequence/database/routine boundaries. The non-root backend container returned `200 {"status":"ok"}` liveness and `200 {"status":"ready"}` readiness, then stopped on SIGTERM with exit 143 rather than forced kill.
 - Staging rendering accepts only distinct project identities, distinct staging/production AWS accounts, staging-prefixed ECS names, separate task/execution roles, exact HTTPS origins, six staging secret ARNs, an immutable image digest, and a rollout-surge-aware connection budget. Synthetic positive and negative validations pass without real values.
 - Missing required evidence: an authorized separate Supabase staging project, registry digest, Vercel/ECS deployment, public staging URLs, official staging CA provenance, live IAM/RLS/CORS/health/browser evidence, and a redacted completed checklist. No remote infrastructure was created.
@@ -475,19 +491,29 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - Document database-first migration order, application rollback, and incident contacts.
 - Add API/frontend error monitoring and alerts for health, latency, error rate, and connection exhaustion.
 
-**Evidence — 2026-08-08 / integrated local workspace**
+**Evidence — 2026-08-08 / committed M3 foundation (`15997ea`)**
 
 - Added migration-first rollout/application rollback contracts, migration rollback limits, staging-only smoke and rollback-rehearsal scripts, alert thresholds/windows/owners, structured-log allowlist/redaction rules, frontend/API monitoring separation/retention, and incident-response roles/escalation.
 - Safe local checks passed Bash syntax, release static policy, API-target/inventory isolation, secret/path handling, exact Playwright result parsing, and fail-closed rollback approval. Staging smoke and rollback rehearsal were deliberately not executed because integrated staging does not exist.
 - Production promotion is explicitly stopped until rate limiting, structured logging/redaction, dashboards/alerts/routing, named incident staffing, hosted staging smoke, and rollback rehearsal are implemented and observed.
-- Missing required evidence: staging smoke 4/4, exact candidate/prior rollback rehearsal, telemetry ingestion/redaction sentinel, dashboard/alert identifiers and routing test, measured threshold tuning, incident contacts, retention/access proof, and observation window.
 
-**MVP release gate**
+**Current local continuation — 2026-08-08 / uncommitted working tree**
 
-- Milestones 0–3 are fully **Verified**.
+- Added a synchronized, bounded, process-local fixed-window limiter shared by each authenticated user's start/stop mutations. Stable `429 RATE_LIMITED`, `Retry-After`, recovery, key bounds, forwarding-header spoof resistance, cross-user isolation, route-alternation resistance, and concurrent capacity are tested. This is defense in depth, not a fleet-wide or authentication-adjacent edge control.
+- Added one allowlisted request-completion JSON event with a generated 128-bit request ID, normalized route, status/class, latency, stable error code, and sanitized unexpected-exception category. Full-chain tests prove 401, 429, and 500 capture without bearer, cookie, query, resource UUID, or private exception message; the implementation omits request/response bodies, while body-sentinel capture evidence remains part of the open staging redaction checks.
+- Structured request logging is disabled for local development and fails startup when enabled without staging/production metadata and a non-placeholder immutable release ID. Staging templates require it enabled, bind the release ID to the backend image digest, and reject missing, disabled, mutable, or mismatched values.
+- Java 21 `mvn clean package` discovers 88 tests: 84 pass and four opt-in PostgreSQL tests skip as expected, with zero failures/errors. Staging synthetic validation, container contract checks, Bash/JSON validation, Markdown links, and `git diff --check` pass.
+- Missing required evidence: a trusted fleet-wide/authentication-adjacent edge limiter and failure-mode tests; staging collector ingestion and second-layer redaction sentinel; dashboard/alert identifiers and routing test; measured threshold tuning; incident contacts; retention/access proof; staging smoke 4/4; exact candidate/prior rollback rehearsal; and an observation window.
+
+**MVP release gate — Not met**
+
+The gate requires all of the following:
+
+- Milestones 0–3 are fully **Verified**; currently M2.3 and M3.1–M3.3 remain open or blocked.
 - No open critical/high security or data-integrity defect.
 - Explicit stop and session restoration behavior match UI copy and documentation.
-- Production promotion is approved from a passing staging artifact.
+- Hosted CI/protection, isolated immutable staging, fleet-wide/authentication-adjacent rate limiting, observed logging/telemetry/alerts, staging smoke, and exact application rollback rehearsal pass with redacted evidence.
+- Production promotion is approved from that passing staging artifact.
 
 ## 7. Milestone 4 — History, Timezone, and Privacy Preferences
 
@@ -657,4 +683,4 @@ Append evidence beneath the completed task; do not create unsupported global che
 
 ## 13. Next Action
 
-M2 technical verification is complete, with confirmation-email opening retained as the sole external inbox limitation. M3 implementation preparation is integrated locally. Next, open a pull request to obtain hosted green/failing required-check evidence and provision an explicitly separate non-production Supabase/Vercel/AWS staging environment. After an immutable registry image is deployed, execute the redacted staging health/CORS/authenticated smoke, telemetry/redaction checks, and rollback rehearsal. Do not start M4 or promote to production until the M3 MVP release gate is Verified; rate limiting and active observability remain explicit production blockers.
+An authorized disposable-inbox operator must complete the fresh signup confirmation/first-sign-in evidence for M2.3, or the product owner must record a separate explicit release-gate waiver; the existing exception authorizes M3 source preparation only. In parallel where ownership permits, obtain hosted green/blocking PR and repository-protection evidence; authorize and deploy an explicitly separate non-production Supabase/Vercel/AWS staging environment at an immutable registry digest; complete the trusted fleet-wide/authentication-adjacent rate-limit boundary; and deploy/observe structured logging redaction, telemetry, alerts/routing, and named incident ownership. Only after those safeguards are active should staging authenticated smoke 4/4 and exact rollback rehearsal run. Do not start M4 or promote to production until the M3 MVP release gate is **Verified**.

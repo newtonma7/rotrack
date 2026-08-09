@@ -2,9 +2,11 @@ package com.rotrack.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rotrack.dto.ApiErrorResponse;
+import com.rotrack.security.MutationRateLimitFilter;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -23,6 +25,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -43,13 +46,17 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper) throws Exception {
+    SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            ObjectMapper objectMapper,
+            ObjectProvider<MutationRateLimitFilter> mutationRateLimitFilter
+    ) throws Exception {
         var authenticationEntryPoint = (org.springframework.security.web.AuthenticationEntryPoint)
                 (request, response, exception) -> {
                     boolean missingCredentials = exception instanceof InsufficientAuthenticationException;
                     writeSecurityError(
                             objectMapper,
-                            request.getRequestURI(),
+                            request,
                             response,
                             401,
                             missingCredentials ? "AUTHENTICATION_REQUIRED" : "INVALID_TOKEN",
@@ -59,7 +66,7 @@ public class SecurityConfig {
         var accessDeniedHandler = (org.springframework.security.web.access.AccessDeniedHandler)
                 (request, response, exception) -> writeSecurityError(
                         objectMapper,
-                        request.getRequestURI(),
+                        request,
                         response,
                         403,
                         "FORBIDDEN",
@@ -82,6 +89,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler)
                 );
 
+        mutationRateLimitFilter.ifAvailable(filter -> http.addFilterAfter(filter, BearerTokenAuthenticationFilter.class));
         return http.build();
     }
 
@@ -125,6 +133,7 @@ public class SecurityConfig {
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
         config.setAllowCredentials(true);
+        config.setExposedHeaders(List.of("X-Request-ID"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
@@ -145,17 +154,18 @@ public class SecurityConfig {
 
     private void writeSecurityError(
             ObjectMapper objectMapper,
-            String path,
+            jakarta.servlet.http.HttpServletRequest request,
             jakarta.servlet.http.HttpServletResponse response,
             int status,
             String code,
             String message
     ) throws IOException {
+        request.setAttribute(com.rotrack.observability.RequestLogAttributes.ERROR_CODE, code);
         response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         objectMapper.writeValue(
                 response.getOutputStream(),
-                ApiErrorResponse.of(code, message, java.util.Map.of(), path)
+                ApiErrorResponse.of(code, message, java.util.Map.of(), request.getRequestURI())
         );
     }
 }

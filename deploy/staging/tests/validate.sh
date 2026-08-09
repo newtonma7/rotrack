@@ -27,6 +27,7 @@ export ROTRACK_PRODUCTION_AWS_ACCOUNT_ID="$PRODUCTION_ACCOUNT"
 export ROTRACK_STAGING_AWS_EXECUTION_ROLE_ARN="arn:aws:iam::${FIXTURE_ACCOUNT}:role/rotrack-staging-execution-fixture"
 export ROTRACK_STAGING_AWS_TASK_ROLE_ARN="arn:aws:iam::${FIXTURE_ACCOUNT}:role/rotrack-staging-task-fixture"
 export ROTRACK_STAGING_BACKEND_IMAGE_URI='registry.example.invalid/rotrack/backend@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+export ROTRACK_STAGING_SERVICE_VERSION='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
 export ROTRACK_STAGING_DATABASE_URL_SECRET_ARN="arn:aws:secretsmanager:us-east-1:${FIXTURE_ACCOUNT}:secret:rotrack/staging/backend/DATABASE_URL-abcdef"
 export ROTRACK_STAGING_DATABASE_USERNAME_SECRET_ARN="arn:aws:secretsmanager:us-east-1:${FIXTURE_ACCOUNT}:secret:rotrack/staging/backend/DATABASE_USERNAME-abcdef"
 export ROTRACK_STAGING_DATABASE_PASSWORD_SECRET_ARN="arn:aws:secretsmanager:us-east-1:${FIXTURE_ACCOUNT}:secret:rotrack/staging/backend/DATABASE_PASSWORD-abcdef"
@@ -61,6 +62,16 @@ export ROTRACK_PRODUCTION_VERCEL_PROJECT_ID='prj_productionfixture'
 "$ROOT/render.sh" "$TMP/rendered"
 printf 'staging validation test: PASS: safe synthetic rendered configuration was accepted\n'
 
+mkdir -p "$TMP/logging-disabled"
+cp "$TMP/rendered/deployment.env" "$TMP/logging-disabled/deployment.env"
+jq '(.containerDefinitions[0].environment[] | select(.name == "ROTRACK_STRUCTURED_LOGGING_ENABLED") | .value) = "false"' \
+  "$TMP/rendered/ecs-task-definition.json" > "$TMP/logging-disabled/ecs-task-definition.json"
+if "$ROOT/validate.sh" deployment "$TMP/logging-disabled" >"$TMP/logging-disabled.log" 2>&1; then
+  printf 'expected disabled structured logging to fail validation\n' >&2
+  exit 1
+fi
+printf 'staging validation test: PASS: disabled structured logging was rejected\n'
+
 expect_render_failure() {
   local name="$1"
   local variable="$2"
@@ -72,6 +83,15 @@ expect_render_failure() {
   printf 'staging validation test: PASS: %s was rejected\n' "$name"
 }
 
+if (env -u ROTRACK_STAGING_SERVICE_VERSION "$ROOT/render.sh" "$TMP/missing-service-version") >"$TMP/missing-service-version.log" 2>&1; then
+  printf 'expected missing service version to fail\n' >&2
+  exit 1
+fi
+printf 'staging validation test: PASS: missing service version was rejected\n'
+
+expect_render_failure placeholder-service-version ROTRACK_STAGING_SERVICE_VERSION 'latest'
+expect_render_failure mutable-service-version ROTRACK_STAGING_SERVICE_VERSION 'release-2026-08-08'
+expect_render_failure mismatched-service-version ROTRACK_STAGING_SERVICE_VERSION 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
 expect_render_failure wildcard-origin ROTRACK_STAGING_FRONTEND_ORIGIN 'https://*.staging.example.invalid'
 expect_render_failure origin-with-query ROTRACK_STAGING_API_ORIGIN 'https://api.staging.example.invalid?target=other'
 OTHER_ACCOUNT="$(printf '9%.0s' {1..12})"
