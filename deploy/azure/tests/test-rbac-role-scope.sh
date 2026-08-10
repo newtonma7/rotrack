@@ -34,6 +34,7 @@ SH
 chmod +x "$BIN/az"
 
 AZURE_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
+  AZURE_NONPRODUCTION_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
 FOUNDATION_ACR_NAME=rotracknonproductionabc123 \
 AZURE_RBAC_PROPAGATION_TIMEOUT_SECONDS=1 \
 PATH="$BIN:$PATH" \
@@ -42,6 +43,7 @@ PATH="$BIN:$PATH" \
 for negative_case in wrong-role wrong-registry; do
   count=$(FAKE_RBAC_CASE="$negative_case" \
     AZURE_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
+  AZURE_NONPRODUCTION_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
     FOUNDATION_ACR_NAME=rotracknonproductionabc123 \
     PATH="$BIN:$PATH" \
       sh -c '. "$1"; acr_pull_role_count fake-principal-id /subscriptions/sub/resourceGroups/rotrack-nonproduction/providers/Microsoft.ContainerRegistry/registries/rotracknonproductionabc123' "$ROOT/scripts/azure/rbac-test.sh" "$ROOT/scripts/azure/_common.sh")

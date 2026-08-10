@@ -70,6 +70,7 @@ SH
 chmod +x "$BIN/az"
 
 AZURE_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
+  AZURE_NONPRODUCTION_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
 AZURE_FOUNDATION_PARAMETER_FILE="$TMP/foundation.json" AZURE_APP_PARAMETER_FILE="$TMP/app.json" \
 PATH="$BIN:$PATH" "$ROOT/scripts/azure/readback.sh"
 printf '%s\n' 'azure readback provider-scale-shape contract: passed'

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": { "value": "<azure-region>" },
+    "acrName": { "value": "rotrackproduction<unique-suffix>" },
+    "imageRepository": { "value": "rotrack-api" },
+    "imageDigest": { "value": "<sha256:64-lowercase-hex-digest>" },
+    "databaseUrl": { "value": "<jdbc-url-with-verify-full-and-sslrootcert-path>" },
+    "databaseUsername": { "value": "<runtime-role-name>" },
+    "databasePassword": { "value": "<runtime-role-password>" },
+    "databaseCaCertificatePem": { "value": "<official-provider-ca-pem>" },
+    "supabaseJwksUri": { "value": "<supabase-jwks-uri>" },
+    "supabaseIssuerUri": { "value": "<supabase-issuer-uri>" },
+    "corsAllowedOrigins": { "value": "https://<approved-production-subdomain>.vercel.app" }
+  }
+}

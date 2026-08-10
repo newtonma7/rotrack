@@ -1,13 +1,13 @@
 #!/bin/sh
 set -eu
 
-AZURE_ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
-FOUNDATION_TEMPLATE="$AZURE_ROOT/deploy/azure/foundation.bicep"
-APP_TEMPLATE="$AZURE_ROOT/deploy/azure/app.bicep"
-AZURE_RESOURCE_GROUP=${AZURE_RESOURCE_GROUP:-rotrack-nonproduction}
-AZURE_MANAGED_ENVIRONMENT=${AZURE_MANAGED_ENVIRONMENT:-rotrack-nonproduction-env}
-AZURE_CONTAINER_APP=${AZURE_CONTAINER_APP:-rotrack-api-nonproduction}
-AZURE_TARGET=${AZURE_TARGET:-nonproduction}
+AZURE_ROOT=$(CDPATH= cd -- "$(dirname "$0")/../../.." && pwd)
+FOUNDATION_TEMPLATE="$AZURE_ROOT/deploy/azure/production/foundation.bicep"
+APP_TEMPLATE="$AZURE_ROOT/deploy/azure/production/app.bicep"
+AZURE_RESOURCE_GROUP=${AZURE_RESOURCE_GROUP:-rotrack-production}
+AZURE_MANAGED_ENVIRONMENT=${AZURE_MANAGED_ENVIRONMENT:-rotrack-production-env}
+AZURE_CONTAINER_APP=${AZURE_CONTAINER_APP:-rotrack-api-production}
+AZURE_TARGET=${AZURE_TARGET:-production}
 
 fail() {
   printf 'azure: %s\n' "$1" >&2
@@ -20,28 +20,32 @@ require_command() {
 
 require_subscription() {
   AZURE_SUBSCRIPTION_ID=${AZURE_SUBSCRIPTION_ID:-}
+  AZURE_PRODUCTION_SUBSCRIPTION_ID=${AZURE_PRODUCTION_SUBSCRIPTION_ID:-}
   AZURE_NONPRODUCTION_SUBSCRIPTION_ID=${AZURE_NONPRODUCTION_SUBSCRIPTION_ID:-}
   [ -n "$AZURE_SUBSCRIPTION_ID" ] || fail 'AZURE_SUBSCRIPTION_ID is required'
+  [ -n "$AZURE_PRODUCTION_SUBSCRIPTION_ID" ] || fail 'AZURE_PRODUCTION_SUBSCRIPTION_ID is required'
   [ -n "$AZURE_NONPRODUCTION_SUBSCRIPTION_ID" ] || fail 'AZURE_NONPRODUCTION_SUBSCRIPTION_ID is required'
   printf '%s\n' "$AZURE_SUBSCRIPTION_ID" | grep -Eq '^[0-9a-fA-F-]{36}$' || fail 'AZURE_SUBSCRIPTION_ID must be a GUID'
+  printf '%s\n' "$AZURE_PRODUCTION_SUBSCRIPTION_ID" | grep -Eq '^[0-9a-fA-F-]{36}$' || fail 'AZURE_PRODUCTION_SUBSCRIPTION_ID must be a GUID'
   printf '%s\n' "$AZURE_NONPRODUCTION_SUBSCRIPTION_ID" | grep -Eq '^[0-9a-fA-F-]{36}$' || fail 'AZURE_NONPRODUCTION_SUBSCRIPTION_ID must be a GUID'
-  [ "$AZURE_SUBSCRIPTION_ID" = "$AZURE_NONPRODUCTION_SUBSCRIPTION_ID" ] || fail 'selected subscription is not the approved non-production subscription'
+  [ "$AZURE_SUBSCRIPTION_ID" = "$AZURE_PRODUCTION_SUBSCRIPTION_ID" ] || fail 'selected subscription is not the approved production subscription'
+  [ "$AZURE_PRODUCTION_SUBSCRIPTION_ID" != "$AZURE_NONPRODUCTION_SUBSCRIPTION_ID" ] || fail 'production and non-production subscriptions must be distinct'
 }
 
 require_target() {
-  [ "$AZURE_TARGET" = nonproduction ] || fail 'AZURE_TARGET must be exactly nonproduction'
-  [ "$AZURE_RESOURCE_GROUP" = rotrack-nonproduction ] || fail 'resource group must be rotrack-nonproduction'
-  [ "$AZURE_MANAGED_ENVIRONMENT" = rotrack-nonproduction-env ] || fail 'managed environment must be rotrack-nonproduction-env'
-  [ "$AZURE_CONTAINER_APP" = rotrack-api-nonproduction ] || fail 'container app must be rotrack-api-nonproduction'
-  case "${ROTRACK_AZURE_CONFIRM:-}" in
+  [ "$AZURE_TARGET" = production ] || fail 'AZURE_TARGET must be exactly production'
+  [ "$AZURE_RESOURCE_GROUP" = rotrack-production ] || fail 'resource group must be rotrack-production'
+  [ "$AZURE_MANAGED_ENVIRONMENT" = rotrack-production-env ] || fail 'managed environment must be rotrack-production-env'
+  [ "$AZURE_CONTAINER_APP" = rotrack-api-production ] || fail 'container app must be rotrack-api-production'
+  case "${ROTRACK_AZURE_PRODUCTION_CONFIRM:-}" in
     '' ) ;;
-    rotrack-nonproduction ) ;;
-    * ) fail 'ROTRACK_AZURE_CONFIRM is not the non-production target' ;;
+    rotrack-production ) ;;
+    * ) fail 'ROTRACK_AZURE_PRODUCTION_CONFIRM is not the production target' ;;
   esac
 }
 
 require_mutation_confirmation() {
-  [ "${ROTRACK_AZURE_CONFIRM:-}" = rotrack-nonproduction ] || fail 'set ROTRACK_AZURE_CONFIRM=rotrack-nonproduction to authorize this non-production mutation'
+  [ "${ROTRACK_AZURE_PRODUCTION_CONFIRM:-}" = rotrack-production ] || fail 'set ROTRACK_AZURE_PRODUCTION_CONFIRM=rotrack-production to authorize this production mutation'
 }
 
 require_parameter_file() {
@@ -94,8 +98,8 @@ if set(params) != required:
 values = {name: entry.get('value') for name, entry in params.items()}
 if not isinstance(values['location'], str) or not re.fullmatch(r'[A-Za-z0-9.-]+', values['location']):
     raise SystemExit('foundation location is invalid')
-if not re.fullmatch(r'rotracknonproduction[a-z0-9]{0,30}', str(values['acrName'])):
-    raise SystemExit('foundation acrName must be a rotracknonproduction* name')
+if not re.fullmatch(r'rotrackproduction[a-z0-9]{0,30}', str(values['acrName'])):
+    raise SystemExit('foundation acrName must be a rotrackproduction* name')
 if not isinstance(values['budgetAmount'], int) or not 1 <= values['budgetAmount']:
     raise SystemExit('foundation budgetAmount must be positive')
 try:
@@ -148,8 +152,8 @@ if set(params) != required:
 values = {name: entry.get('value') for name, entry in params.items()}
 if not isinstance(values['location'], str) or not re.fullmatch(r'[A-Za-z0-9.-]+', values['location']):
     raise SystemExit('app location is invalid')
-if not re.fullmatch(r'rotracknonproduction[a-z0-9]{0,30}', str(values['acrName'])):
-    raise SystemExit('app acrName must be a rotracknonproduction* name')
+if not re.fullmatch(r'rotrackproduction[a-z0-9]{0,30}', str(values['acrName'])):
+    raise SystemExit('app acrName must be a rotrackproduction* name')
 if not re.fullmatch(r'[a-z0-9]+([._/-][a-z0-9]+)*', str(values['imageRepository'])):
     raise SystemExit('app imageRepository is invalid')
 if not re.fullmatch(r'sha256:[0-9a-f]{64}', str(values['imageDigest'])):
@@ -185,7 +189,7 @@ if not origins or any(origin != origin.strip() or not origin.startswith('https:/
 for origin in origins:
     parsed = urlparse(origin)
     if parsed.scheme != 'https' or not parsed.hostname or parsed.netloc != parsed.hostname or parsed.path or parsed.params or parsed.query or parsed.fragment or parsed.hostname in {'localhost', '127.0.0.1', '::1'} or not re.fullmatch(r'[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*\.vercel\.app', parsed.hostname):
-        raise SystemExit('app CORS origins must be non-bare HTTPS Vercel preview hosts without paths or local hosts')
+        raise SystemExit('app CORS origins must be non-bare HTTPS Vercel production hosts without paths or local hosts')
 for name, value in values.items():
     if isinstance(value, str) and (value.startswith('<') or value.endswith('>')):
         raise SystemExit(f'app parameter contains an unfilled placeholder: {name}')
@@ -244,8 +248,8 @@ wait_for_acr_pull() {
     --output tsv 2>/dev/null || true)
   while :; do
     principal_id=$(az identity show \
-      --name rotrack-api-nonproduction-identity \
-      --resource-group rotrack-nonproduction \
+      --name rotrack-api-production-identity \
+      --resource-group rotrack-production \
       --subscription "$AZURE_SUBSCRIPTION_ID" \
       --query principalId \
       --output tsv 2>/dev/null || true)

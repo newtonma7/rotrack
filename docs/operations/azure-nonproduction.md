@@ -34,7 +34,8 @@ Checked-in, non-secret assets:
 
 - `deploy/azure/foundation.bicep`
 - `deploy/azure/app.bicep`
-- `scripts/azure/*.sh`
+- `scripts/azure/*.sh` (non-production lane)
+- `scripts/azure/production/*.sh` (separate source-only production lane)
 - `deploy/azure/tests/*.sh`
 
 Populated parameter files stay outside Git under `~/.config/rotrack/azure/`:
@@ -55,6 +56,9 @@ deploy/azure/tests/test-publish-image.sh
 deploy/azure/tests/test-rbac-role-scope.sh
 deploy/azure/tests/test-preflight-budget-shape.sh
 deploy/azure/tests/test-readback-scale-shape.sh
+deploy/azure/tests/test-target-isolation.sh
+deploy/azure/tests/test-production-contract.sh
+scripts/azure/production/validate.sh
 scripts/container/test-contract.sh
 scripts/release/check-release-safeguards.sh
 ```
@@ -73,7 +77,8 @@ The order is mandatory because an app cannot pull a digest before it exists:
 Required shell variables are intentionally explicit:
 
 ```bash
-export AZURE_SUBSCRIPTION_ID='<selected-subscription-id>'
+export AZURE_SUBSCRIPTION_ID='<selected-non-production-subscription-id>'
+export AZURE_NONPRODUCTION_SUBSCRIPTION_ID="$AZURE_SUBSCRIPTION_ID"
 export AZURE_FOUNDATION_PARAMETER_FILE="$HOME/.config/rotrack/azure/nonproduction-foundation.parameters.json"
 export AZURE_APP_PARAMETER_FILE="$HOME/.config/rotrack/azure/nonproduction-app.parameters.json"
 export ROTRACK_AZURE_CONFIRM=rotrack-nonproduction

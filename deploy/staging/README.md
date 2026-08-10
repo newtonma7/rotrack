@@ -4,6 +4,8 @@ This directory documents the approved non-production deployment boundary. The pa
 
 This is the boundary contract; the executable Azure runbook and 2026-08-09 non-production checkpoint are in [`docs/operations/azure-nonproduction.md`](../../docs/operations/azure-nonproduction.md). Azure/ACR/Vercel non-production infrastructure, immutable digest readback, HTTPS health/readiness, exact CORS, and the public GitHub protection/security readbacks are observed. Authenticated smoke, alert routing, cold-start trials, backup/restore, rollback, and all production resources remain open. Never point non-production commands at `rotrack-prod` or production resources.
 
+The source-controlled production Azure lane is deliberately separate under [`deploy/azure/production/`](../azure/production/) and [`scripts/azure/production/`](../../scripts/azure/production/). It is a source/IaC capability only: no production Azure, ACR, identity, Supabase, Vercel, or populated parameter file is claimed or created.
+
 ## Target boundary
 
 | Concern | Non-production | Production |
@@ -40,14 +42,14 @@ Non-production (`nonproduction`):
 
 - one Supabase project URL, anon/publishable key, database/TLS inputs, issuer/JWKS configuration, and exact Preview API CORS origin(s);
 - the immutable backend image digest and non-secret release ID;
-- Azure subscription/resource-group/app identity and, if selected, ACR managed-identity wiring;
+- approved non-production Azure subscription identity, resource-group/app identity, and, if selected, ACR managed-identity wiring;
 - Vercel Preview build inputs for the single Vercel project.
 
 Production (`production`):
 
 - the `rotrack-prod` Supabase URL/key/database/TLS inputs and exact Production API CORS origin;
 - a separately approved immutable backend image digest and release ID;
-- production Azure resource-group/app identity and, if selected, production ACR managed-identity wiring;
+- approved production Azure subscription identity, resource-group/app identity, and, if selected, production ACR managed-identity wiring; production and non-production subscription IDs must be distinct;
 - Vercel Production inputs in the same Vercel project.
 
 Do not place database passwords, service-role keys, CA contents, bearer tokens, or Playwright storage state in GitHub PR variables, frontend variables, evidence, or this repository. `NEXT_PUBLIC_SUPABASE_KEY` is only the anon/publishable browser key. `NEXT_PUBLIC_API_URL` includes `/api/v1`.
@@ -80,7 +82,7 @@ Use an administrator identity for migrations and the narrow `rotrack_runtime` ro
 
 ## Azure Container Apps integration
 
-Before any mutation, confirm the selected subscription, target managed environment, resource group, app name, environment label, and logical GitHub environment match. The managed environment is the Azure security boundary and must be separate for non-production and production, each inside its matching resource group. No command below is evidence until it is actually run and recorded in a redacted release record.
+Before any mutation, confirm the selected subscription, target managed environment, resource group, app name, environment label, and logical GitHub environment match. The non-production lane requires `AZURE_NONPRODUCTION_SUBSCRIPTION_ID` to equal the selected subscription; the separate production lane requires `AZURE_PRODUCTION_SUBSCRIPTION_ID` to equal the selected subscription, requires a distinct non-production subscription ID, and requires `ROTRACK_AZURE_PRODUCTION_CONFIRM=rotrack-production`. The managed environment is the Azure security boundary and must be separate for non-production and production, each inside its matching resource group. No command below is evidence until it is actually run and recorded in a redacted release record.
 
 1. Build the OCI-compatible image once from the reviewed commit and retain the immutable registry digest, manifest media type, and architecture readback.
 2. If ACR is selected, push that digest to the target ACR and grant the target Container App's managed identity pull access. Do not replace the digest with a mutable tag.

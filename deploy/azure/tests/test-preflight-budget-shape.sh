@@ -70,6 +70,7 @@ SH
 chmod +x "$BIN/az"
 
 AZURE_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
+  AZURE_NONPRODUCTION_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
 AZURE_FOUNDATION_PARAMETER_FILE="$TMP/foundation.json" \
 FAKE_AZ_LOG="$TMP/az.log" \
 PATH="$BIN:$PATH" \
@@ -77,6 +78,7 @@ PATH="$BIN:$PATH" \
 grep -Fq -- 'rest --method get --url https://management.azure.com/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rotrack-nonproduction/providers/Microsoft.Consumption/budgets/rotrack-nonproduction-budget?api-version=2023-05-01' "$TMP/az.log"
 grep -Fq -- '--query properties' "$TMP/az.log"
 if AZURE_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
+  AZURE_NONPRODUCTION_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
   AZURE_FOUNDATION_PARAMETER_FILE="$TMP/foundation.json" \
   FAKE_AZ_LOG="$TMP/az-negative.log" FAKE_OMIT_THRESHOLD_TYPE=1 \
   PATH="$BIN:$PATH" "$ROOT/scripts/azure/preflight.sh" >/dev/null 2>&1; then

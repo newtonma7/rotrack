@@ -4,6 +4,8 @@
 
 This runbook protects the database-first rotrack rollout: Supabase Auth in the browser, one Vercel project (Preview for non-production, Production for production), Azure Container Apps Consumption for the Spring API, and two Supabase Free projects. Approved environment-scoped authenticated E2E uses the shared non-production project; credential-free PR CI uses isolated PostgreSQL; production uses `rotrack-prod`. It preserves explicit timer sessions and the API ownership boundary. Application rollback must not silently rewrite active or completed sessions. Non-production Azure/Vercel deployment evidence is recorded in [`../azure-nonproduction.md`](../azure-nonproduction.md); production is not configured or authorized.
 
+The repository now contains a separate, source-only production Azure lane in [`../../../deploy/azure/production/README.md`](../../../deploy/azure/production/README.md). It is not a production authorization or cloud-evidence claim. The lane requires an explicit production confirmation and selected production subscription identity, rejects the non-production boundary, and preserves immutable digest, secret reference, TLS CA, exact CORS, health/readiness, non-root, scaling, logging, and connection-budget checks.
+
 ## Roles and approvals
 
 Replace these placeholders in the restricted release record before a staging rehearsal or production release:

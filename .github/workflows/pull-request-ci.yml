@@ -33,6 +33,7 @@ jobs:
           scripts/ci/validate-migration-order.sh
           scripts/container/test-contract.sh
           deploy/staging/tests/validate.sh
+          deploy/azure/tests/test-target-isolation.sh
           scripts/release/check-release-safeguards.sh
           scripts/ci/run-actionlint.sh
       - name: Scan repository history for secrets

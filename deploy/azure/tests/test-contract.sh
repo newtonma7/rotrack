@@ -16,7 +16,7 @@ fail() {
 for script in foundation-provision publish-image app-deploy readback preflight validate; do
   [ -x "$SCRIPTS_DIR/$script.sh" ] || fail "$script.sh is not executable"
 done
-for test_script in test-publish-image test-rbac-role-scope test-preflight-budget-shape test-readback-scale-shape; do
+for test_script in test-publish-image test-rbac-role-scope test-preflight-budget-shape test-readback-scale-shape test-target-isolation test-production-contract; do
   [ -x "$AZURE_DIR/tests/$test_script.sh" ] || fail "$test_script.sh is not executable"
 done
 [ "$(grep -Fc 'az rest' "$SCRIPTS_DIR/preflight.sh")" -eq 1 ] || fail 'budget preflight must use az rest exactly once'
@@ -285,12 +285,14 @@ SH
 chmod +x "$FAKE_AZ/az"
 if PATH="$FAKE_AZ:$PATH" \
   AZURE_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
+  AZURE_NONPRODUCTION_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
   ROTRACK_AZURE_CONFIRM=rotrack-production \
   "$SCRIPTS_DIR/foundation-provision.sh" >/dev/null 2>&1; then
   fail 'foundation provision accepted a production confirmation'
 fi
 if PATH="$FAKE_AZ:$PATH" \
   AZURE_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
+  AZURE_NONPRODUCTION_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
   AZURE_TARGET=production \
   ROTRACK_AZURE_CONFIRM=rotrack-nonproduction \
   "$SCRIPTS_DIR/foundation-provision.sh" >/dev/null 2>&1; then
@@ -299,6 +301,7 @@ fi
 for mutator in publish-image app-deploy; do
   if PATH="$FAKE_AZ:$PATH" \
     AZURE_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
+    AZURE_NONPRODUCTION_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
     ROTRACK_AZURE_CONFIRM=rotrack-production \
     "$SCRIPTS_DIR/$mutator.sh" >/dev/null 2>&1; then
     fail "$mutator accepted a production confirmation"
