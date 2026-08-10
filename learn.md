@@ -217,3 +217,4 @@ Use these questions to review the completed baseline phases and understand the i
 13. Why are successful public health, readiness, HTTPS, and CORS checks insufficient without fresh-user sign-in and authenticated non-production Playwright 4/4?
 14. Why is a process-local per-user mutation limiter not a substitute for a fleet-wide, authentication-adjacent edge control?
 15. Why must the evidence record distinguish source safeguards, configured cloud state, observed runtime behavior, and still-unverified operations?
+16. Why is globally disabling Spring CSRF protection a valid CodeQL finding even when the current stateless bearer-token API is not directly vulnerable to browser cookie CSRF, and why should only the `/api/v1/**` boundary be exempted?
