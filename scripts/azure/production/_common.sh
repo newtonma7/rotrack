@@ -7,6 +7,11 @@ APP_TEMPLATE="$AZURE_ROOT/deploy/azure/production/app.bicep"
 AZURE_RESOURCE_GROUP=${AZURE_RESOURCE_GROUP:-rotrack-production}
 AZURE_MANAGED_ENVIRONMENT=${AZURE_MANAGED_ENVIRONMENT:-rotrack-production-env}
 AZURE_CONTAINER_APP=${AZURE_CONTAINER_APP:-rotrack-api-production}
+AZURE_NONPRODUCTION_RESOURCE_GROUP=${AZURE_NONPRODUCTION_RESOURCE_GROUP:-rotrack-nonproduction}
+AZURE_NONPRODUCTION_MANAGED_ENVIRONMENT=${AZURE_NONPRODUCTION_MANAGED_ENVIRONMENT:-rotrack-nonproduction-env}
+AZURE_NONPRODUCTION_CONTAINER_APP=${AZURE_NONPRODUCTION_CONTAINER_APP:-rotrack-api-nonproduction}
+AZURE_IDENTITY_NAME=${AZURE_IDENTITY_NAME:-rotrack-api-production-identity}
+AZURE_NONPRODUCTION_IDENTITY_NAME=${AZURE_NONPRODUCTION_IDENTITY_NAME:-rotrack-api-nonproduction-identity}
 AZURE_TARGET=${AZURE_TARGET:-production}
 
 fail() {
@@ -29,7 +34,6 @@ require_subscription() {
   printf '%s\n' "$AZURE_PRODUCTION_SUBSCRIPTION_ID" | grep -Eq '^[0-9a-fA-F-]{36}$' || fail 'AZURE_PRODUCTION_SUBSCRIPTION_ID must be a GUID'
   printf '%s\n' "$AZURE_NONPRODUCTION_SUBSCRIPTION_ID" | grep -Eq '^[0-9a-fA-F-]{36}$' || fail 'AZURE_NONPRODUCTION_SUBSCRIPTION_ID must be a GUID'
   [ "$AZURE_SUBSCRIPTION_ID" = "$AZURE_PRODUCTION_SUBSCRIPTION_ID" ] || fail 'selected subscription is not the approved production subscription'
-  [ "$AZURE_PRODUCTION_SUBSCRIPTION_ID" != "$AZURE_NONPRODUCTION_SUBSCRIPTION_ID" ] || fail 'production and non-production subscriptions must be distinct'
 }
 
 require_target() {
@@ -37,6 +41,15 @@ require_target() {
   [ "$AZURE_RESOURCE_GROUP" = rotrack-production ] || fail 'resource group must be rotrack-production'
   [ "$AZURE_MANAGED_ENVIRONMENT" = rotrack-production-env ] || fail 'managed environment must be rotrack-production-env'
   [ "$AZURE_CONTAINER_APP" = rotrack-api-production ] || fail 'container app must be rotrack-api-production'
+  [ "$AZURE_NONPRODUCTION_RESOURCE_GROUP" = rotrack-nonproduction ] || fail 'non-production resource group boundary is invalid'
+  [ "$AZURE_NONPRODUCTION_MANAGED_ENVIRONMENT" = rotrack-nonproduction-env ] || fail 'non-production managed environment boundary is invalid'
+  [ "$AZURE_NONPRODUCTION_CONTAINER_APP" = rotrack-api-nonproduction ] || fail 'non-production container app boundary is invalid'
+  [ "$AZURE_IDENTITY_NAME" = rotrack-api-production-identity ] || fail 'production managed identity boundary is invalid'
+  [ "$AZURE_NONPRODUCTION_IDENTITY_NAME" = rotrack-api-nonproduction-identity ] || fail 'non-production managed identity boundary is invalid'
+  [ "$AZURE_RESOURCE_GROUP" != "$AZURE_NONPRODUCTION_RESOURCE_GROUP" ] || fail 'production and non-production resource groups must be distinct'
+  [ "$AZURE_MANAGED_ENVIRONMENT" != "$AZURE_NONPRODUCTION_MANAGED_ENVIRONMENT" ] || fail 'production and non-production managed environments must be distinct'
+  [ "$AZURE_CONTAINER_APP" != "$AZURE_NONPRODUCTION_CONTAINER_APP" ] || fail 'production and non-production container apps must be distinct'
+  [ "$AZURE_IDENTITY_NAME" != "$AZURE_NONPRODUCTION_IDENTITY_NAME" ] || fail 'production and non-production managed identities must be distinct'
   case "${ROTRACK_AZURE_PRODUCTION_CONFIRM:-}" in
     '' ) ;;
     rotrack-production ) ;;
@@ -248,8 +261,8 @@ wait_for_acr_pull() {
     --output tsv 2>/dev/null || true)
   while :; do
     principal_id=$(az identity show \
-      --name rotrack-api-production-identity \
-      --resource-group rotrack-production \
+      --name "$AZURE_IDENTITY_NAME" \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
       --subscription "$AZURE_SUBSCRIPTION_ID" \
       --query principalId \
       --output tsv 2>/dev/null || true)

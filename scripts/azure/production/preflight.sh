@@ -50,12 +50,16 @@ if workspace.get('name') != 'rotrack-production-logs' or workspace.get('sku') !=
     raise SystemExit('Log Analytics retention/cap contract is not satisfied')
 PY
 
-az containerapp env show \
+MANAGED_ENVIRONMENT_ID=$(az containerapp env show \
   --name rotrack-production-env \
   --resource-group rotrack-production \
   --subscription "$AZURE_SUBSCRIPTION_ID" \
-  --query name \
-  --output tsv >/dev/null
+  --query id \
+  --output tsv) || fail 'production managed environment does not exist'
+case "$MANAGED_ENVIRONMENT_ID" in
+  */resourceGroups/rotrack-production/providers/Microsoft.App/managedEnvironments/rotrack-production-env) ;;
+  *) fail 'production managed environment is outside the production resource-group boundary' ;;
+esac
 
 if [ "${AZURE_WAIT_FOR_RBAC:-0}" = 1 ]; then
   wait_for_acr_pull

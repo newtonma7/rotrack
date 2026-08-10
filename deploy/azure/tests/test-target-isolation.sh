@@ -29,6 +29,32 @@ fail() {
 [ -f "$PROD_TEMPLATES/foundation.bicep" ] || fail 'production foundation template is missing'
 [ -f "$PROD_TEMPLATES/app.bicep" ] || fail 'production app template is missing'
 
+# The approved plan permits one Azure subscription when the resource
+# boundaries remain distinct. The production lane still requires an explicit
+# production subscription selection and rejects a wrong selected subscription.
+if ! AZURE_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
+  AZURE_PRODUCTION_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
+  AZURE_NONPRODUCTION_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
+  sh -c '. "$1"; require_subscription; require_target' \
+  "$ROOT/scripts/azure/production/_common.sh" "$ROOT/scripts/azure/production/_common.sh"; then
+  fail 'production lane rejected an approved shared subscription'
+fi
+if AZURE_SUBSCRIPTION_ID=11111111-1111-1111-1111-111111111111 \
+  AZURE_PRODUCTION_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
+  AZURE_NONPRODUCTION_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
+  sh -c '. "$1"; require_subscription' \
+  "$ROOT/scripts/azure/production/_common.sh" "$ROOT/scripts/azure/production/_common.sh"; then
+  fail 'production lane accepted a wrong selected subscription'
+fi
+if AZURE_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
+  AZURE_PRODUCTION_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
+  AZURE_NONPRODUCTION_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
+  AZURE_NONPRODUCTION_RESOURCE_GROUP=rotrack-production \
+  sh -c '. "$1"; require_subscription; require_target' \
+  "$ROOT/scripts/azure/production/_common.sh" "$ROOT/scripts/azure/production/_common.sh"; then
+  fail 'production lane accepted an overlapping resource-group boundary'
+fi
+
 # The existing non-production lane remains hard-coded and must reject every
 # production selector/name before it reaches Azure CLI.
 for script in foundation-provision publish-image app-deploy preflight readback; do

@@ -11,13 +11,13 @@ The lane targets only:
 - managed identity `rotrack-api-production-identity`; and
 - runtime logging label `production`.
 
-Every mutating command requires `ROTRACK_AZURE_PRODUCTION_CONFIRM=rotrack-production`, an explicitly selected `AZURE_PRODUCTION_SUBSCRIPTION_ID`, and a distinct `AZURE_NONPRODUCTION_SUBSCRIPTION_ID`. The selected `AZURE_SUBSCRIPTION_ID` must equal the production subscription. Resource names, subscription identity, parameter-file location/mode, immutable image digest, `secretRef` mappings, TLS `verify-full` with the official CA path, exact HTTPS CORS, probes, non-root image, scale bounds, and connection pool budget are checked before mutation/readback.
+Every mutating command requires `ROTRACK_AZURE_PRODUCTION_CONFIRM=rotrack-production`, an explicitly selected `AZURE_PRODUCTION_SUBSCRIPTION_ID`, and a declared `AZURE_NONPRODUCTION_SUBSCRIPTION_ID` for target comparison. The selected `AZURE_SUBSCRIPTION_ID` must equal the production subscription; it may equal the non-production subscription when the resource-group, managed-environment, Container App, and managed-identity boundaries remain distinct. Resource names, subscription identity, parameter-file location/mode, immutable image digest, `secretRef` mappings, TLS `verify-full` with the official CA path, exact HTTPS CORS, probes, non-root image, scale bounds, and connection pool budget are checked before mutation/readback.
 
 Use only operator-owned parameter files outside Git:
 
 ```text
 AZURE_PRODUCTION_SUBSCRIPTION_ID=<production-subscription-guid>
-AZURE_NONPRODUCTION_SUBSCRIPTION_ID=<non-production-subscription-guid>
+AZURE_NONPRODUCTION_SUBSCRIPTION_ID=<non-production-subscription-guid>  # may equal production when boundaries are separate
 AZURE_SUBSCRIPTION_ID=<same-production-subscription-guid>
 AZURE_FOUNDATION_PARAMETER_FILE=/restricted/rotrack-production-foundation.json  # mode 0400
 AZURE_APP_PARAMETER_FILE=/restricted/rotrack-production-app.json              # mode 0600

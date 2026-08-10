@@ -26,7 +26,7 @@ APP_READBACK=$(az containerapp show \
   --name rotrack-api-production \
   --resource-group rotrack-production \
   --subscription "$AZURE_SUBSCRIPTION_ID" \
-  --query '{name:name,latestRevisionName:properties.latestRevisionName,fqdn:properties.configuration.ingress.fqdn,image:properties.template.containers[0].image,scale:properties.template.scale,terminationGracePeriodSeconds:properties.template.terminationGracePeriodSeconds,ingress:properties.configuration.ingress,env:properties.template.containers[0].env,probes:properties.template.containers[0].probes}' \
+  --query '{name:name,managedEnvironmentId:properties.managedEnvironmentId,latestRevisionName:properties.latestRevisionName,fqdn:properties.configuration.ingress.fqdn,image:properties.template.containers[0].image,scale:properties.template.scale,terminationGracePeriodSeconds:properties.template.terminationGracePeriodSeconds,ingress:properties.configuration.ingress,env:properties.template.containers[0].env,probes:properties.template.containers[0].probes}' \
   --output json)
 export APP_READBACK ACR_LOGIN_SERVER
 python3 - <<'PY'
@@ -38,6 +38,12 @@ expected_digest = os.environ['IMAGE_DIGEST']
 expected_repo = os.environ['IMAGE_REPOSITORY']
 expected_server = os.environ['ACR_LOGIN_SERVER']
 expected_image = f'{expected_server}/{expected_repo}@{expected_digest}'
+if app.get('name') != 'rotrack-api-production':
+    raise SystemExit('running app name is not the production Container App')
+expected_environment_suffix = '/resourceGroups/rotrack-production/providers/Microsoft.App/managedEnvironments/rotrack-production-env'
+if not str(app.get('managedEnvironmentId', '')).endswith(expected_environment_suffix):
+    raise SystemExit('running app is outside the production managed-environment/resource-group boundary')
+app.pop('managedEnvironmentId', None)
 env = app.pop('env', [])
 probes = app.pop('probes', [])
 if app.get('image') != expected_image:

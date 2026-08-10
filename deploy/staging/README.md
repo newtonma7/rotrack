@@ -49,7 +49,7 @@ Production (`production`):
 
 - the `rotrack-prod` Supabase URL/key/database/TLS inputs and exact Production API CORS origin;
 - a separately approved immutable backend image digest and release ID;
-- approved production Azure subscription identity, resource-group/app identity, and, if selected, production ACR managed-identity wiring; production and non-production subscription IDs must be distinct;
+- explicitly selected production Azure subscription identity, resource-group/app identity, and, if selected, production ACR managed-identity wiring; the production subscription may equal non-production only when the resource-group, managed-environment, Container App, and managed-identity boundaries remain distinct;
 - Vercel Production inputs in the same Vercel project.
 
 Do not place database passwords, service-role keys, CA contents, bearer tokens, or Playwright storage state in GitHub PR variables, frontend variables, evidence, or this repository. `NEXT_PUBLIC_SUPABASE_KEY` is only the anon/publishable browser key. `NEXT_PUBLIC_API_URL` includes `/api/v1`.
@@ -82,7 +82,7 @@ Use an administrator identity for migrations and the narrow `rotrack_runtime` ro
 
 ## Azure Container Apps integration
 
-Before any mutation, confirm the selected subscription, target managed environment, resource group, app name, environment label, and logical GitHub environment match. The non-production lane requires `AZURE_NONPRODUCTION_SUBSCRIPTION_ID` to equal the selected subscription; the separate production lane requires `AZURE_PRODUCTION_SUBSCRIPTION_ID` to equal the selected subscription, requires a distinct non-production subscription ID, and requires `ROTRACK_AZURE_PRODUCTION_CONFIRM=rotrack-production`. The managed environment is the Azure security boundary and must be separate for non-production and production, each inside its matching resource group. No command below is evidence until it is actually run and recorded in a redacted release record.
+Before any mutation, confirm the selected subscription, target managed environment, resource group, app name, environment label, and logical GitHub environment match. The non-production lane requires `AZURE_NONPRODUCTION_SUBSCRIPTION_ID` to equal the selected subscription; the separate production lane requires `AZURE_PRODUCTION_SUBSCRIPTION_ID` to equal the selected subscription, declares the non-production subscription for comparison, verifies distinct resource boundaries, and requires `ROTRACK_AZURE_PRODUCTION_CONFIRM=rotrack-production`. The managed environment is the Azure security boundary and must be separate for non-production and production, each inside its matching resource group. No command below is evidence until it is actually run and recorded in a redacted release record.
 
 1. Build the OCI-compatible image once from the reviewed commit and retain the immutable registry digest, manifest media type, and architecture readback.
 2. If ACR is selected, push that digest to the target ACR and grant the target Container App's managed identity pull access. Do not replace the digest with a mutable tag.

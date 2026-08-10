@@ -4,6 +4,10 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../../.." && pwd)
 AZURE_DIR="$ROOT/deploy/azure/production"
 command -v az >/dev/null 2>&1 || { printf '%s\n' 'az is required for production Bicep validation' >&2; exit 2; }
+grep -Fq 'managedEnvironmentId:properties.managedEnvironmentId' "$ROOT/scripts/azure/production/readback.sh"
+grep -Fq 'outside the production managed-environment/resource-group boundary' "$ROOT/scripts/azure/production/readback.sh"
+grep -Fq 'outside the production resource-group boundary' "$ROOT/scripts/azure/production/preflight.sh"
+grep -Fq 'production and non-production managed identities must be distinct' "$ROOT/scripts/azure/production/_common.sh"
 
 foundation_rendered=$(mktemp)
 app_rendered=$(mktemp)
