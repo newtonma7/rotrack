@@ -26,22 +26,61 @@ APP_READBACK=$(az containerapp show \
   --name rotrack-api-nonproduction \
   --resource-group rotrack-nonproduction \
   --subscription "$AZURE_SUBSCRIPTION_ID" \
-  --query '{name:name,latestRevisionName:properties.latestRevisionName,fqdn:properties.configuration.ingress.fqdn,image:properties.template.containers[0].image,scale:properties.template.scale,terminationGracePeriodSeconds:properties.template.terminationGracePeriodSeconds,ingress:properties.configuration.ingress,env:properties.template.containers[0].env,probes:properties.template.containers[0].probes}' \
+  --query '{name:name,latestRevisionName:properties.latestRevisionName,activeRevisionsMode:properties.configuration.activeRevisionsMode,fqdn:properties.configuration.ingress.fqdn,scale:properties.template.scale,terminationGracePeriodSeconds:properties.template.terminationGracePeriodSeconds,ingress:properties.configuration.ingress,probes:properties.template.containers[0].probes}' \
   --output json)
 export APP_READBACK ACR_LOGIN_SERVER
+SELECTED_REVISION=$(python3 - <<'PY'
+import json
+import os
+
+app = json.loads(os.environ['APP_READBACK'])
+if app.get('activeRevisionsMode') != 'Multiple':
+    raise SystemExit('running app must retain multiple active revisions for rollback')
+traffic = app.get('ingress', {}).get('traffic')
+if not isinstance(traffic, list) or len(traffic) != 1:
+    raise SystemExit('running app traffic must select exactly one revision at 100%')
+route = traffic[0]
+if set(route) - {'latestRevision', 'revisionName', 'weight'} or type(route.get('weight')) is not int or route['weight'] != 100:
+    raise SystemExit('running app traffic must select exactly one revision at 100%')
+latest_revision = app.get('latestRevisionName')
+if route.get('latestRevision') is True:
+    if route.get('revisionName') or not isinstance(latest_revision, str) or not latest_revision:
+        raise SystemExit('latest revision traffic selector is invalid')
+    selected_revision = latest_revision
+elif isinstance(route.get('revisionName'), str) and route['revisionName']:
+    if route['revisionName'] == latest_revision:
+        raise SystemExit('explicit traffic selector must name a non-latest prior revision')
+    selected_revision = route['revisionName']
+else:
+    raise SystemExit('traffic does not identify a known revision')
+print(selected_revision)
+PY
+)
+export SELECTED_REVISION
+REVISION_READBACK=$(az containerapp revision show \
+  --name rotrack-api-nonproduction \
+  --resource-group rotrack-nonproduction \
+  --subscription "$AZURE_SUBSCRIPTION_ID" \
+  --revision "$SELECTED_REVISION" \
+  --query '{name:name,image:properties.template.containers[0].image,env:properties.template.containers[0].env}' \
+  --output json)
+export REVISION_READBACK
 python3 - <<'PY'
 import json
 import os
 
 app = json.loads(os.environ['APP_READBACK'])
+revision = json.loads(os.environ['REVISION_READBACK'])
 expected_digest = os.environ['IMAGE_DIGEST']
 expected_repo = os.environ['IMAGE_REPOSITORY']
 expected_server = os.environ['ACR_LOGIN_SERVER']
 expected_image = f'{expected_server}/{expected_repo}@{expected_digest}'
-env = app.pop('env', [])
+if revision.get('name') != os.environ['SELECTED_REVISION']:
+    raise SystemExit('selected revision readback does not match the traffic selector')
+if revision.get('image') != expected_image:
+    raise SystemExit('traffic-selected revision image is not exactly the requested registry digest')
+env = revision.pop('env', [])
 probes = app.pop('probes', [])
-if app.get('image') != expected_image:
-    raise SystemExit('running app image is not exactly the requested registry digest')
 environment = {entry['name']: entry for entry in env}
 required_names = {
     'DATABASE_URL', 'DATABASE_USERNAME', 'DATABASE_PASSWORD',
@@ -69,7 +108,8 @@ secret_mapping = {
 }
 for name, expected_secret in secret_mapping.items():
     entry = environment[name]
-    if entry.get('secretRef') != expected_secret or 'value' in entry:
+    # Azure may echo an empty value alongside secretRef; reject any non-empty value.
+    if entry.get('secretRef') != expected_secret or entry.get('value', '') != '':
         raise SystemExit(f'secretRef mapping mismatch: {name}')
 static_values = {
     'PORT': '8080',
@@ -87,7 +127,7 @@ static_values = {
     'SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE': '25s',
     'LOGGING_STRUCTURED_FORMAT_CONSOLE': 'ecs',
     'ROTRACK_STRUCTURED_LOGGING_ENABLED': 'true',
-    'ROTRACK_LOGGING_ENVIRONMENT': 'staging',
+    'ROTRACK_LOGGING_ENVIRONMENT': 'production',
     'ROTRACK_SERVICE_VERSION': expected_digest,
     'LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY': 'WARN',
     'LOGGING_LEVEL_ORG_HIBERNATE_SQL': 'OFF',
@@ -110,11 +150,13 @@ probe_paths = {probe['type']: probe['httpGet']['path'] for probe in probes}
 if probe_paths != {'Liveness': '/api/v1/health', 'Readiness': '/api/v1/readiness'}:
     raise SystemExit('running probe paths do not match liveness/readiness contract')
 fqdn = app.pop('fqdn', None)
-image = app.pop('image', None)
+image = revision.pop('image', None)
+app['selectedRevision'] = os.environ['SELECTED_REVISION']
 app['environmentNames'] = sorted(environment)
 app['probePaths'] = probe_paths
 app['nonSecretReleaseEvidence'] = {
     'fqdn': fqdn,
+    'selectedRevision': os.environ['SELECTED_REVISION'],
     'imageDigest': expected_digest,
     'imageReference': image,
     'serviceVersion': expected_digest,
