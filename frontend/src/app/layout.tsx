@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 import { AuthProvider } from "../context/AuthProvider";
-import { SITE_DESCRIPTION, SITE_ICON, SITE_NAME, SITE_ORIGIN, SITE_URL } from "@/lib/site";
+import { SITE_DESCRIPTION, SITE_ICON, SITE_NAME, SITE_ORIGIN, SITE_SHARE_IMAGE, SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
   metadataBase: SITE_URL,
@@ -19,13 +19,13 @@ export const metadata: Metadata = {
     title: `${SITE_NAME} — track your rot.`,
     description: SITE_DESCRIPTION,
     siteName: SITE_NAME,
-    images: [{ url: SITE_ICON, alt: SITE_NAME }],
+    images: [{ url: SITE_SHARE_IMAGE, alt: `${SITE_NAME} study tracker` }],
   },
   twitter: {
     card: "summary",
     title: `${SITE_NAME} — track your rot.`,
     description: SITE_DESCRIPTION,
-    images: [SITE_ICON],
+    images: [SITE_SHARE_IMAGE],
   },
 };
 

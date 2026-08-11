@@ -34,6 +34,9 @@ export function ActiveTracker() {
               {isActive ? `tracking ${activeType?.toLowerCase()}` : "no active session"}
             </p>
             <div
+              role="timer"
+              aria-live="polite"
+              aria-label={isActive ? `${activeType?.toLowerCase()} session elapsed time` : "No active session"}
               className="font-sans font-bold text-[clamp(3rem,10vw,5rem)] leading-none tabular-nums tracking-[0.08em] text-[var(--rt-orange)]"
             >
               {elapsed}
@@ -72,7 +75,7 @@ export function ActiveTracker() {
           )}
 
           {error && (
-            <p className="text-sm text-center text-[var(--rt-ink-soft)]">{error}</p>
+            <p role="alert" className="text-sm text-center text-[var(--rt-ink-soft)]">{error}</p>
           )}
         </CardContent>
       </Card>

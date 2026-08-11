@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { createPageMetadata, SITE_NAME } from "@/lib/site";
+import { SITE_NAME } from "@/lib/site";
 
-export const metadata: Metadata = createPageMetadata({
+export const metadata: Metadata = {
   title: "Page not found",
   description: "The rotrack page you requested does not exist.",
-  path: "/404",
-  noIndex: true,
-});
+  robots: { index: false, follow: false },
+};
 
 function LogoMark() {
   return (
