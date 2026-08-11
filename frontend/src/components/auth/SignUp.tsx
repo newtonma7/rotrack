@@ -47,9 +47,10 @@ export default function SignUp() {
       <Link href="/" className="font-heading text-2xl text-[var(--rt-ink)] mb-8 hover:text-[var(--rt-orange)] transition-colors">
         rotrack
       </Link>
-      <Card className="w-full max-w-md border-[var(--rt-line)] bg-[var(--rt-paper)] shadow-[0_20px_50px_-20px_rgba(10,10,10,0.15)]">
+      <main className="w-full max-w-md">
+      <Card className="border-[var(--rt-line)] bg-[var(--rt-paper)] shadow-[0_20px_50px_-20px_rgba(10,10,10,0.15)]">
         <CardHeader>
-          <CardTitle className="font-heading text-2xl">Sign up</CardTitle>
+          <CardTitle headingLevel="h1" className="font-heading text-2xl">Sign up</CardTitle>
           <CardDescription className="text-[var(--rt-ink-muted)]">
             Start your first honest week of time-logging.
           </CardDescription>
@@ -100,10 +101,11 @@ export default function SignUp() {
             </Link>
           </p>
           {message && (
-            <p className="mt-4 text-center text-sm text-[var(--rt-ink-soft)]">{message}</p>
+            <p role="alert" className="mt-4 text-center text-sm text-[var(--rt-ink-soft)]">{message}</p>
           )}
         </CardContent>
       </Card>
+      </main>
     </div>
   );
 }
