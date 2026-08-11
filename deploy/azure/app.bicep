@@ -68,7 +68,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
     managedEnvironmentId: managedEnvironment.id
     workloadProfileName: 'Consumption'
     configuration: {
-      activeRevisionsMode: 'Single'
+      activeRevisionsMode: 'Multiple'
       ingress: {
         external: true
         targetPort: 8080
@@ -219,7 +219,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             }
             {
               name: 'ROTRACK_LOGGING_ENVIRONMENT'
-              value: 'staging'
+              value: 'production'
             }
             {
               name: 'ROTRACK_SERVICE_VERSION'
