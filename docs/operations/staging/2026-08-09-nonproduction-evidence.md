@@ -1,4 +1,16 @@
-# Non-production deployment evidence — 2026-08-09
+# Non-production deployment evidence — historical 2026-08-09
+
+> The 2026-08-11 canonical hosted candidate reconciliation supersedes the open-items summary in this historical record. Full release identifiers remain in private evidence.
+
+## Canonical hosted candidate reconciliation — 2026-08-11
+
+- Source commit `744635c` passed focused Azure contract/readback, publish, preflight, RBAC, container, and release checks.
+- The backend candidate reached 100% traffic at the canonical ACA implementation boundary. Readiness/readback, selected digest/service-version equality, production runtime label, and scale `0..1` passed. The canonical Vercel Production candidate came from the same reviewed commit and canonical alias readback passed.
+- Public smoke passed for frontend `200`, exact API liveness/readiness `200` contracts, HTTP redirect to HTTPS, allowed CORS, and denied unrelated CORS.
+- Hosted authenticated smoke passed `4/4` with zero skipped, unexpected, or flaky results; API-target binding passed.
+- The corrected exact no-schema-change backend/frontend rollback rehearsal passed prior backend health, prior frontend promotion, rollback public smoke, rollback authenticated `4/4`, candidate restoration, and final candidate health/CORS/auth. Final state is the candidate.
+- Operator-owned synthetic accounts and stopped rows remain by product-owner decision; cleanup is not claimed.
+- Rate limiting remains explicitly deferred/accepted; Cloudflare Free is future exploration only. Ten cold-start trials, collector redaction, alert delivery/receipt, and alert routing evidence remain open. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. Backup limitation is accepted as already documented.
 
 ## Authorization and separation
 
@@ -11,7 +23,7 @@
 ## Artifact and infrastructure
 
 - Reviewed image source revision: `ea9b70b`.
-- Registry digest: `sha256:a4cced479f81daebe73f0b4e8ee9f0494ca381d297992664929c68df76d92a3a`.
+- Registry digest: retained in private evidence; the checked-in record records only immutable digest readback.
 - Registry readback: Linux/amd64; OCI-compatible Docker manifest v2; immutable digest.
 - Runtime: Java 21; UID/GID `10001:10001`; port `8080`; writes limited to `/tmp`; 30-second platform termination grace; 25-second Spring drain.
 - Azure boundary: `eastus2`, separate non-production resource group, Consumption managed environment, Container App, Basic ACR, and user-assigned identity with exact `AcrPull` scope.
@@ -27,7 +39,7 @@
 - Preview build completed successfully with the three approved `NEXT_PUBLIC_*` names and the ACA `/api/v1` URL.
 - Exact final Preview origin is the only configured ACA CORS origin; an unrelated HTTPS Origin received no allow-origin header.
 - Vercel SSO protection remains enabled. A temporary CLI-generated automation-bypass secret was removed immediately; readback reports zero remaining bypass secrets.
-- Direct anonymous frontend smoke is therefore intentionally blocked by Vercel SSO. Browser-asset target inspection and authenticated E2E remain open.
+- Historical direct anonymous Preview smoke was intentionally blocked by Vercel SSO. The current 2026-08-11 canonical Production alias and hosted authenticated smoke are recorded at the top of this file.
 
 ## Fresh-user local acceptance
 
@@ -65,7 +77,7 @@ The first deployed revision exposed a contract defect: the application rejected 
 - Public-repo security readback: vulnerability reporting, Dependabot security fixes, secret scanning, and push protection enabled; repository, `nonproduction`, and `production` auth-secret inventories empty; `ROTRACK_AUTHENTICATED_E2E_ENABLED` absent/default-disabled.
 - Default CodeQL setup is the sole chosen scanner with required contexts `Analyze (actions)`, `Analyze (java-kotlin)`, and `Analyze (javascript-typescript)`. The checked-in advanced workflow was removed after temporary public PR #17 proved its `CodeQL (java)` and `CodeQL (javascript-typescript)` jobs fail because default setup rejects advanced SARIF.
 - Historical temporary PR #17 used a dedicated branch/worktree and one empty credential-free commit. All eight required contexts appeared and succeeded; its advanced CodeQL conflict is preserved as historical evidence, and its remote branch, local branch, and worktree were removed.
-- PR #18 passed all eight required contexts and merged through the protected rebase path as `12dfdffb62ee51f6912b290eecc651444e797b90` after removing the conflicting advanced CodeQL workflow. PR #19 used one isolated temporary TypeScript type-error file; required `Frontend` under GitHub Actions app ID `15368` failed with TS2322, the other seven required contexts succeeded, and open PR metadata reported `mergeStateStatus: BLOCKED`. PR #19 was closed unmerged; its remote/local branch, worktree, and temporary file were removed. M3.1 is **Verified**.
+- PR #18 passed all eight required contexts and merged through the protected rebase path after removing the conflicting advanced CodeQL workflow. PR #19 used one isolated temporary TypeScript type-error file; the required `Frontend` context failed with TS2322, the other seven required contexts succeeded, and open PR metadata reported `mergeStateStatus: BLOCKED`. PR #19 was closed unmerged; its remote/local branch, worktree, and temporary file were removed. Full commit/app identifiers remain in private evidence. M3.1 is **Verified**.
 - The product owner approved a solo-maintainer equivalent: required automated checks and protected `main`, no force push/deletion, `CODEOWNERS` advisory, GitHub environment auth secrets empty, and authenticated E2E run from a trusted local operator context. The hosted credentialed job remains administrator-disabled unless a future second reviewer and protected environment are available.
 - After the deeper audit identified three personal-domain author addresses across 59 historical commits, the product owner explicitly chose to retain all three. No user email is present in tracked file content. Future local commits use the GitHub noreply address.
 
@@ -79,10 +91,10 @@ The first deployed revision exposed a contract defect: the application rejected 
 
 ## Open blockers
 
-1. Keep GitHub environment auth secrets empty and the hosted authenticated job administrator-disabled; run authenticated Playwright 4/4 from a trusted local operator context with disposable external state and exact approved hosts.
-2. Collector redaction sentinel, dashboards, alert routing/delivery, and credit-expiry notification.
-3. Complete the remaining nine scale-from-zero trials and calculate readiness p95/maximum; one preliminary wake-up took 28.185 seconds.
-4. Supabase encrypted logical exports and restore rehearsal, or explicit data-loss risk acceptance.
-5. Exact-digest rollback rehearsal.
+1. Rate limiting remains explicitly deferred/accepted; Cloudflare Free is future exploration only.
+2. Collector redaction, dashboards, alert delivery/receipt, alert routing, and credit-expiry notification remain open. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed.
+3. Complete ten cold-start trials and calculate readiness p95/maximum.
+4. The Free-plan backup limitation is accepted as already documented.
+5. Retained operator-owned synthetic accounts and stopped rows are not claimed as cleaned up.
 
-Production remains stopped.
+M3 and production-readiness remain stopped.
