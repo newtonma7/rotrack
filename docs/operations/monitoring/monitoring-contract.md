@@ -1,6 +1,6 @@
 # Monitoring and alert contract
 
-**Status:** the non-production API is configured to emit structured logs to its capped Log Analytics workspace and has Azure budget alerts configured. Workspace ingestion/redaction sentinel evidence, dashboards, operational alert rules/routing, credit-expiry notification, and measured baselines remain open. Every threshold below is a **suggested initial threshold**, not a measured rotrack baseline. Consumption scale-to-zero is accepted initially; cold starts and credit-expiry risk still require explicit signals.
+**Status — 2026-08-11:** the candidate passed public smoke, hosted authenticated smoke (`4/4`, zero skipped/unexpected/flaky, API-target bound), and corrected exact no-schema-change backend/frontend rollback rehearsal. The application logging boundary and ACA runtime label are read back, but collector ingestion/redaction, alert delivery/receipt, alert routing, and ten cold-start trials remain open. Rate limiting is explicitly deferred/accepted; Cloudflare Free is future exploration only. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. The backup limitation is accepted as already documented. Every threshold below is a **suggested initial threshold**, not a measured rotrack baseline. Consumption scale-to-zero is accepted initially; cold starts and credit-expiry risk still require explicit signals.
 
 ## Ownership and identifiers
 

@@ -17,7 +17,7 @@ export JAVA_HOME='/absolute/path/to/java-21'
 export PATH="$JAVA_HOME/bin:$PATH"
 ```
 
-## Verification status — 2026-08-09
+## Verification status — 2026-08-11
 
 **Not fully complete.** The following checks have passing evidence:
 
@@ -27,17 +27,16 @@ export PATH="$JAVA_HOME/bin:$PATH"
 - empty-database migration `apply` mode against a temporary isolated PostgreSQL cluster;
 - direct Supabase Data API two-user RLS matrix, including forged-insert denial;
 - two external disposable-user storage states outside the repository;
-- required-authenticated Playwright suite: 4 Chromium tests passed, 0 skipped;
+- required-authenticated hosted smoke: 4 Chromium tests passed, 0 skipped, unexpected, or flaky, with API-target binding;
 - degraded dependency-failure probe: liveness 200 and sanitized readiness 503;
 - final frontend/backend validation and clean configured health/readiness run.
 
 The fresh signup trigger gate passes through a redacted administrative
-read-only query confirming matching `auth.users` and `public.users` rows. On
-2026-08-09 the product owner/operator attested that the already-confirmed fresh
-disposable user completed first sign-in and reached `/dashboard`; no password or
-account details were recorded. This closes the manual first-sign-in step but is
-not automated deployed Playwright evidence. Existing disposable-user evidence
-separately proves the real sign-in and Spring ownership flow.
+read-only query confirming matching `auth.users` and `public.users` rows. The
+2026-08-11 hosted smoke passed the authenticated `4/4` contract and API-target
+binding. Operator-owned synthetic accounts and stopped rows remain by
+product-owner decision; cleanup is not claimed. No password or account details
+are recorded.
 
 ---
 
@@ -430,10 +429,9 @@ After completing the steps, provide only paths and yes/no values:
 
 ```text
 Current database confirmed disposable: yes
-Official CA path: /absolute/path/to/ca.crt
+Official CA: recorded privately
 Application role configured: yes
-User A storage-state path: /absolute/path/user-a.json
-User B storage-state path: /absolute/path/user-b.json
+User A/User B storage states: recorded privately
 Authorize rollback-only RLS/API verification: yes
 ```
 
@@ -443,7 +441,7 @@ Do not include credentials, tokens, storage-state contents, or certificate conte
 
 ## 12. Non-production exception and production gate
 
-The product owner previously authorized non-production M3 setup while M2.3 was blocked only on the fresh confirmed user's first sign-in. The operator-attested step is now complete and M2.3 is verified. The 2026-08-09 Azure/Vercel checkpoint is recorded in [`azure-nonproduction.md`](azure-nonproduction.md). Public GitHub visibility, the approved protected `main` fields, exact required contexts, `nonproduction` protected-main policy, empty auth-secret inventories, absent/default-disabled E2E variable, and public-repo security features are now read back. Historical temporary PR #17 showed all eight required contexts appearing and succeeding; its conflicting advanced CodeQL jobs failed against default setup and the advanced workflow was removed. PR #18 supplied the protected-green rebase merge and PR #19 supplied the deliberate-red required-check blocking proof; M3.1 is Verified. Deployed authenticated 4/4 remains separate, and neither the former exception nor the completed local acceptance authorizes production.
+The 2026-08-11 Azure/Vercel candidate checkpoint is recorded in [`azure-nonproduction.md`](azure-nonproduction.md) and [`single-environment.md`](single-environment.md). Public GitHub visibility, the approved protected `main` fields, exact required contexts, guarded-environment policy, empty auth-secret inventories, absent/default-disabled E2E variable, and public-repo security features are read back. M3.1 is Verified. Hosted authenticated `4/4`, public smoke, and corrected exact no-schema-change backend/frontend rollback rehearsal passed. Rate limiting remains explicitly deferred/accepted; ten cold-start trials, collector redaction, alert delivery/receipt, and alert routing evidence remain open. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. The backup limitation is accepted as already documented, and production-readiness remains stopped.
 
 For non-production, use the existing shared non-production/dev Supabase Free project with:
 
