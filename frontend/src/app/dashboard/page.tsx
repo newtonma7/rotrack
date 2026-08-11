@@ -21,7 +21,7 @@ const DailyChart = dynamic(() => import("@/components/dashboard/DailyChart"), {
         <CardTitle className="mt-2 font-display text-3xl">where each day landed.</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-72 animate-pulse rounded-[24px] bg-[var(--rt-cream)]" aria-label="Loading daily chart" />
+        <div role="status" aria-live="polite" className="h-72 animate-pulse rounded-[24px] bg-[var(--rt-cream)]" aria-label="Loading daily chart" />
       </CardContent>
     </Card>
   ),
@@ -68,7 +68,7 @@ export default function DashboardPage() {
             rotrack<span className="text-[var(--rt-orange)]">.</span>
           </Link>
           <nav aria-label="Application" className="flex items-center gap-2">
-            <span className="rounded-full bg-[var(--rt-cream-soft)] px-4 py-2 text-sm font-semibold">
+            <span aria-current="page" className="rounded-full bg-[var(--rt-cream-soft)] px-4 py-2 text-sm font-semibold">
               dashboard
             </span>
             <Button variant="ghost" asChild className="rounded-full">

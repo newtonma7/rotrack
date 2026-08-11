@@ -3,25 +3,31 @@ import type { Metadata } from "next";
 export const SITE_NAME = "rotrack";
 export const SITE_DESCRIPTION = "A simple study tracker for seeing where your time goes: work, rot, or untracked.";
 export const SITE_ICON = "/favicon.ico";
+export const SITE_SHARE_IMAGE = "/efecto-2026-02-21T04-51-28.webp";
 
 function resolveSiteOrigin(): string {
-  const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  const explicitOrigin = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  const vercelProductionOrigin = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  const configuredOrigin = explicitOrigin || (
+    vercelProductionOrigin
+      ? vercelProductionOrigin.startsWith("http")
+        ? vercelProductionOrigin
+        : `https://${vercelProductionOrigin}`
+      : undefined
+  );
 
   if (configuredOrigin) {
     const origin = new URL(configuredOrigin);
     if (!/^https?:$/.test(origin.protocol)) {
       throw new Error("NEXT_PUBLIC_SITE_URL must use http or https");
     }
-    if (origin.hostname.endsWith(".vercel.app") || origin.hostname.endsWith(".vercel.sh")) {
-      throw new Error("NEXT_PUBLIC_SITE_URL must be the canonical production origin, not a Vercel preview URL");
-    }
     return origin.origin;
   }
 
   // Local development stays usable, but every production build must provide
-  // the canonical origin so metadata never falls back to localhost or a preview URL.
+  // the canonical origin so metadata never falls back to localhost or VERCEL_URL.
   if (process.env.NODE_ENV === "production") {
-    throw new Error("NEXT_PUBLIC_SITE_URL is required for production builds");
+    throw new Error("NEXT_PUBLIC_SITE_URL or VERCEL_PROJECT_PRODUCTION_URL is required for production builds");
   }
   return "http://localhost:3000";
 }
@@ -53,13 +59,13 @@ export function createPageMetadata({
       title: `${title} | ${SITE_NAME}`,
       description,
       siteName: SITE_NAME,
-      images: [{ url: SITE_ICON, alt: SITE_NAME }],
+      images: [{ url: SITE_SHARE_IMAGE, alt: `${SITE_NAME} study tracker` }],
     },
     twitter: {
       card: "summary",
       title: `${title} | ${SITE_NAME}`,
       description,
-      images: [SITE_ICON],
+      images: [SITE_SHARE_IMAGE],
     },
   };
 }

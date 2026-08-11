@@ -12,7 +12,8 @@ Next.js embeds these public values into browser assets. Configure them before `n
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL used by the Auth client |
 | `NEXT_PUBLIC_SUPABASE_KEY` | Supabase anon/publishable browser key; never a service-role key |
-| `NEXT_PUBLIC_API_URL` | Spring API base URL including `/api/v1` |
+| `NEXT_PUBLIC_API_URL` | Spring API base URL including `/api/v1`; required for production builds |
+| `NEXT_PUBLIC_SITE_URL` | Canonical public site origin used for metadata, sitemap, and robots; required for production builds (local default: `http://localhost:3000`) |
 
 ### Backend (runtime environment)
 
