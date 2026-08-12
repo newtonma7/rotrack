@@ -1,6 +1,10 @@
 # Structured logging, correlation, and redaction contract
 
-**Status:** application boundary implemented and non-production (`staging` runtime label) configuration source-controlled. Do not claim collector redaction, ingestion, telemetry, alerts, or routing are active until deployed non-production tests prove them.
+**Status — 2026-08-11:** application boundary implemented and the candidate's production runtime label was read back at the canonical ACA boundary. Public/authenticated smoke and the corrected exact no-schema-change rollback rehearsal passed. Aggregate Log Analytics ingestion is now observed in the checked window, but collector redaction, telemetry, alert delivery/receipt, and routing remain unproven. Do not claim those controls are active until the deployed redaction tests and observation window pass. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed.
+
+## Alert delivery evidence
+
+The Azure Free-subscription test-notification API rejected the provider's budget and service-health synthetic tests. A temporary one-minute `Requests` metric alert was instead created, triggered by one harmless health request, observed in `Fired` state, and deleted successfully. The existing action group was attached without changing receivers. The product owner confirmed receipt of the harmless notification. One end-to-end alert delivery path is verified; broader telemetry and per-signal routing remain unproven.
 
 ## Event envelope
 

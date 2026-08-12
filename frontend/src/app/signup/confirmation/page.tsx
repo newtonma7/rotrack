@@ -25,9 +25,10 @@ function ConfirmationContent() {
       >
         rotrack
       </Link>
-      <Card className="w-full max-w-md border-[var(--rt-line)] bg-[var(--rt-paper)] shadow-[0_20px_50px_-20px_rgba(10,10,10,0.15)] text-center">
+      <main className="w-full max-w-md">
+      <Card className="border-[var(--rt-line)] bg-[var(--rt-paper)] shadow-[0_20px_50px_-20px_rgba(10,10,10,0.15)] text-center">
         <CardHeader>
-          <CardTitle className="font-heading text-2xl">Check your email</CardTitle>
+          <CardTitle headingLevel="h1" className="font-heading text-2xl">Check your email</CardTitle>
           <CardDescription className="text-[var(--rt-ink-muted)]">
             We sent a confirmation link
             {email ? (
@@ -50,6 +51,7 @@ function ConfirmationContent() {
           </Button>
         </CardContent>
       </Card>
+      </main>
     </div>
   );
 }

@@ -1,8 +1,20 @@
 # Azure non-production deployment runbook
 
-**Scope:** the approved non-production boundary only. This runbook must never target `rotrack-prod`, Vercel Production, `rotrack-production`, or `rotrack-api-production`.
+**Scope:** the approved ACA implementation boundary and its non-production guardrails. This runbook must not target the reserved separate production Azure/Supabase lane. The product-owner-approved single-environment decision allows the canonical hosted candidate to use the shared ACA boundary; it does not waive the M3/production-readiness STOP.
 
-## Current verified checkpoint — 2026-08-09
+## Current candidate checkpoint — 2026-08-11
+
+- Source commit `744635c` committed Azure readback/rollback-selection hardening. Focused Azure contract/readback, publish, preflight, RBAC, container, and release checks passed.
+- The reviewed backend candidate was deployed to the canonical ACA implementation boundary. Candidate traffic was 100%; readiness/readback, selected digest/service-version equality, production runtime label, and scale `1..1` passed. Full revision and digest identifiers remain in private evidence.
+- The canonical Vercel Production candidate was deployed from the same reviewed commit and canonical alias readback passed.
+- Public smoke passed: frontend `200`, exact API liveness/readiness `200` contracts, HTTP redirect to HTTPS, allowed CORS, and denied unrelated CORS.
+- Hosted authenticated smoke passed `4/4` with zero skipped, unexpected, or flaky results; API-target binding passed. Operator-owned synthetic accounts and stopped rows remain by product-owner decision, so cleanup is not claimed.
+- The corrected exact no-schema-change backend/frontend rollback rehearsal passed prior backend health, prior frontend promotion, rollback public smoke, rollback authenticated `4/4`, candidate restoration, and final candidate health/CORS/auth; final state is the candidate.
+- Rate limiting remains explicitly deferred/accepted. Cloudflare Free is future exploration only. Ten genuine zero-replica trials completed on 2026-08-11 with readiness 10/10, p50 34.586 seconds, and p95/max 39.425 seconds; the 30-second p95 criterion was not met. The product owner subsequently chose `minReplicas=1` for the canonical shared-hosted app and accepted the resulting idle cost pending actual billing. Collector redaction, alert delivery/receipt, and alert routing evidence remain open. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. Backup limitation is accepted as already documented.
+
+The M3/production-readiness STOP remains. Keep full identifiers only in private evidence.
+
+## Historical non-production checkpoint — 2026-08-09
 
 The platform owner authorized and the coordinator observed:
 
@@ -23,7 +35,7 @@ Production resources and `rotrack-prod` were not created, changed, migrated, or 
 ## Cost posture
 
 - ACR Basic is the predictable baseline cost (about USD 5/month at the observed retail rate).
-- Container Apps Consumption scales to zero and uses the subscription free grant before consumption charges.
+- The canonical shared-hosted Container App now keeps one idle replica by product-owner decision; the subscription free grant applies before consumption charges, and actual billing will be observed.
 - Log Analytics has a 0.1 GB daily cap and 30-day retention.
 - The Azure budget is a notification, not a hard spending cap. Cost and student-credit data may be delayed.
 - Initial application scale is one maximum replica. Reassess the fleet-wide rate-limit boundary before increasing it.
@@ -110,11 +122,11 @@ Vercel Preview currently uses Vercel Authentication. Keep it enabled. Do not gen
 
 Before the M3 gate can pass:
 
-1. keep the read-back `main` protection: pull requests, zero human approvals, strict app-bound required contexts, administrator enforcement, linear history, no force pushes/deletion, and advisory `CODEOWNERS`; keep `nonproduction` restricted to exactly protected `main`;
-2. keep repository/nonproduction/production auth-secret inventories empty, `ROTRACK_AUTHENTICATED_E2E_ENABLED` absent/default-disabled, and the hosted authenticated job administrator-disabled. Run authenticated non-production Playwright 4/4 from a trusted local operator context with disposable external storage states and exact approved frontend/API hosts;
-3. observe log ingestion/redaction and route health, readiness, error, restart, auth, connection, budget, and credit-expiry alerts;
+1. keep the read-back `main` protection: pull requests, zero human approvals, strict app-bound required contexts, administrator enforcement, linear history, no force pushes/deletion, and advisory `CODEOWNERS`; keep the guarded environment policy intact;
+2. keep repository/nonproduction/production auth-secret inventories empty and `ROTRACK_AUTHENTICATED_E2E_ENABLED` absent/default-disabled. The hosted authenticated smoke passed `4/4` with zero skipped/unexpected/flaky and API-target binding; retained synthetic accounts/rows are not claimed as cleanup;
+3. observe collector redaction and route health, readiness, error, restart, auth, connection, budget, and credit-expiry alert delivery/receipt/routing. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed;
 4. run at least ten scale-from-zero trials;
-5. establish encrypted off-site Supabase logical exports and rehearse restore, or record explicit data-loss risk acceptance;
-6. rehearse exact-digest rollback and restore the intended non-production candidate.
+5. retain the documented Free-plan backup limitation and its accepted risk decision;
+6. keep the corrected exact no-schema-change rollback rehearsal evidence with final candidate restoration; do not mark the release gate complete while rate limiting remains deferred/accepted or the observation safeguards remain open.
 
 Production remains stopped until those gates pass and the owner separately authorizes production mutation.

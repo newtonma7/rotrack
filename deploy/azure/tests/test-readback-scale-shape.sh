@@ -56,21 +56,55 @@ case "$ARGS" in
   *'containerapp show'*)
     python3 - <<'PY'
 import json, os
+mode = os.environ.get('FAKE_TRAFFIC_MODE', 'latest')
+traffic = [{'latestRevision': True, 'weight': 100}] if mode == 'latest' else [{'revisionName': 'rotrack-api--prior', 'weight': 100}]
+print(json.dumps({'name':'rotrack-api-nonproduction','latestRevisionName':'rotrack-api--revision','activeRevisionsMode':'Multiple','fqdn':'rotrack-api.example.azurecontainerapps.io','scale':{'minReplicas':1,'maxReplicas':1,'cooldownPeriod':300,'pollingInterval':30,'rules':[]},'terminationGracePeriodSeconds':30,'ingress':{'external':True,'targetPort':8080,'allowInsecure':False,'traffic':traffic},'probes':[{'type':'Liveness','httpGet':{'path':'/api/v1/health'}},{'type':'Readiness','httpGet':{'path':'/api/v1/readiness'}}]}))
+PY
+    ;;
+  *'containerapp revision show'*)
+    case "$FAKE_TRAFFIC_MODE:$ARGS" in
+      latest:*'--revision rotrack-api--revision'*) ;;
+      prior:*'--revision rotrack-api--prior'*) ;;
+      *) printf '%s\n' 'readback queried the wrong selected revision' >&2; exit 1 ;;
+    esac
+    python3 - <<'PY'
+import json, os
 names = [
 'DATABASE_URL','DATABASE_USERNAME','DATABASE_PASSWORD','DATABASE_CA_CERTIFICATE_PEM','SUPABASE_JWKS_URI','SUPABASE_ISSUER_URI',
 'PORT','DATABASE_CA_CERTIFICATE_PATH','DATABASE_CONNECTION_TIMEOUT_MS','DATABASE_POOL_VALIDATION_TIMEOUT_MS','DATABASE_MAXIMUM_POOL_SIZE','DATABASE_MINIMUM_IDLE','READINESS_CACHE_TTL','SUPABASE_JWT_AUDIENCE','CORS_ALLOWED_ORIGINS','ROTRACK_MUTATION_RATE_LIMIT_REQUESTS','ROTRACK_MUTATION_RATE_LIMIT_WINDOW','ROTRACK_MUTATION_RATE_LIMIT_MAX_KEYS','SERVER_SHUTDOWN','SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE','LOGGING_STRUCTURED_FORMAT_CONSOLE','ROTRACK_STRUCTURED_LOGGING_ENABLED','ROTRACK_LOGGING_ENVIRONMENT','ROTRACK_SERVICE_VERSION','LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY','LOGGING_LEVEL_ORG_HIBERNATE_SQL','LOGGING_LEVEL_ORG_HIBERNATE_ORM_JDBC_BIND','SPRING_JPA_SHOW_SQL']
 secrets = {'DATABASE_URL':'database-url','DATABASE_USERNAME':'database-username','DATABASE_PASSWORD':'database-password','DATABASE_CA_CERTIFICATE_PEM':'database-ca-certificate-pem','SUPABASE_JWKS_URI':'supabase-jwks-uri','SUPABASE_ISSUER_URI':'supabase-issuer-uri'}
-values = {'PORT':'8080','DATABASE_CA_CERTIFICATE_PATH':'/tmp/rotrack-certs/supabase-db-ca.crt','DATABASE_CONNECTION_TIMEOUT_MS':'5000','DATABASE_POOL_VALIDATION_TIMEOUT_MS':'2000','DATABASE_MAXIMUM_POOL_SIZE':'5','DATABASE_MINIMUM_IDLE':'0','READINESS_CACHE_TTL':'5s','SUPABASE_JWT_AUDIENCE':'authenticated','CORS_ALLOWED_ORIGINS':'https://preview.vercel.app','ROTRACK_MUTATION_RATE_LIMIT_REQUESTS':'30','ROTRACK_MUTATION_RATE_LIMIT_WINDOW':'1m','ROTRACK_MUTATION_RATE_LIMIT_MAX_KEYS':'10000','SERVER_SHUTDOWN':'graceful','SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE':'25s','LOGGING_STRUCTURED_FORMAT_CONSOLE':'ecs','ROTRACK_STRUCTURED_LOGGING_ENABLED':'true','ROTRACK_LOGGING_ENVIRONMENT':'staging','ROTRACK_SERVICE_VERSION':os.environ['DIGEST'],'LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY':'WARN','LOGGING_LEVEL_ORG_HIBERNATE_SQL':'OFF','LOGGING_LEVEL_ORG_HIBERNATE_ORM_JDBC_BIND':'OFF','SPRING_JPA_SHOW_SQL':'false'}
-env = [{'name': n, 'secretRef': secrets[n]} if n in secrets else {'name': n, 'value': values[n]} for n in names]
-print(json.dumps({'name':'rotrack-api-nonproduction','latestRevisionName':'rotrack-api--revision','fqdn':'rotrack-api.example.azurecontainerapps.io','image':'rotracknonproductionabc123.azurecr.io/rotrack-api@'+os.environ['DIGEST'],'scale':{'minReplicas':0,'maxReplicas':1,'cooldownPeriod':300,'pollingInterval':30,'rules':[]},'terminationGracePeriodSeconds':30,'ingress':{'external':True,'targetPort':8080,'allowInsecure':False},'env':env,'probes':[{'type':'Liveness','httpGet':{'path':'/api/v1/health'}},{'type':'Readiness','httpGet':{'path':'/api/v1/readiness'}}]}))
+values = {'PORT':'8080','DATABASE_CA_CERTIFICATE_PATH':'/tmp/rotrack-certs/supabase-db-ca.crt','DATABASE_CONNECTION_TIMEOUT_MS':'5000','DATABASE_POOL_VALIDATION_TIMEOUT_MS':'2000','DATABASE_MAXIMUM_POOL_SIZE':'5','DATABASE_MINIMUM_IDLE':'0','READINESS_CACHE_TTL':'5s','SUPABASE_JWT_AUDIENCE':'authenticated','CORS_ALLOWED_ORIGINS':'https://preview.vercel.app','ROTRACK_MUTATION_RATE_LIMIT_REQUESTS':'30','ROTRACK_MUTATION_RATE_LIMIT_WINDOW':'1m','ROTRACK_MUTATION_RATE_LIMIT_MAX_KEYS':'10000','SERVER_SHUTDOWN':'graceful','SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE':'25s','LOGGING_STRUCTURED_FORMAT_CONSOLE':'ecs','ROTRACK_STRUCTURED_LOGGING_ENABLED':'true','ROTRACK_LOGGING_ENVIRONMENT':'production','ROTRACK_SERVICE_VERSION':os.environ.get('REVISION_DIGEST', os.environ['DIGEST']),'LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY':'WARN','LOGGING_LEVEL_ORG_HIBERNATE_SQL':'OFF','LOGGING_LEVEL_ORG_HIBERNATE_ORM_JDBC_BIND':'OFF','SPRING_JPA_SHOW_SQL':'false'}
+secret_value = os.environ.get('FAKE_SECRET_VALUE', '')
+env = [{'name': n, 'secretRef': secrets[n], 'value': secret_value} if n in secrets else {'name': n, 'value': values[n]} for n in names]
+revision = 'rotrack-api--prior' if os.environ.get('FAKE_TRAFFIC_MODE') == 'prior' else 'rotrack-api--revision'
+image_digest = os.environ.get('REVISION_DIGEST', os.environ['DIGEST'])
+print(json.dumps({'name':revision,'image':'rotracknonproductionabc123.azurecr.io/rotrack-api@'+image_digest,'env':env}))
 PY
     ;;
 esac
 SH
 chmod +x "$BIN/az"
 
-AZURE_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
-  AZURE_NONPRODUCTION_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
-AZURE_FOUNDATION_PARAMETER_FILE="$TMP/foundation.json" AZURE_APP_PARAMETER_FILE="$TMP/app.json" \
-PATH="$BIN:$PATH" "$ROOT/scripts/azure/readback.sh"
-printf '%s\n' 'azure readback provider-scale-shape contract: passed'
+FAKE_TRAFFIC_MODE=latest \
+  AZURE_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
+  AZURE_FOUNDATION_PARAMETER_FILE="$TMP/foundation.json" AZURE_APP_PARAMETER_FILE="$TMP/app.json" \
+  PATH="$BIN:$PATH" "$ROOT/scripts/azure/readback.sh"
+FAKE_TRAFFIC_MODE=prior \
+  AZURE_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
+  AZURE_FOUNDATION_PARAMETER_FILE="$TMP/foundation.json" AZURE_APP_PARAMETER_FILE="$TMP/app.json" \
+  PATH="$BIN:$PATH" "$ROOT/scripts/azure/readback.sh" >/dev/null
+if FAKE_TRAFFIC_MODE=prior REVISION_DIGEST=sha256:$(printf '%064d' 0) \
+  AZURE_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
+  AZURE_FOUNDATION_PARAMETER_FILE="$TMP/foundation.json" AZURE_APP_PARAMETER_FILE="$TMP/app.json" \
+  PATH="$BIN:$PATH" "$ROOT/scripts/azure/readback.sh" >/dev/null 2>&1; then
+  printf '%s\n' 'azure readback accepted a mismatched selected revision' >&2
+  exit 1
+fi
+if FAKE_SECRET_VALUE=unexpected-secret-value \
+  AZURE_SUBSCRIPTION_ID=00000000-0000-0000-0000-000000000000 \
+  AZURE_FOUNDATION_PARAMETER_FILE="$TMP/foundation.json" AZURE_APP_PARAMETER_FILE="$TMP/app.json" \
+  PATH="$BIN:$PATH" "$ROOT/scripts/azure/readback.sh" >/dev/null 2>&1; then
+  printf '%s\n' 'azure readback accepted a non-empty secret value alongside secretRef' >&2
+  exit 1
+fi
+printf '%s\n' 'azure readback selected-revision contract: passed'

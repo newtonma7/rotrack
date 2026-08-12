@@ -1,7 +1,7 @@
 /**
  * HTTP client for the rotrack Spring Boot API.
  *
- * Data flow: Browser → fetch() → Spring Boot (localhost:8080) → Supabase Postgres
+ * Data flow: Browser → fetch() → Spring Boot API → Supabase Postgres
  * Auth flow:  Supabase session JWT → Authorization: Bearer header → Spring validates via JWKS
  *
  * Supabase handles login; this file handles everything *after* login that needs our own backend.
@@ -18,7 +18,8 @@ import type {
 } from "@/types/time-entry";
 
 // NEXT_PUBLIC_* vars are embedded at build time and visible in the browser — safe for URLs, not secrets.
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV !== "production" ? "http://localhost:8080/api/v1" : "");
 
 /**
  * Reads a valid Supabase access token for Spring Boot Bearer auth.
@@ -58,6 +59,10 @@ async function apiFetch<T>(
   const token = await getAuthToken();
   if (!token) {
     throw new Error("Not authenticated");
+  }
+
+  if (!API_BASE) {
+    throw new Error("API URL is not configured");
   }
 
   const response = await fetch(`${API_BASE}${path}`, {
