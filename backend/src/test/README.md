@@ -23,7 +23,7 @@ Choose one target and mode:
 
 - `apply` requires an empty disposable database. It creates a minimal
   `auth.users`/`auth.uid()` test contract only when PostgreSQL does not already
-  provide one, applies checked-in migrations `001`, `002`, then `003`, proves the
+  provide one, applies checked-in migrations `001` through `005`, proves the
   invariants, and rolls back all DDL and data. Run only the raw migration test,
   because the rollback intentionally leaves no schema for a later Spring context:
 

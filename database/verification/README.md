@@ -17,7 +17,9 @@ Target: empty disposable PostgreSQL
 Mode: apply
 Migration inputs: database/migrations/001_initial_schema.sql,
                   database/migrations/002_harden_time_entries.sql,
-                  database/migrations/003_require_usernames.sql
+                  database/migrations/003_require_usernames.sql,
+                  database/migrations/004_user_preferences.sql,
+                  database/migrations/005_time_entry_history.sql
 Command: cd backend && ROTRACK_TEST_DATABASE_MODE=apply \
          mvn -Drotrack.postgres.integration=true \
          -Dtest=PostgresMigrationIntegrationTest test
@@ -35,7 +37,7 @@ Credentials/host/database identifiers: REDACTED
 
 ## Already-migrated database and repository verification
 
-Use `verify` on an isolated database where migrations 001, 002, and 003 are
+Use `verify` on an isolated database where migrations 001 through 005 are
 already applied and existing profiles have been prepared with valid unique
 usernames. Both test classes run and roll back their probe rows.
 
@@ -45,7 +47,9 @@ Target: isolated migrated PostgreSQL | isolated Supabase test project
 Mode: verify
 Migration inputs: database/migrations/001_initial_schema.sql,
                   database/migrations/002_harden_time_entries.sql,
-                  database/migrations/003_require_usernames.sql
+                  database/migrations/003_require_usernames.sql,
+                  database/migrations/004_user_preferences.sql,
+                  database/migrations/005_time_entry_history.sql
 Command: cd backend && ROTRACK_TEST_DATABASE_MODE=verify \
          mvn -Drotrack.postgres.integration=true \
          -Dtest='PostgresMigrationIntegrationTest,TimeEntryRepositoryPostgresIntegrationTest' test
@@ -54,7 +58,8 @@ Proved: actual application-table catalog, enabled RLS/named policies, and
         rollback-only signup trigger; canonical username normalization,
         validation, uniqueness, and immutability; same-user active rejection
         (23505); different-user active rows; invalid range rejection (23514);
-        3,600 timestamp-derived seconds with duration_minutes=999;
+        same-user overlap exclusion (23P01), adjacent ranges, 280-character
+        notes ceiling; 3,600 timestamp-derived seconds with duration_minutes=999;
         Spring Data flushes and owner-scoped active reads against the migrated schema
 Cleanup: probe transactions rolled back
 Credentials/host/database identifiers: REDACTED

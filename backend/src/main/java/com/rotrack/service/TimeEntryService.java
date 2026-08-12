@@ -43,6 +43,7 @@ public class TimeEntryService {
 
     @Transactional
     public TimeEntryDTO startSession(UUID userId, ActivityType activityType, String notes) {
+        validateNotes(notes);
         timeEntryRepository.findFirstByUserIdAndEndTimeIsNullOrderByStartTimeDesc(userId)
                 .ifPresent(active -> {
                     throw new ConflictException(
@@ -188,6 +189,10 @@ public class TimeEntryService {
         if (startTime == null || endTime == null || !endTime.isAfter(startTime)) {
             throw new IllegalArgumentException("endTime must be after startTime");
         }
+        validateNotes(notes);
+    }
+
+    private void validateNotes(String notes) {
         if (notes != null && notes.length() > 280) {
             throw new IllegalArgumentException("notes must be 280 characters or fewer");
         }

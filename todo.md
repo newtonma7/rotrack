@@ -615,7 +615,7 @@ The gate requires all of the following:
 
 ### M4.2 — Time-entry history and manual corrections
 
-**Status:** Not started
+**Status:** Implemented—unverified
 **Dependencies:** M4.1
 
 - Add owned list/create/update/delete APIs for completed history entries; history excludes every active entry.
@@ -624,6 +624,13 @@ The gate requires all of the following:
 - Reject invalid ranges, ownership violations, and overlaps with user-facing validation plus database-enforced same-user range exclusion, including conflicts with an active range; adjacent entries remain valid.
 - Add accessible history/editor UI with validation, empty/error/retry states, and confirmation for deletion.
 - Add focused backend repository/service/controller and frontend API/component contract tests for completed-only results, ownership, cursor boundaries, edits, deletion, invalid ranges, and overlap conflicts.
+
+**Implementation and verification evidence — 2026-08-12 / local workspace:**
+
+- Added migration `005_time_entry_history.sql` with PostgreSQL `btree_gist` same-user half-open range exclusion, 280-character notes check, and the runtime-role DELETE grant; active and completed ranges share the same database boundary while adjacent ranges remain valid.
+- Added owned `GET/POST/PUT/DELETE /api/v1/time-entries` history/manual-entry APIs. History is completed-only, fixed at 20 rows, ordered by `(start_time DESC, id DESC)`, and returns an unchanged opaque base64url cursor. Requests never carry `userId` or duration; validation accepts only `WORK|ROT`, requires `endTime > startTime`, and caps notes at 280 characters. Ownership misses return `404`; overlap conflicts return `TIME_ENTRY_OVERLAP`.
+- Focused red evidence was captured first by `TimeEntryHistoryControllerTest`/`TimeEntryServiceTest` failing to compile before the new contracts existed (commit `1cf92c3`); focused green controller/service/migration/route/CORS tests then passed after implementation.
+- Java 21 full test/package, disposable Podman PostgreSQL 17 apply/verify, runtime-role/staging template validation, migration ordering, and `git diff --check` remain the final gate for this task.
 
 ### M4.3 — Native typed contract policy
 

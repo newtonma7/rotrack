@@ -2,6 +2,7 @@ package com.rotrack.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -17,6 +18,7 @@ import com.rotrack.dto.HistoryPageDTO;
 import com.rotrack.dto.TimeEntryDTO;
 import com.rotrack.exception.GlobalExceptionHandler;
 import com.rotrack.exception.InvalidCursorException;
+import com.rotrack.exception.ResourceNotFoundException;
 import com.rotrack.model.ActivityType;
 import com.rotrack.service.TimeEntryService;
 import java.time.Instant;
@@ -110,6 +112,25 @@ class TimeEntryHistoryControllerTest {
                                 "\"endTime\":\"2026-01-01T10:00:00Z\",\"notes\":\"" + "x".repeat(281) + "\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void ownershipViolationsUseNotFoundForEditAndDelete() throws Exception {
+        doThrow(new ResourceNotFoundException("Time entry not found"))
+                .when(timeEntryService).deleteEntry(USER_ID, ENTRY_ID);
+        when(timeEntryService.updateCompletedEntry(eq(USER_ID), eq(ENTRY_ID), any()))
+                .thenThrow(new ResourceNotFoundException("Time entry not found"));
+        String body = "{\"activityType\":\"WORK\",\"startTime\":\"2026-01-01T10:00:00Z\","
+                + "\"endTime\":\"2026-01-01T11:00:00Z\"}";
+
+        mockMvc.perform(put("/api/v1/time-entries/{id}", ENTRY_ID)
+                        .with(jwt().jwt(token -> token.subject(USER_ID.toString()).audience(List.of("authenticated"))))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(delete("/api/v1/time-entries/{id}", ENTRY_ID)
+                        .with(jwt().jwt(token -> token.subject(USER_ID.toString()).audience(List.of("authenticated")))))
+                .andExpect(status().isNotFound());
     }
 
     @Test
