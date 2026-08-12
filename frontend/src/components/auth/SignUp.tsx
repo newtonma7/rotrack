@@ -16,8 +16,34 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+const RESERVED_USERNAMES = new Set([
+  "admin",
+  "api",
+  "support",
+  "help",
+  "rotrack",
+  "signin",
+  "signup",
+  "confirmation",
+  "dashboard",
+  "tracker",
+  "settings",
+]);
+
+const SIGNUP_ERROR_MESSAGE = "That username is unavailable. Try another one.";
+
+function validateUsername(username: string): string | null {
+  if (!username) return "Username is required";
+  if (username.length < 3 || username.length > 24) return "Username must be 3–24 characters";
+  if (!/^[a-z0-9_]+$/.test(username)) return "Use only lowercase letters, numbers, or underscores";
+  if (RESERVED_USERNAMES.has(username)) return "That username is reserved. Try another one.";
+  return null;
+}
+
 export default function SignUp() {
   const router = useRouter();
+  const [username, setUsername] = useState("");
+  const [usernameError, setUsernameError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -27,18 +53,39 @@ export default function SignUp() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setMessage(null);
+
     if (password !== confirmPassword) {
       setMessage("Passwords do not match");
       setLoading(false);
       return;
     }
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    setLoading(false);
-    if (error) {
-      setMessage(error.message);
-    } else {
-      const confirmedEmail = encodeURIComponent(data?.user?.email ?? email);
-      router.push(`/signup/confirmation?email=${confirmedEmail}`);
+
+    const normalizedUsername = username.trim().toLowerCase();
+    const validationError = validateUsername(normalizedUsername);
+    setUsernameError(validationError);
+    if (validationError) {
+      setLoading(false);
+      return;
+    }
+
+    setUsername(normalizedUsername);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { username: normalizedUsername } },
+      });
+      if (error) {
+        setMessage(SIGNUP_ERROR_MESSAGE);
+      } else {
+        const confirmedEmail = encodeURIComponent(data?.user?.email ?? email);
+        router.push(`/signup/confirmation?email=${confirmedEmail}`);
+      }
+    } catch {
+      setMessage(SIGNUP_ERROR_MESSAGE);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -57,6 +104,32 @@ export default function SignUp() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignUp} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                type="text"
+                placeholder="your_username"
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  if (usernameError) setUsernameError(null);
+                }}
+                onInvalid={() => setUsernameError("Username is required")}
+                required
+                aria-required="true"
+                aria-invalid={usernameError ? "true" : undefined}
+                aria-describedby={usernameError ? "username-hint username-error" : "username-hint"}
+              />
+              <p id="username-hint" role="status" aria-live="polite" className="text-xs text-[var(--rt-ink-muted)]">
+                3–24 characters: lowercase letters, numbers, and underscores.
+              </p>
+              {usernameError && (
+                <p id="username-error" role="alert" className="text-sm text-[var(--rt-ink-soft)]">
+                  {usernameError}
+                </p>
+              )}
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -93,6 +166,7 @@ export default function SignUp() {
             <Button type="submit" disabled={loading} className="w-full rounded-full">
               {loading ? "Creating account..." : "Sign up"}
             </Button>
+            {loading && <p role="status" aria-live="polite" className="sr-only">Creating account...</p>}
           </form>
           <p className="mt-6 text-center text-sm text-[var(--rt-ink-muted)]">
             Already have an account?{" "}
