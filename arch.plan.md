@@ -188,7 +188,7 @@ If the existing `duration_minutes` column is retained temporarily, the API must 
 - Persist and exchange ISO-8601 UTC instants.
 - Reporting ranges are half-open: `[start, end)`.
 - Calendar boundaries use a validated IANA timezone.
-- Before preferences exist, the frontend sends the browser IANA timezone for dashboard requests.
+- When no saved timezone exists, the frontend sends the browser IANA timezone for dashboard and history requests.
 - The default dashboard range is the previous seven local calendar days including today.
 - Dashboard requests are capped at 366 local days; larger analytics jobs require a separate export/reporting design.
 - Sessions spanning a reporting boundary are clipped to the range and split across daily buckets.
