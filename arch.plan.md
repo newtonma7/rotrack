@@ -38,7 +38,7 @@ This section describes what exists in source control today. It is not a completi
 ### Frontend
 
 - Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4, shadcn/ui primitives, Recharts, and `@supabase/supabase-js`
-- Routes: `/`, `/signin`, `/signup`, `/signup/confirmation`, `/tracker`, `/dashboard`
+- Routes: `/`, `/signin`, `/signup`, `/signup/confirmation`, `/tracker`, `/dashboard`, `/settings`
 - Client-side Supabase session context and protected-route layouts
 - API client using native `fetch` and Supabase bearer tokens
 - Tracker UI with start, active-session restore, elapsed display, and explicit stop; sessions remain active across reload, navigation, tab changes, minimization, and browser closure until explicitly stopped
@@ -48,7 +48,7 @@ This section describes what exists in source control today. It is not a completi
 ### Backend and database
 
 - Spring Boot 3.4, Java 21 target, Maven, Spring Web, JPA, OAuth2 Resource Server, validation, and PostgreSQL
-- Implemented endpoints: independent liveness/readiness, start session, get active session, ID-based stop, and dashboard stats
+- Implemented endpoints: independent liveness/readiness, start session, get active session, ID-based stop, dashboard stats, and owned preferences GET/PUT
 - Supabase migrations defining `users`, `time_entries`, the `ROT|WORK` enum, ownership RLS policies, signup profile creation, timestamp constraints, one-active-session uniqueness, and reporting indexes
 - Source-controlled suites include executable PostgreSQL migration/repository tests, generated signed-JWT filter tests, service/controller ownership tests, Vitest/RTL coverage, and a quarantined external-auth Playwright critical path that can bind observed browser API responses to an approved API base
 - Backend startup rejects PostgreSQL TLS override properties, requires managed JDBC hostname verification with an explicit CA path, validates exact CORS origins, binds bounded Hikari settings, and exposes cached/single-flight database readiness

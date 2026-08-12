@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getBrowserTimeZone, isValidTimeZone } from "@/lib/timezone";
 import { updatePreferences } from "@/lib/api";
+import { ApiRequestError } from "@/lib/api-errors";
 import type { UserPreferences } from "@/types/preferences";
 
 type PreferencesFormProps = {
@@ -40,8 +41,16 @@ function toPreferences(draft: DraftPreferences): UserPreferences {
 export function PreferencesForm({ preferences }: PreferencesFormProps) {
   const [draft, setDraft] = useState(() => toDraft(preferences));
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const browserTimeZone = getBrowserTimeZone();
+
+  const updateDraft = (update: (current: DraftPreferences) => DraftPreferences) => {
+    setDraft(update);
+    setSaveError(null);
+    setFieldErrors({});
+    setSaveState("idle");
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -50,30 +59,41 @@ export function PreferencesForm({ preferences }: PreferencesFormProps) {
     const parsedGoal = goal ? Number(goal) : 0;
 
     if (timeZone && !isValidTimeZone(timeZone)) {
-      setSaveError("Enter a valid IANA timezone, such as America/New_York.");
+      const message = "Enter a valid IANA timezone, such as America/New_York.";
+      setSaveError(message);
+      setFieldErrors({ timeZone: message });
       setSaveState("idle");
       return;
     }
     if (goal && (!Number.isInteger(parsedGoal) || parsedGoal < 1 || parsedGoal > 1440)) {
-      setSaveError("Daily Work goal must be a whole number from 1 to 1440 minutes.");
+      const message = "Daily Work goal must be a whole number from 1 to 1440 minutes.";
+      setSaveError(message);
+      setFieldErrors({ dailyWorkGoalMinutes: message });
       setSaveState("idle");
       return;
     }
 
     setSaveError(null);
+    setFieldErrors({});
     setSaveState("saving");
     try {
       const saved = await updatePreferences(toPreferences(draft));
       setDraft(toDraft(saved));
+      setFieldErrors({});
       setSaveState("saved");
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Preferences could not be saved.");
+      setFieldErrors(error instanceof ApiRequestError ? error.fieldErrors : {});
       setSaveState("idle");
     }
   };
 
+  const timezoneError = fieldErrors.timeZone ?? fieldErrors.timezone;
+  const goalError = fieldErrors.dailyWorkGoalMinutes;
+
   return (
     <form onSubmit={(event) => void handleSubmit(event)} aria-busy={saveState === "saving"} className="space-y-6">
+      <fieldset disabled={saveState === "saving"} className="space-y-6">
       <Card className="rounded-[32px] border-[var(--rt-line)] bg-[var(--rt-paper)]">
         <CardHeader>
           <p className="text-[0.8rem] font-semibold uppercase tracking-[0.18em] text-[var(--rt-orange)]">calendar</p>
@@ -87,33 +107,39 @@ export function PreferencesForm({ preferences }: PreferencesFormProps) {
             <Label htmlFor="timezone">Saved timezone</Label>
             <Input
               id="timezone"
+              disabled={saveState === "saving"}
               value={draft.timeZone}
-              onChange={(event) => setDraft((current) => ({ ...current, timeZone: event.target.value }))}
+              onChange={(event) => updateDraft((current) => ({ ...current, timeZone: event.target.value }))}
               placeholder={browserTimeZone}
               autoComplete="off"
               spellCheck={false}
-              aria-describedby="timezone-help"
+              aria-invalid={timezoneError ? "true" : undefined}
+              aria-describedby={["timezone-help", timezoneError && "timezone-error"].filter(Boolean).join(" ")}
             />
             <p id="timezone-help" className="text-sm text-[var(--rt-ink-muted)]">
               Leave blank to use this browser timezone: <span className="font-semibold text-[var(--rt-ink)]">{browserTimeZone}</span>.
             </p>
+            {timezoneError && <p id="timezone-error" className="text-sm text-[var(--rt-orange-deep)]">{timezoneError}</p>}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="daily-work-goal">Daily Work goal (minutes)</Label>
             <Input
               id="daily-work-goal"
+              disabled={saveState === "saving"}
               type="number"
               min={1}
               max={1440}
               step={1}
               inputMode="numeric"
               value={draft.dailyWorkGoalMinutes}
-              onChange={(event) => setDraft((current) => ({ ...current, dailyWorkGoalMinutes: event.target.value }))}
+              onChange={(event) => updateDraft((current) => ({ ...current, dailyWorkGoalMinutes: event.target.value }))}
               placeholder="optional"
-              aria-describedby="daily-work-goal-help"
+              aria-invalid={goalError ? "true" : undefined}
+              aria-describedby={["daily-work-goal-help", goalError && "daily-work-goal-error"].filter(Boolean).join(" ")}
             />
             <p id="daily-work-goal-help" className="text-sm text-[var(--rt-ink-muted)]">Optional. Choose a whole number between 1 and 1440.</p>
+            {goalError && <p id="daily-work-goal-error" className="text-sm text-[var(--rt-orange-deep)]">{goalError}</p>}
           </div>
         </CardContent>
       </Card>
@@ -128,8 +154,9 @@ export function PreferencesForm({ preferences }: PreferencesFormProps) {
           <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-[var(--rt-line)] p-4 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--rt-orange)]">
             <input
               type="checkbox"
+              disabled={saveState === "saving"}
               checked={draft.shareStudySummary}
-              onChange={(event) => setDraft((current) => ({ ...current, shareStudySummary: event.target.checked }))}
+              onChange={(event) => updateDraft((current) => ({ ...current, shareStudySummary: event.target.checked }))}
               className="mt-1 size-4 accent-[var(--rt-orange)]"
             />
             <span>
@@ -140,8 +167,9 @@ export function PreferencesForm({ preferences }: PreferencesFormProps) {
           <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-[var(--rt-line)] p-4 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--rt-orange)]">
             <input
               type="checkbox"
+              disabled={saveState === "saving"}
               checked={draft.shareActiveStudyStatus}
-              onChange={(event) => setDraft((current) => ({ ...current, shareActiveStudyStatus: event.target.checked }))}
+              onChange={(event) => updateDraft((current) => ({ ...current, shareActiveStudyStatus: event.target.checked }))}
               className="mt-1 size-4 accent-[var(--rt-orange)]"
             />
             <span>
@@ -151,6 +179,7 @@ export function PreferencesForm({ preferences }: PreferencesFormProps) {
           </label>
         </CardContent>
       </Card>
+      </fieldset>
 
       {saveError && <p role="alert" className="rounded-2xl border border-[var(--rt-orange)] bg-[var(--rt-orange-soft)]/30 p-4 text-sm">{saveError}</p>}
       <div className="flex flex-wrap items-center gap-4">

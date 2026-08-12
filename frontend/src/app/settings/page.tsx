@@ -37,7 +37,7 @@ export default function SettingsPage() {
           <Link href="/" className="font-display text-2xl tracking-[-0.02em]">
             rotrack<span className="text-[var(--rt-orange)]">.</span>
           </Link>
-          <nav aria-label="Application" className="flex items-center gap-2">
+          <nav aria-label="Application" className="flex w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end">
             <Button variant="ghost" asChild className="rounded-full">
               <Link href="/dashboard">dashboard</Link>
             </Button>

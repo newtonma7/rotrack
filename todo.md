@@ -597,7 +597,7 @@ The gate requires all of the following:
 
 ### M4.1 — Profile and preferences
 
-**Status:** Not started
+**Status:** Implemented—unverified
 
 - Add `user_preferences`, an ownership-scoped API, and `/settings` UI.
 - Save a validated IANA timezone or leave it unset; use the browser IANA timezone as the effective fallback until a saved value exists.
@@ -605,6 +605,13 @@ The gate requires all of the following:
 - Add `share_study_summary` and `share_active_study_status`, both `false` by default.
 - Changing timezone affects future calendar rendering and pagination boundaries without rewriting stored UTC instants.
 - Use handwritten typed backend/frontend DTOs and focused contract tests for request/response/error shapes.
+
+**Implementation evidence — 2026-08-12 / local workspace:**
+
+- Preferences API and settings UI are implemented with the shared `timeZone` JSON name end-to-end, standard field validation for invalid IANA values, ownership-scoped service access, mutation limiting for `PUT /api/v1/preferences`, responsive application navigation, accessible field error associations, save-state protection, and `/settings` sign-in return routing.
+- Focused red/green checks passed for JSON serialization/deserialization, invalid-timezone `timeZone` field errors, preference mutation `429`, stable route templates, two-user preference RLS/runtime-role/JPA behavior, settings save locking/state reset/field associations, and sign-in return routing.
+- Java 21 `mvn clean test package` passed: 114 tests, 0 failures/errors, 7 expected opt-in PostgreSQL skips. Frontend `npm run lint`, `npm run typecheck`, full Vitest, and production build passed: 41 tests across 12 files. Migration order, staging runtime-role operational guards, and `git diff --check` passed. Disposable Podman PostgreSQL 17.6 apply and verify runs passed, including the two-user preference/RLS/runtime-role/JPA probes.
+- This remains **Implemented—unverified** because no authenticated real-browser settings acceptance run was available in this workspace; hosted migration/deployment and the M4 Verified gate remain release-gated.
 
 ### M4.2 — Time-entry history and manual corrections
 
