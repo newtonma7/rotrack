@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { History as HistoryIcon, Settings2, Timer, Trash2 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createHistoryEntry, deleteHistoryEntry, getHistory, updateHistoryEntry } from "@/lib/api";
+import { createHistoryEntry, deleteHistoryEntry, getHistory, getPreferences, updateHistoryEntry } from "@/lib/api";
 import { ApiRequestError } from "@/lib/api-errors";
 import { toDateTimeLocal, toIsoInstant } from "@/lib/datetime";
+import { getBrowserTimeZone } from "@/lib/timezone";
 import { formatDuration } from "@/lib/format";
 import type { ActivityType } from "@/types/time-entry";
 import type { HistoryEntry, HistoryEntryInput } from "@/types/history";
@@ -32,20 +33,29 @@ export default function HistoryPage() {
   const [formEntry, setFormEntry] = useState<HistoryEntry | null | undefined>(undefined);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const browserTimeZone = useMemo(() => getBrowserTimeZone(), []);
+  const [timeZone, setTimeZone] = useState(browserTimeZone);
+  const requestSequence = useRef(0);
 
   const loadHistory = useCallback(async () => {
+    const requestId = ++requestSequence.current;
     setLoading(true);
+    setLoadingMore(false);
     setError(null);
     try {
-      const page = await getHistory();
+      const [preferences, page] = await Promise.all([getPreferences(), getHistory()]);
+      if (requestId !== requestSequence.current) return;
+      setTimeZone(preferences.timeZone || browserTimeZone);
       setEntries(page.entries);
       setNextCursor(page.nextCursor);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "History could not be loaded.");
+      if (requestId === requestSequence.current) {
+        setError(requestError instanceof Error ? requestError.message : "History could not be loaded.");
+      }
     } finally {
-      setLoading(false);
+      if (requestId === requestSequence.current) setLoading(false);
     }
-  }, []);
+  }, [browserTimeZone]);
 
   useEffect(() => {
     void loadHistory();
@@ -53,27 +63,31 @@ export default function HistoryPage() {
 
   const loadMore = async () => {
     if (!nextCursor || loadingMore) return;
+    const requestId = requestSequence.current;
     setLoadingMore(true);
     setLoadMoreError(null);
     try {
       const page = await getHistory(nextCursor);
-      setEntries((current) => [...current, ...page.entries]);
+      if (requestId !== requestSequence.current) return;
+      setEntries((current) => {
+        const seen = new Set(current.map((entry) => entry.id));
+        return [...current, ...page.entries.filter((entry) => !seen.has(entry.id))];
+      });
       setNextCursor(page.nextCursor);
     } catch (requestError) {
-      setLoadMoreError(requestError instanceof Error ? requestError.message : "More history could not be loaded.");
+      if (requestId === requestSequence.current) {
+        setLoadMoreError(requestError instanceof Error ? requestError.message : "More history could not be loaded.");
+      }
     } finally {
       setLoadingMore(false);
     }
   };
 
   const saveEntry = async (input: HistoryEntryInput, id?: string) => {
-    if (id) {
-      const updated = await updateHistoryEntry(id, input);
-      setEntries((current) => current.map((entry) => entry.id === id ? updated : entry));
-    } else {
-      const created = await createHistoryEntry(input);
-      setEntries((current) => [created, ...current]);
-    }
+    if (id) await updateHistoryEntry(id, input);
+    else await createHistoryEntry(input);
+    // Re-read page one: mutations can move an entry across the keyset boundary.
+    await loadHistory();
     setFormEntry(undefined);
   };
 
@@ -83,7 +97,7 @@ export default function HistoryPage() {
     setDeleteError(null);
     try {
       await deleteHistoryEntry(entry.id);
-      setEntries((current) => current.filter((item) => item.id !== entry.id));
+      await loadHistory();
     } catch (requestError) {
       setDeleteError(requestError instanceof Error ? requestError.message : "Entry could not be deleted.");
     } finally {
@@ -117,7 +131,7 @@ export default function HistoryPage() {
         </div>
 
         {formEntry !== undefined && (
-          <HistoryForm entry={formEntry} onSave={saveEntry} onCancel={() => setFormEntry(undefined)} />
+          <HistoryForm key={formEntry?.id ?? "new"} entry={formEntry} timeZone={timeZone} onSave={saveEntry} onCancel={() => setFormEntry(undefined)} />
         )}
 
         {loading ? (
@@ -139,7 +153,7 @@ export default function HistoryPage() {
             ) : (
               <div className="overflow-hidden rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)]">
                 <ul className="divide-y divide-[var(--rt-line)]">
-                  {entries.map((entry) => <HistoryRow key={entry.id} entry={entry} deleting={deletingId === entry.id} onEdit={() => setFormEntry(entry)} onDelete={() => void removeEntry(entry)} />)}
+                  {entries.map((entry) => <HistoryRow key={entry.id} entry={entry} timeZone={timeZone} deleting={deletingId === entry.id} onEdit={() => setFormEntry(entry)} onDelete={() => void removeEntry(entry)} />)}
                 </ul>
                 {nextCursor && (
                   <div className="border-t border-[var(--rt-line)] p-5 text-center">
@@ -158,7 +172,7 @@ export default function HistoryPage() {
   );
 }
 
-function HistoryRow({ entry, deleting, onEdit, onDelete }: { entry: HistoryEntry; deleting: boolean; onEdit: () => void; onDelete: () => void }) {
+function HistoryRow({ entry, timeZone, deleting, onEdit, onDelete }: { entry: HistoryEntry; timeZone: string; deleting: boolean; onEdit: () => void; onDelete: () => void }) {
   const label = entry.notes?.trim() || `${entry.activityType.toLowerCase()} entry`;
   const duration = Math.max(0, (Date.parse(entry.endTime) - Date.parse(entry.startTime)) / 1000);
   return (
@@ -166,7 +180,7 @@ function HistoryRow({ entry, deleting, onEdit, onDelete }: { entry: HistoryEntry
       <span aria-hidden="true" className={`h-3 w-3 shrink-0 rounded-full ${entry.activityType === "WORK" ? "bg-[var(--rt-orange)]" : "bg-[var(--rt-ink-soft)]"}`} />
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold">{label}</p>
-        <p className="mt-1 text-sm text-[var(--rt-ink-muted)]">{entry.activityType} · {formatDuration(duration)} · {formatHistoryDate(entry.startTime)}</p>
+        <p className="mt-1 text-sm text-[var(--rt-ink-muted)]">{entry.activityType} · {formatDuration(duration)} · {formatHistoryDate(entry.startTime, timeZone)}</p>
       </div>
       <div className="flex items-center gap-2">
         <Button variant="outline" onClick={onEdit} disabled={deleting} className="rounded-full" aria-label={`Edit ${label}`}>Edit</Button>
@@ -178,11 +192,11 @@ function HistoryRow({ entry, deleting, onEdit, onDelete }: { entry: HistoryEntry
   );
 }
 
-function HistoryForm({ entry, onSave, onCancel }: { entry: HistoryEntry | null; onSave: (input: HistoryEntryInput, id?: string) => Promise<void>; onCancel: () => void }) {
+function HistoryForm({ entry, timeZone, onSave, onCancel }: { entry: HistoryEntry | null; timeZone: string; onSave: (input: HistoryEntryInput, id?: string) => Promise<void>; onCancel: () => void }) {
   const [values, setValues] = useState<FormValues>(() => entry ? {
     activityType: entry.activityType,
-    startTime: toDateTimeLocal(entry.startTime),
-    endTime: toDateTimeLocal(entry.endTime),
+    startTime: toDateTimeLocal(entry.startTime, timeZone),
+    endTime: toDateTimeLocal(entry.endTime, timeZone),
     notes: entry.notes ?? "",
   } : { activityType: "WORK", startTime: "", endTime: "", notes: "" });
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -244,9 +258,9 @@ function HistoryForm({ entry, onSave, onCancel }: { entry: HistoryEntry | null; 
       </div>
       {formError && <p role="alert" className="mb-5 rounded-2xl border border-[var(--rt-orange)] bg-[var(--rt-orange-soft)] px-4 py-3">{formError}</p>}
       <div className="grid gap-5 md:grid-cols-2">
-        {field("activityType", "Activity", <select id="history-activityType" value={values.activityType} onChange={(event) => update("activityType", event.target.value as ActivityType)} disabled={saving} className="h-10 w-full rounded-md border border-[var(--rt-line)] bg-[var(--rt-paper)] px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rt-orange)]"><option value="WORK">Work</option><option value="ROT">Rot</option></select>)}
-        {field("startTime", "Start time", <Input id="history-startTime" type="datetime-local" value={values.startTime} onChange={(event) => update("startTime", event.target.value)} disabled={saving} aria-invalid={Boolean(errors.startTime)} aria-describedby={errors.startTime ? "history-startTime-error" : undefined} />)}
-        {field("endTime", "End time", <Input id="history-endTime" type="datetime-local" value={values.endTime} onChange={(event) => update("endTime", event.target.value)} disabled={saving} aria-invalid={Boolean(errors.endTime)} aria-describedby={errors.endTime ? "history-endTime-error" : undefined} />)}
+        {field("activityType", "Activity", <select id="history-activityType" value={values.activityType} onChange={(event) => update("activityType", event.target.value as ActivityType)} disabled={saving} aria-invalid={Boolean(errors.activityType)} aria-describedby={errors.activityType ? "history-activityType-error" : undefined} className="h-10 w-full rounded-md border border-[var(--rt-line)] bg-[var(--rt-paper)] px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rt-orange)]"><option value="WORK">Work</option><option value="ROT">Rot</option></select>)}
+        {field("startTime", "Start time", <Input id="history-startTime" type="datetime-local" step={1} value={values.startTime} onChange={(event) => update("startTime", event.target.value)} disabled={saving} aria-invalid={Boolean(errors.startTime)} aria-describedby={errors.startTime ? "history-startTime-error" : undefined} />)}
+        {field("endTime", "End time", <Input id="history-endTime" type="datetime-local" step={1} value={values.endTime} onChange={(event) => update("endTime", event.target.value)} disabled={saving} aria-invalid={Boolean(errors.endTime)} aria-describedby={errors.endTime ? "history-endTime-error" : undefined} />)}
         {field("notes", "Notes", <div><Input id="history-notes" value={values.notes} maxLength={280} onChange={(event) => update("notes", event.target.value)} disabled={saving} aria-invalid={Boolean(errors.notes)} aria-describedby={errors.notes ? "history-notes-error" : undefined} /><p className="mt-1 text-right text-xs text-[var(--rt-ink-muted)]">{values.notes.length}/280</p></div>)}
       </div>
       <div className="mt-6 flex justify-end"><Button type="submit" disabled={saving} className="rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] hover:bg-[var(--rt-orange-deep)]">{saving ? "Saving…" : entry ? "Save changes" : "Save entry"}</Button></div>
@@ -254,6 +268,6 @@ function HistoryForm({ entry, onSave, onCancel }: { entry: HistoryEntry | null; 
   );
 }
 
-function formatHistoryDate(iso: string): string {
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
+function formatHistoryDate(iso: string, timeZone: string): string {
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone }).format(new Date(iso));
 }
