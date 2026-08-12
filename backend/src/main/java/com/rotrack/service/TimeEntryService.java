@@ -66,7 +66,7 @@ public class TimeEntryService {
             // The exclusion constraint is the final race-safe authority when two writers pass the read check together.
             return toDto(timeEntryRepository.saveAndFlush(entry));
         } catch (DataIntegrityViolationException exception) {
-            throw translateConstraint(exception, false, userId);
+            throw translateConstraint(exception, false);
         }
     }
 
@@ -80,7 +80,7 @@ public class TimeEntryService {
             try {
                 return toDto(timeEntryRepository.saveAndFlush(entry));
             } catch (DataIntegrityViolationException exception) {
-                throw translateConstraint(exception, false, userId);
+                throw translateConstraint(exception, false);
             }
         }
 
@@ -128,7 +128,7 @@ public class TimeEntryService {
         try {
             return toDto(timeEntryRepository.saveAndFlush(entry));
         } catch (DataIntegrityViolationException exception) {
-            throw translateConstraint(exception, true, userId);
+            throw translateConstraint(exception, true);
         }
     }
 
@@ -166,7 +166,7 @@ public class TimeEntryService {
         try {
             return toDto(timeEntryRepository.saveAndFlush(entry));
         } catch (DataIntegrityViolationException exception) {
-            throw translateConstraint(exception, true, userId);
+            throw translateConstraint(exception, true);
         }
     }
 
@@ -234,14 +234,13 @@ public class TimeEntryService {
 
     private RuntimeException translateConstraint(
             DataIntegrityViolationException exception,
-            boolean overlapExpected,
-            UUID userId
+            boolean overlapExpected
     ) {
         // Both the unique-active and exclusion constraints can reject a racing start.
-        // Re-checking the owned active row keeps the user-facing conflict stable.
-        if (!overlapExpected && timeEntryRepository
-                .findFirstByUserIdAndEndTimeIsNullOrderByStartTimeDesc(userId)
-                .isPresent()) {
+        // The transaction is already rollback-only after flush, so classify the database
+        // error without issuing a follow-up query on the aborted transaction.
+        if (!overlapExpected && (containsConstraint(exception, "idx_time_entries_one_active_per_user")
+                || containsText(exception, "infinity"))) {
             return new ConflictException("ACTIVE_SESSION_EXISTS", "An active session already exists");
         }
         if (containsConstraint(exception, OVERLAP_CONSTRAINT)) {
@@ -254,9 +253,13 @@ public class TimeEntryService {
     }
 
     private boolean containsConstraint(DataIntegrityViolationException exception, String constraint) {
+        return containsText(exception, constraint);
+    }
+
+    private boolean containsText(DataIntegrityViolationException exception, String text) {
         Throwable current = exception;
         while (current != null) {
-            if (current.getMessage() != null && current.getMessage().contains(constraint)) {
+            if (current.getMessage() != null && current.getMessage().contains(text)) {
                 return true;
             }
             current = current.getCause();
