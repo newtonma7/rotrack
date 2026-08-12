@@ -58,7 +58,7 @@ case "$ARGS" in
 import json, os
 mode = os.environ.get('FAKE_TRAFFIC_MODE', 'latest')
 traffic = [{'latestRevision': True, 'weight': 100}] if mode == 'latest' else [{'revisionName': 'rotrack-api--prior', 'weight': 100}]
-print(json.dumps({'name':'rotrack-api-nonproduction','latestRevisionName':'rotrack-api--revision','activeRevisionsMode':'Multiple','fqdn':'rotrack-api.example.azurecontainerapps.io','scale':{'minReplicas':0,'maxReplicas':1,'cooldownPeriod':300,'pollingInterval':30,'rules':[]},'terminationGracePeriodSeconds':30,'ingress':{'external':True,'targetPort':8080,'allowInsecure':False,'traffic':traffic},'probes':[{'type':'Liveness','httpGet':{'path':'/api/v1/health'}},{'type':'Readiness','httpGet':{'path':'/api/v1/readiness'}}]}))
+print(json.dumps({'name':'rotrack-api-nonproduction','latestRevisionName':'rotrack-api--revision','activeRevisionsMode':'Multiple','fqdn':'rotrack-api.example.azurecontainerapps.io','scale':{'minReplicas':1,'maxReplicas':1,'cooldownPeriod':300,'pollingInterval':30,'rules':[]},'terminationGracePeriodSeconds':30,'ingress':{'external':True,'targetPort':8080,'allowInsecure':False,'traffic':traffic},'probes':[{'type':'Liveness','httpGet':{'path':'/api/v1/health'}},{'type':'Readiness','httpGet':{'path':'/api/v1/readiness'}}]}))
 PY
     ;;
   *'containerapp revision show'*)

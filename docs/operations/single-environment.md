@@ -40,13 +40,17 @@ This is an operational boundary decision, not a release approval. It does not wa
 ## Candidate readback — 2026-08-11
 
 - Source commit `744635c` passed focused Azure contract/readback, publish, preflight, RBAC, container, and release checks.
-- The backend candidate reached 100% traffic at the canonical ACA boundary. Readiness/readback, selected digest/service-version equality, production runtime label, and scale `0..1` passed.
+- The backend candidate reached 100% traffic at the canonical ACA boundary. Readiness/readback, selected digest/service-version equality, production runtime label, and scale `1..1` passed.
 - The same reviewed commit produced the canonical Vercel Production candidate, and canonical alias readback passed.
 - Public smoke passed for frontend `200`, exact API liveness/readiness `200` contracts, HTTP redirect to HTTPS, allowed CORS, and denied unrelated CORS.
 - Hosted authenticated smoke passed `4/4` with zero skipped, unexpected, or flaky results; API-target binding passed.
 - The corrected exact no-schema-change backend/frontend rollback rehearsal passed prior backend health, prior frontend promotion, rollback public smoke, rollback authenticated `4/4`, candidate restoration, and final candidate health/CORS/auth. Final state is the candidate.
 - Operator-owned synthetic accounts and stopped rows remain by product-owner decision; cleanup is not claimed.
-- Rate limiting remains explicitly deferred/accepted. Cloudflare Free is future exploration only. Ten cold-start trials, collector redaction, alert delivery/receipt, and alert routing evidence remain open. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. The backup limitation is accepted as already documented.
+- Rate limiting remains explicitly deferred/accepted. Cloudflare Free is future exploration only. Ten genuine zero-replica trials completed on 2026-08-11 with readiness 10/10, p50 34.586 seconds, and p95/max 39.425 seconds; the 30-second p95 criterion was not met. The product owner subsequently chose `minReplicas=1` for the canonical shared-hosted app and accepted the resulting idle cost pending actual billing. Collector redaction, alert delivery/receipt, and alert routing evidence remain open. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. The backup limitation is accepted as already documented.
+
+## Product-owner pre-user posture — 2026-08-11
+
+The product has zero active users. Broad observability, collector-side redaction proof, threshold tuning, and fleet-wide edge rate limiting are deferred until before real-user onboarding or until usage/abuse makes them material. This does not waive the documented production-readiness STOP.
 
 ## Reversal
 

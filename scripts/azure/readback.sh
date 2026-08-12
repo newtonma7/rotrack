@@ -140,8 +140,8 @@ for name, value in static_values.items():
 if app['ingress']['external'] is not True or app['ingress']['targetPort'] != 8080 or app['ingress']['allowInsecure'] is not False:
     raise SystemExit('running ingress is not HTTPS-only on port 8080')
 scale = app.get('scale', {})
-if scale.get('minReplicas') != 0 or scale.get('maxReplicas') != 1:
-    raise SystemExit('running scale bounds do not match 0/1')
+if scale.get('minReplicas') != 1 or scale.get('maxReplicas') != 1:
+    raise SystemExit('running scale bounds do not match 1/1')
 if scale.get('rules'):
     raise SystemExit('running app has unexpected nonempty scaling rules')
 if app.get('terminationGracePeriodSeconds') != 30:
