@@ -89,12 +89,18 @@ class TimeEntryRepositoryPostgresIntegrationTest {
 
     private void insertUser(UUID userId) {
         String email = "rotrack-repository-test-" + userId + "@example.invalid";
-        jdbcTemplate.update("INSERT INTO auth.users(id, email) VALUES (?, ?)", userId, email);
+        String username = "repo_" + userId.toString().replace("-", "").substring(0, 18);
+        jdbcTemplate.update(
+                "INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES (?, ?, ?::jsonb)",
+                userId,
+                email,
+                "{\"username\":\"" + username + "\"}"
+        );
         jdbcTemplate.update("""
-                INSERT INTO public.users(id, email)
-                VALUES (?, ?)
+                INSERT INTO public.users(id, email, username)
+                VALUES (?, ?, ?)
                 ON CONFLICT (id) DO NOTHING
-                """, userId, email);
+                """, userId, email, username);
     }
 
     private TimeEntry entry(UUID userId, Instant start, Instant end) {

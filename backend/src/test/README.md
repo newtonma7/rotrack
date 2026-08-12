@@ -23,7 +23,7 @@ Choose one target and mode:
 
 - `apply` requires an empty disposable database. It creates a minimal
   `auth.users`/`auth.uid()` test contract only when PostgreSQL does not already
-  provide one, applies checked-in migrations `001` then `002`, proves the
+  provide one, applies checked-in migrations `001`, `002`, then `003`, proves the
   invariants, and rolls back all DDL and data. Run only the raw migration test,
   because the rollback intentionally leaves no schema for a later Spring context:
 
@@ -51,8 +51,11 @@ Spring Data repository test prove that:
 - a one-hour timestamp range derives 3,600 seconds even when transitional
   `duration_minutes` contains `999`; and
 - the reporting index exists on `(user_id, start_time)`;
+- usernames are non-null, canonical, regex-validated, reserved-name protected,
+  unique, and immutable;
 - RLS is enabled with the seven named ownership policies;
-- the hardened signup trigger creates rollback-only fixture profiles; and
+- the hardened signup trigger reads raw metadata, creates canonical
+  rollback-only fixture profiles, and rejects invalid/reserved/duplicate names; and
 - `TimeEntryRepository.saveAndFlush` reaches those real PostgreSQL constraints and owner-scoped active reads.
 
 When integration is enabled, missing or unsafe configuration fails instead of
