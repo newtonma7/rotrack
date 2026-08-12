@@ -24,13 +24,30 @@ The platform owner authorized and the coordinator observed:
 - Basic ACR with admin login disabled and a user-assigned identity scoped to `AcrPull` on that registry;
 - Log Analytics workspace with `PerGB2018`, 30-day retention, and a 0.1 GB daily cap;
 - resource-group budget of 15 subscription-currency units per month with Actual alerts at 50%, 80%, and 100%;
-- Container App `rotrack-api-nonproduction`, HTTPS-only ingress, port `8080`, scale `0..1`, 30-second termination grace, liveness/readiness probes, exact Vercel Preview CORS, and secrets injected through ACA secret references;
+- Container App `rotrack-api-nonproduction`, HTTPS-only ingress, port `8080`, scale `0..1`, 30-second termination grace, liveness/readiness probes, exact CORS for the stable non-production Preview alias `https://rotrack-newtonma7-7541-newton-mas-projects.vercel.app`, and secrets injected through ACA secret references;
 - an immutable Linux/amd64 OCI-compatible backend image in ACR; deployment readback proved the image digest equals `ROTRACK_SERVICE_VERSION`;
 - `GET /api/v1/health` and `GET /api/v1/readiness` returned `200` after the corrected revision started;
 - one Vercel Preview deployment built successfully with the non-production Supabase values and ACA API URL. Vercel SSO protection remains enabled; no automation-bypass secret remains configured;
 - after a local-only unreachable-object finding, the non-production runtime database password was rotated, the prior password was rejected, local health/readiness passed, and the existing ACA configuration was redeployed and restarted; post-restart HTTPS health/readiness and deployment readback passed.
 
-Production resources and `rotrack-prod` were not created, changed, migrated, or queried by this procedure. Public GitHub visibility, `main` protection, exact required contexts, `nonproduction` protected-main policy, empty auth-secret inventories, absent/default-disabled `ROTRACK_AUTHENTICATED_E2E_ENABLED`, and public-repo security features are separately read back. PR #18 supplied hosted-green protected-path evidence; PR #19 supplied deliberate-red required-check blocking evidence, with the required `Frontend` context failing and open PR metadata reporting `mergeStateStatus: BLOCKED`. One preliminary scale-from-zero health wake-up completed in 28.185 seconds; nine more trials and readiness p95/maximum are required. This checkpoint does **not** verify authenticated E2E, alert delivery, rollback, Supabase logical backup/restore, or production readiness.
+### CORS correction — 2026-08-09
+
+The existing Vercel Preview deployment is `READY`, has target `preview`, and is assigned the stable alias `https://rotrack-newtonma7-7541-newton-mas-projects.vercel.app`. Read-only browser-asset inspection confirmed that this Preview embeds the non-production ACA `/api/v1` URL. The ephemeral deployment URL `https://rotrack-9bw3uthbn-newton-mas-projects.vercel.app` was not retained as the allowlist origin.
+
+Only the non-production ACA `CORS_ALLOWED_ORIGINS` value and its mode-`0600` private non-production application parameter were changed to the stable alias. The same existing digest/configuration was then redeployed through `scripts/azure/app-deploy.sh` so the complete secretRef and runtime readback contract remained intact. No Vercel alias or environment mutation was needed, and no Production Vercel or Azure resource/configuration was mutated.
+
+The corrected ACA revision was healthy with 100% latest-revision traffic. Exact preflight results against the non-production API were:
+
+| Origin | Result |
+|---|---|
+| `https://rotrack-newtonma7-7541-newton-mas-projects.vercel.app` | HTTP `200`; exact `Access-Control-Allow-Origin`; credentials allowed |
+| `https://rotrack-9bw3uthbn-newton-mas-projects.vercel.app` | HTTP `403`; no allow-origin header |
+| `https://rotrack-ol64rdy07-newton-mas-projects.vercel.app` | HTTP `403`; no allow-origin header |
+| `https://rotrack-ecru.vercel.app` | HTTP `403`; no allow-origin header |
+
+The target=production deployment and its aliases remain production-only and were read, not changed. Its browser assets currently embed the non-production ACA URL; that pre-existing production configuration is intentionally not changed by this non-production fix and remains a separate production-release blocker.
+
+Production resources and `rotrack-prod` were not created, changed, or migrated by this procedure. The existing Vercel target=production deployment was read-only inspected solely to verify the separation failure; no production Azure resource or configuration was queried or mutated. Public GitHub visibility, `main` protection, exact required contexts, `nonproduction` protected-main policy, empty auth-secret inventories, absent/default-disabled `ROTRACK_AUTHENTICATED_E2E_ENABLED`, and public-repo security features are separately read back. PR #18 supplied hosted-green protected-path evidence; PR #19 supplied deliberate-red required-check blocking evidence, with the required `Frontend` context failing and open PR metadata reporting `mergeStateStatus: BLOCKED`. One preliminary scale-from-zero health wake-up completed in 28.185 seconds; nine more trials and readiness p95/maximum are required. This checkpoint does **not** verify authenticated E2E, alert delivery, rollback, Supabase logical backup/restore, or production readiness.
 
 ## Cost posture
 
@@ -77,9 +94,9 @@ The order is mandatory because an app cannot pull a digest before it exists:
 
 1. `scripts/azure/foundation-provision.sh` — resource group, ACR, identity/RBAC, Log Analytics, ACA environment, and budget;
 2. `scripts/azure/publish-image.sh` — clean-tree build, short-lived ACR login, push, and registry digest/media/OS/architecture readback;
-3. create a Vercel Preview once to obtain its exact HTTPS origin;
-4. `scripts/azure/app-deploy.sh` — deploy the existing digest with that exact Preview origin;
-5. update only Vercel Preview's `NEXT_PUBLIC_API_URL`, rebuild Preview from the reviewed commit, then update ACA CORS to the final Preview URL;
+3. select or establish the explicitly approved stable Vercel Preview alias and verify it targets `preview`;
+4. `scripts/azure/app-deploy.sh` — deploy the existing digest with that exact stable Preview origin;
+5. ensure only Vercel Preview's `NEXT_PUBLIC_API_URL` points to the non-production ACA `/api/v1`, then update only non-production ACA CORS to the stable Preview origin;
 6. `scripts/azure/readback.sh` — verify the exact image/service-version binding and runtime contract.
 
 Required shell variables are intentionally explicit:
@@ -106,8 +123,8 @@ Then verify:
 
 - HTTPS health and readiness return only `{"status":"ok"}` / `{"status":"ready"}`;
 - HTTP redirects to HTTPS;
-- the exact Vercel Preview Origin receives `Access-Control-Allow-Origin`;
-- an unrelated Origin does not receive that header;
+- the exact stable Vercel Preview alias receives `Access-Control-Allow-Origin`;
+- the prior ephemeral Preview URL, Production deployment URL, and Production alias do not receive that header;
 - the active revision is healthy and uses the reviewed digest;
 - no secret value appears in command output, logs, or evidence.
 

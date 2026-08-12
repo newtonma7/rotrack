@@ -74,9 +74,11 @@ Stop immediately on an identity mismatch. Never change the expected production o
 - [x] Confirm logical GitHub `nonproduction` is restricted to exactly protected `main` and has no auth secrets. (Read back 2026-08-09.)
 - [ ] Run authenticated E2E from a trusted local operator context with disposable external state; do not claim required human approval under the solo-maintainer policy.
 - [x] Configure only the three frontend names: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_KEY`, and `NEXT_PUBLIC_API_URL` for Preview.
-- [x] Confirm the local deployment inputs use one consistent shared non-production Supabase project and set Preview API URL to the ACA `/api/v1` endpoint; browser-asset target inspection remains open.
-- [x] Build/deploy a Preview and confirm backend CORS allows only the exact final HTTPS Preview origin and omits the header for an unrelated origin.
-- [ ] Confirm browser assets refer only to non-production Auth/API endpoints.
+- [x] Confirm the local deployment inputs use one consistent shared non-production Supabase project and set Preview API URL to the ACA `/api/v1` endpoint; browser-asset API target inspection is recorded below and Auth endpoint inspection remains open.
+- [x] Use the explicitly approved stable Preview alias `https://rotrack-newtonma7-7541-newton-mas-projects.vercel.app`; read-only deployment inspection confirms target=`preview` and `READY`.
+- [x] Confirm the stable Preview browser assets embed the non-production ACA `/api/v1` URL.
+- [x] Update only non-production ACA CORS and confirm the stable alias is allowed while the prior ephemeral Preview URL, target=production deployment URL, and Production alias are denied without allow-origin.
+- [ ] Confirm browser assets refer only to non-production Auth/API endpoints; the API mapping is verified above, while the Auth endpoint remains open.
 - [ ] Record source-commit provenance. Production must build the same reviewed commit with production-scoped `NEXT_PUBLIC_*` values; do not promote Preview bytes because those values are embedded at build time.
 
 ## 5. Unauthenticated smoke commands
