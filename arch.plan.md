@@ -323,38 +323,85 @@ The history migration must enforce same-user non-overlap at the PostgreSQL bound
 
 ### 8.3 WYSIWYG notes
 
-Use Tiptap StarterKit in a client-only editor embedded beside the timer. Persist versioned Tiptap/ProseMirror JSON rather than arbitrary HTML.
+The canonical domain language is recorded in [`CONTEXT.md`](CONTEXT.md), and exact M5 API,
+validation, editor, and acceptance contracts are recorded in
+[`docs/specs/m5-contracts.md`](docs/specs/m5-contracts.md). The existing nullable
+`time_entries.notes` value remains a plain-text **Session Label** under M4's existing
+280-character contract; M5 does not change its semantics or convert it into a rich **Note**.
 
-`notes` contains:
+A Note is a private independent document that may be standalone or contextually attached to
+one owned active or completed Time Entry. It may move or detach. Deleting a Time Entry sets
+the attachment to null and never deletes the Note; history warns how many Notes will detach.
+Creation requires a nonblank normalized title or derived text, while an existing Note may be
+cleared and survives until explicit confirmed hard deletion.
 
-- `id`, `user_id`, optional `time_entry_id`
-- title, limited to 120 characters
-- versioned `content_json`, limited to 256 KiB serialized
-- derived `content_text` for search and previews
-- `content_schema_version`
-- optimistic-lock `version`
-- audit timestamps
+Persist this exact version-1 envelope, never arbitrary HTML:
 
-Behavior:
+```json
+{"schemaVersion":1,"document":{"type":"doc","content":[]}}
+```
 
-- A note is a standalone document that can optionally link to one session.
-- A session can have multiple notes.
-- A database constraint/trigger enforces that a linked session has the same owner as the note; deleting a session detaches the note with `ON DELETE SET NULL`.
-- Initial formatting: headings, paragraphs, bold, italic, lists, block quotes, links, undo, and redo.
-- Autosave after approximately 750 ms of inactivity and display `Saving`, `Saved`, and `Conflict` states.
-- The API validates document structure, supported nodes/marks, link protocols, and size.
-- Notes remain private and never appear in social or group projections.
+The only nodes are `doc`, `paragraph`, `heading` levels 2–3, `text`, `bulletList`,
+`orderedList`, `listItem`, and `blockquote`; the only marks are `bold`, `italic`, and `link`
+with `href`. Unknown fields and all other content are rejected. Links allow absolute
+`http`/`https` URLs with a host and valid `mailto` URLs only. Documents are capped at
+262,144 compact server-serialized UTF-8 bytes, depth 32, and 10,000 nodes. Spring validates
+the full tree and derives block-newline-separated `content_text`; PostgreSQL `json` preserves
+the canonical bytes and enforces ownership/link integrity, schema/JSON presence, size/field
+constraints, and positive versions rather than duplicating the full validator.
+
+Notes and Reflections use whole-resource optimistic locking across their mutable fields, with
+`RICH_TEXT_VERSION_CONFLICT` for stale writes. Autosave
+serializes/coalesces writes after about 750 ms. Stale saves preserve current-tab edits and
+stop; there is no silent merge, last-writer-wins, or force overwrite. Initial Note creation uses a stable per-owner `Idempotency-Key` and runtime-keyed canonical
+request fingerprint. Hard deletion retains only content-free key/identity/fingerprint
+metadata—never writing or response snapshots—for the owner's lifetime so ambiguous retries
+remain classifiable and cannot duplicate or recreate private writing.
+
+The tracker embeds the editor beside the timer, while `/notes` and `/notes/{id}` provide the
+library and stable editor route. Drafts and offline-error edits live only in the current tab;
+there is no durable offline queue or cross-tab coordination. Pending in-app navigation first
+flushes, and unsaved browser closure may use a native warning but never an unload save.
+
+Notes, titles, derived text, links, Session Labels, and Reflections are never logged or
+included in social/group projections. Supabase browser roles receive no M5 table privileges;
+Spring remains the sole rich-content API and RLS remains defense in depth.
+
+### 8.3.1 Rich-text migration and compatibility
+
+M5.1 adds ordered additive Notes and content-free idempotency/tombstone storage. M5.3 later
+adds Reflections and creation-replay metadata. Neither migration converts, truncates, or
+deletes Session Labels. Migrations precede dependent application versions, while application
+rollback leaves additive tables in place and does not imply database rollback.
+
+Version 1 is the only accepted document schema. A future version requires a new architecture
+decision, explicit reader/writer compatibility, and a migration or dual-read plan; no client
+or server silently rewrites version-1 documents.
 
 ### 8.4 Daily study logs
 
-One daily log exists per user and local calendar date.
+A **Daily Log** is generated rather than persisted. For a requested local-date label and
+effective timezone, it clips owned completed Time Entries into day segments, derives Work/Rot
+totals, includes private Session Labels, and references each distinct attached Note once in
+timeline order. Active Time Entries are excluded. Generated facts are never client-writable
+or copied into mutable summaries.
 
-- Timer totals, timeline, sessions, and linked-note references are generated from authoritative time entries.
-- The user may add a private rich-text reflection stored as versioned document JSON.
-- Generated statistics cannot be manually edited or duplicated into a mutable summary table.
-- Calendar boundaries use the user's saved IANA timezone.
-- Changing timezone re-buckets generated study statistics; an existing reflection remains attached to the local-date label under which the user created it.
-- The UI provides daily and calendar views.
+The explicit valid request timezone wins; otherwise the saved timezone, then required browser
+fallback, defines DST-aware half-open day boundaries. Changing timezone re-buckets generated
+facts and Note references without rewriting stored instants.
+
+Only the optional **Reflection** is persisted, uniquely by `(user_id, local_date)`. It is
+created after meaningful text exists, records immutable `timezone_at_creation` for display
+context, and remains on its original date label under every projection timezone. Clearing it
+stores the valid empty document and increments its version rather than deleting its identity.
+Reflection writes use the same document validation, privacy, replay protection, and
+optimistic-conflict behavior as Notes.
+
+`/daily-logs` returns complete half-open calendar summary ranges capped at 42 days, with
+Work/Rot totals, distinct completed-entry and Note counts, and meaningful-Reflection presence
+only. `/daily-logs/{localDate}` returns generated detail plus the date-label-owned Reflection.
+Frontend routes mirror those paths with calendar/detail layouts. Future dates are valid;
+canonical local dates use `YYYY-MM-DD` with years 0001 through 9999.
 
 ### 8.5 Friendships and presence
 
@@ -389,8 +436,8 @@ Groups are private and invitation-only.
 - `/friends` and `/friend-requests`: list, request, accept, decline, cancel, remove, block, unblock
 - `/social/summaries` and `/social/presence`: privacy-filtered friend/group projections
 - `/groups`, `/groups/{id}/invitations`, `/groups/{id}/members`, `/groups/{id}/summary`
-- `/notes`: owned CRUD with session/date filters and optimistic version checks
-- `/daily-logs/{localDate}`: generated study data plus owned reflection updates
+- `/notes`: owned CRUD with attachment-status/exact-Time-Entry filters and optimistic version checks
+- `/daily-logs` and `/daily-logs/{localDate}`: generated calendar/detail study data plus owned Reflection updates
 
 Each vertical slice documents its implemented request/response contract immediately before delivery. The M4 contracts and stable errors are recorded in [`docs/specs/m4-contracts.md`](docs/specs/m4-contracts.md). Frontend and backend use handwritten typed DTOs with the existing authenticated native-`fetch` wrapper; focused backend/frontend contract tests protect the JSON shape, error codes, pagination, and validation behavior. OpenAPI/code generation is not part of M4.
 
