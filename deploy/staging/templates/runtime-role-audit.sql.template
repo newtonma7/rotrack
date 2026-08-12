@@ -18,7 +18,7 @@ SELECT
   has_table_privilege(current_user, 'public.time_entries', 'SELECT') AS can_select,
   has_table_privilege(current_user, 'public.time_entries', 'INSERT') AS can_insert,
   has_table_privilege(current_user, 'public.time_entries', 'UPDATE') AS can_update,
-  NOT has_table_privilege(current_user, 'public.time_entries', 'DELETE') AS cannot_delete,
+  has_table_privilege(current_user, 'public.time_entries', 'DELETE') AS can_delete,
   NOT has_table_privilege(current_user, 'public.time_entries', 'TRUNCATE') AS cannot_truncate,
   NOT has_table_privilege(current_user, 'public.time_entries', 'REFERENCES') AS cannot_reference,
   NOT has_table_privilege(current_user, 'public.time_entries', 'TRIGGER') AS cannot_create_trigger,

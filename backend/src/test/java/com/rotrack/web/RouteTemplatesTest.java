@@ -27,4 +27,24 @@ class RouteTemplatesTest {
         assertThat(RouteTemplates.mutation(request))
                 .contains(new RouteTemplates.MutationRoute("PUT", RouteTemplates.STOP));
     }
+
+    @Test
+    void includesHistoryCreateEditAndDeleteInStableMutationRoutes() {
+        MockHttpServletRequest create = request("POST", "/api/v1/time-entries");
+        MockHttpServletRequest edit = request("PUT", "/api/v1/time-entries/22222222-2222-2222-2222-222222222222");
+        MockHttpServletRequest delete = request("DELETE", "/api/v1/time-entries/22222222-2222-2222-2222-222222222222");
+
+        assertThat(RouteTemplates.mutation(create))
+                .contains(new RouteTemplates.MutationRoute("POST", RouteTemplates.HISTORY));
+        assertThat(RouteTemplates.mutation(edit))
+                .contains(new RouteTemplates.MutationRoute("PUT", RouteTemplates.ENTRY));
+        assertThat(RouteTemplates.mutation(delete))
+                .contains(new RouteTemplates.MutationRoute("DELETE", RouteTemplates.ENTRY));
+    }
+
+    private MockHttpServletRequest request(String method, String path) {
+        MockHttpServletRequest request = new MockHttpServletRequest(method, path);
+        request.setServletPath(path);
+        return request;
+    }
 }

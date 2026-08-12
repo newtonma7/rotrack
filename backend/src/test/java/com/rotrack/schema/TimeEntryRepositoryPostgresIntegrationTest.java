@@ -10,11 +10,13 @@ import com.rotrack.model.UserPreferences;
 import com.rotrack.repository.TimeEntryRepository;
 import com.rotrack.repository.UserPreferencesRepository;
 import java.time.Instant;
+import java.time.Duration;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -108,6 +110,34 @@ class TimeEntryRepositoryPostgresIntegrationTest {
                 Instant.parse("2026-08-07T10:00:00Z"),
                 Instant.parse("2026-08-07T09:59:59Z")
         ))).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void sameUserOverlapIsRejectedButAdjacentCompletedRangesAreValid() {
+        Instant start = Instant.parse("2026-08-07T10:00:00Z");
+        repository.saveAndFlush(entry(USER_A, start, start.plus(Duration.ofHours(1))));
+
+        repository.saveAndFlush(entry(USER_A, start.plus(Duration.ofHours(1)), start.plus(Duration.ofHours(2))));
+
+        assertThatThrownBy(() -> repository.saveAndFlush(
+                entry(USER_A, start.plus(Duration.ofMinutes(30)), start.plus(Duration.ofMinutes(90)))
+        )).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void completedHistoryOrdersByStartThenIdAndExcludesActiveRows() {
+        Instant start = Instant.parse("2026-08-07T10:00:00Z");
+        TimeEntry first = entry(USER_A, start, start.plus(Duration.ofHours(1)));
+        first.setId(UUID.fromString("aaaaaaaa-0000-4000-8000-000000000001"));
+        TimeEntry second = entry(USER_A, start, start.plus(Duration.ofHours(1)));
+        second.setId(UUID.fromString("aaaaaaaa-0000-4000-8000-000000000002"));
+        repository.saveAndFlush(first);
+        repository.saveAndFlush(second);
+        repository.saveAndFlush(entry(USER_A, start.plus(Duration.ofHours(3)), null));
+
+        assertThat(repository.findCompletedHistory(USER_A, PageRequest.of(0, 20)))
+                .extracting(TimeEntry::getId)
+                .containsExactly(second.getId(), first.getId());
     }
 
     private void insertUser(UUID userId) {

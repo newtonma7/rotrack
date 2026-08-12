@@ -125,7 +125,7 @@ class TimeEntryServiceTest {
     void manualOverlapIsRejectedBeforePersistence() {
         UUID userId = UUID.randomUUID();
         Instant start = Instant.parse("2026-01-01T10:00:00Z");
-        when(repository.existsOverlappingEntry(eq(userId), eq(start), eq(start.plus(Duration.ofHours(1))), isNull(), eq(false)))
+        when(repository.existsOverlappingEntry(eq(userId), eq(start), eq(start.plus(Duration.ofHours(1))), isNull()))
                 .thenReturn(true);
 
         assertThrows(ConflictException.class, () -> service.createCompletedEntry(
@@ -137,7 +137,7 @@ class TimeEntryServiceTest {
     void adjacentManualRangesAreAccepted() {
         UUID userId = UUID.randomUUID();
         Instant start = Instant.parse("2026-01-01T11:00:00Z");
-        when(repository.existsOverlappingEntry(eq(userId), eq(start), eq(start.plus(Duration.ofHours(1))), isNull(), eq(false)))
+        when(repository.existsOverlappingEntry(eq(userId), eq(start), eq(start.plus(Duration.ofHours(1))), isNull()))
                 .thenReturn(false);
         TimeEntry saved = entry(userId, start, start.plus(Duration.ofHours(1)));
         when(repository.saveAndFlush(any(TimeEntry.class))).thenReturn(saved);
@@ -150,7 +150,7 @@ class TimeEntryServiceTest {
     void databaseOverlapIsTranslatedToStableConflict() {
         UUID userId = UUID.randomUUID();
         Instant start = Instant.parse("2026-01-01T10:00:00Z");
-        when(repository.existsOverlappingEntry(eq(userId), eq(start), eq(start.plus(Duration.ofHours(1))), isNull(), eq(false)))
+        when(repository.existsOverlappingEntry(eq(userId), eq(start), eq(start.plus(Duration.ofHours(1))), isNull()))
                 .thenReturn(false);
         when(repository.saveAndFlush(any(TimeEntry.class)))
                 .thenThrow(new DataIntegrityViolationException("time_entries_no_overlap_per_user"));

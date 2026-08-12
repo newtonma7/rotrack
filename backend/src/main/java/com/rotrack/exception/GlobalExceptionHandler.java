@@ -26,6 +26,14 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage(), Map.of(), request);
     }
 
+    @ExceptionHandler(InvalidCursorException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidCursor(
+            InvalidCursorException ex,
+            HttpServletRequest request
+    ) {
+        return error(HttpStatus.BAD_REQUEST, "INVALID_CURSOR", ex.getMessage(), Map.of(), request);
+    }
+
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ApiErrorResponse> handleConflict(
             ConflictException ex,
