@@ -3,14 +3,13 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarDays, Gauge, LogOut, Timer, Zap } from "lucide-react";
+import { CalendarDays, Gauge, Timer, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardStats } from "@/lib/api";
 import { formatDuration, formatSessionDate } from "@/lib/format";
-import { supabase } from "@/lib/supabase/client";
+import { AppNav } from "@/components/layout/AppNav";
 import type { DashboardStats, TimeEntry } from "@/types/time-entry";
-import { useRouter } from "next/navigation";
 
 const DailyChart = dynamic(() => import("@/components/dashboard/DailyChart"), {
   ssr: false,
@@ -28,7 +27,6 @@ const DailyChart = dynamic(() => import("@/components/dashboard/DailyChart"), {
 });
 
 export default function DashboardPage() {
-  const router = useRouter();
   const timeZone = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
     [],
@@ -55,40 +53,9 @@ export default function DashboardPage() {
     void loadStats();
   }, [loadStats]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/");
-  };
-
   return (
     <div className="min-h-screen bg-[var(--rt-cream)] text-[var(--rt-ink)]">
-      <header className="border-b border-[var(--rt-line)] bg-[var(--rt-paper)]/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-4 px-6 py-4 md:px-10">
-          <Link href="/" className="font-display text-2xl tracking-[-0.02em]">
-            rotrack<span className="text-[var(--rt-orange)]">.</span>
-          </Link>
-          <nav aria-label="Application" className="flex items-center gap-2">
-            <span aria-current="page" className="rounded-full bg-[var(--rt-cream-soft)] px-4 py-2 text-sm font-semibold">
-              dashboard
-            </span>
-            <Button variant="ghost" asChild className="rounded-full">
-              <Link href="/tracker">
-                <Timer aria-hidden="true" />
-                tracker
-              </Link>
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={handleLogout}
-              aria-label="log out"
-              className="rounded-full text-[var(--rt-ink-muted)] hover:bg-[var(--rt-cream-soft)] hover:text-[var(--rt-ink)]"
-            >
-              <LogOut aria-hidden="true" />
-              <span className="hidden sm:inline">log out</span>
-            </Button>
-          </nav>
-        </div>
-      </header>
+      <AppNav activeRoute="dashboard" signOutRedirectTo="/" />
 
       <main className="mx-auto max-w-[1400px] px-6 py-12 md:px-10 md:py-16">
         <div className="mb-10 max-w-3xl">
