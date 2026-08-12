@@ -20,6 +20,11 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
@@ -87,6 +92,68 @@ class PostgresMigrationIntegrationTest {
             } finally {
                 connection.rollback();
             }
+        }
+    }
+
+    @Test
+    void concurrentUsernameClaimsAreResolvedByUniqueConstraint() throws Exception {
+        TestDatabaseConfiguration configuration = configuration();
+        Assumptions.assumeTrue(VERIFY_MODE.equals(configuration.mode()),
+                "the concurrency probe requires a committed migrated schema");
+
+        UUID firstUser = UUID.randomUUID();
+        UUID secondUser = UUID.randomUUID();
+        CountDownLatch firstInserted = new CountDownLatch(1);
+        CountDownLatch releaseFirst = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try (Connection firstConnection = DriverManager.getConnection(
+                configuration.url(), configuration.username(), configuration.password());
+             Connection secondConnection = DriverManager.getConnection(
+                     configuration.url(), configuration.username(), configuration.password())) {
+            firstConnection.setAutoCommit(false);
+            secondConnection.setAutoCommit(false);
+
+            Future<?> firstClaim = executor.submit(() -> {
+                try {
+                    insertAuthUser(firstConnection, firstUser, "concurrent_name");
+                    firstInserted.countDown();
+                    if (!releaseFirst.await(10, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("timed out waiting to commit the first username claim");
+                    }
+                    firstConnection.commit();
+                    return null;
+                } catch (Exception exception) {
+                    throw new RuntimeException(exception);
+                }
+            });
+
+            assertTrue(firstInserted.await(10, TimeUnit.SECONDS));
+            Future<String> secondClaim = executor.submit(() -> {
+                try {
+                    insertAuthUser(secondConnection, secondUser, "CONCURRENT_NAME");
+                    return "success";
+                } catch (SQLException exception) {
+                    return exception.getSQLState();
+                } finally {
+                    secondConnection.rollback();
+                }
+            });
+
+            releaseFirst.countDown();
+            firstClaim.get(10, TimeUnit.SECONDS);
+            assertEquals("23505", secondClaim.get(10, TimeUnit.SECONDS),
+                    "the committed first claim must win the concurrent case-insensitive race");
+
+            try (PreparedStatement statement = firstConnection.prepareStatement(
+                    "DELETE FROM auth.users WHERE id IN (?, ?)")) {
+                statement.setObject(1, firstUser);
+                statement.setObject(2, secondUser);
+                statement.executeUpdate();
+                firstConnection.commit();
+            }
+        } finally {
+            releaseFirst.countDown();
+            executor.shutdownNow();
         }
     }
 
@@ -282,6 +349,16 @@ class PostgresMigrationIntegrationTest {
                   AND column_name = 'username'
                   AND is_nullable = 'NO'
                 """), "usernames must be NOT NULL");
+        assertEquals(3, querySingleInt(connection, """
+                SELECT count(*)
+                FROM pg_constraint
+                WHERE conrelid = 'public.users'::regclass
+                  AND conname IN (
+                    'users_username_canonical',
+                    'users_username_format',
+                    'users_username_not_reserved'
+                  )
+                """), "username canonical, format, and reserved-name checks must exist");
         String signupFunction = querySingleString(connection, "SELECT pg_get_functiondef('public.handle_new_user()'::regprocedure)");
         assertNotNull(signupFunction);
         assertTrue(signupFunction.contains("NEW.raw_user_meta_data->>'username'"),
@@ -312,6 +389,12 @@ class PostgresMigrationIntegrationTest {
         assertEquals(0, queryCount(connection, """
                 SELECT count(*) FROM public.users WHERE id = ?
                 """, reservedUser), "reserved signup must not create a profile");
+
+        UUID missingMetadataUser = UUID.randomUUID();
+        expectSqlState(connection, "23514", () -> insertAuthUserWithoutUsername(connection, missingMetadataUser));
+        assertEquals(0, queryCount(connection, """
+                SELECT count(*) FROM auth.users WHERE id = ?
+                """, missingMetadataUser), "missing metadata must not reserve an auth row");
 
         UUID duplicateUser = UUID.randomUUID();
         expectSqlState(connection, "23505", () -> insertAuthUser(connection, duplicateUser, "ALICE_ONE"));
@@ -369,6 +452,15 @@ class PostgresMigrationIntegrationTest {
             statement.setObject(1, userId);
             statement.setString(2, "rotrack-db-test-" + userId + "@example.invalid");
             statement.setString(3, "{\"username\":\"" + username + "\"}");
+            statement.executeUpdate();
+        }
+    }
+
+    private void insertAuthUserWithoutUsername(Connection connection, UUID userId) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES (?, ?, '{}'::jsonb)")) {
+            statement.setObject(1, userId);
+            statement.setString(2, "rotrack-db-test-" + userId + "@example.invalid");
             statement.executeUpdate();
         }
     }

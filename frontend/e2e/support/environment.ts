@@ -40,6 +40,13 @@ function httpUrl(variable: string, fallback?: string): string | undefined {
 export const e2eEnvironment = {
   baseUrl: httpUrl("ROTRACK_E2E_BASE_URL", "http://localhost:3000")!,
   expectedApiUrl: httpUrl("ROTRACK_E2E_EXPECTED_API_URL"),
+  signupEmailA: process.env.ROTRACK_E2E_SIGNUP_EMAIL_A,
+  signupEmailB: process.env.ROTRACK_E2E_SIGNUP_EMAIL_B,
+  signupPassword: process.env.ROTRACK_E2E_SIGNUP_PASSWORD,
+  signupUsername: process.env.ROTRACK_E2E_SIGNUP_USERNAME,
+  signupConfirmationUrl: httpUrl("ROTRACK_E2E_SIGNUP_CONFIRMATION_URL"),
+  requireSignup: process.env.ROTRACK_E2E_REQUIRE_SIGNUP === "1",
+  requireSignupConfirmation: process.env.ROTRACK_E2E_REQUIRE_SIGNUP_CONFIRMATION === "1",
   userAStorageState: externalStorageState(
     "ROTRACK_E2E_USER_A_STORAGE_STATE",
     "ROTRACK_E2E_STORAGE_STATE",
@@ -56,5 +63,22 @@ if (
 ) {
   throw new Error(
     "ROTRACK_E2E_REQUIRE_AUTH=1 requires User A/User B storage-state paths and ROTRACK_E2E_EXPECTED_API_URL. See e2e/README.md.",
+  );
+}
+
+if (
+  e2eEnvironment.requireSignup &&
+  (!e2eEnvironment.signupEmailA ||
+    !e2eEnvironment.signupEmailB ||
+    !e2eEnvironment.signupPassword)
+) {
+  throw new Error(
+    "ROTRACK_E2E_REQUIRE_SIGNUP=1 requires disposable signup emails and password. See e2e/README.md.",
+  );
+}
+
+if (e2eEnvironment.requireSignupConfirmation && !e2eEnvironment.signupConfirmationUrl) {
+  throw new Error(
+    "ROTRACK_E2E_REQUIRE_SIGNUP_CONFIRMATION=1 requires ROTRACK_E2E_SIGNUP_CONFIRMATION_URL. See e2e/README.md.",
   );
 }
