@@ -512,8 +512,8 @@ This is the launch gate for the current product goal, distinct from the full M3 
 **Status:** In progress
 
 - Build a platform-neutral non-root Spring Boot OCI-compatible image with liveness/readiness checks; verify registry manifest media type, architecture, and immutable digest before deployment.
-- Deploy the frontend to Vercel Preview in the one Vercel project and the API to Azure Container Apps Consumption in managed environment `rotrack-nonproduction-env` inside `rotrack-nonproduction`, with app `rotrack-api-nonproduction`, using the shared non-production Supabase project for approved authenticated E2E.
-- Keep production separate in `rotrack-prod`, Vercel Production, managed environment `rotrack-production-env` inside `rotrack-production`, and app `rotrack-api-production`.
+- Operate the canonical hosted environment through Vercel Production alias `rotrack-ecru.vercel.app`, Azure managed environment `rotrack-nonproduction-env` inside `rotrack-nonproduction`, app `rotrack-api-nonproduction`, and the shared Supabase project. Vercel Preview deployments are disposable builds only and are not an environment boundary.
+- Keep `rotrack-prod` and the guarded production Azure lane unused unless the product owner later reopens the environment-separation decision.
 - Configure secrets, TLS/CA injection, restricted CORS, structured logs, connection limits, scale-to-zero cold-start handling, budget/credit-expiry notifications, Supabase Free pause/resume ownership, encrypted off-site logical exports, retention, and restore rehearsal or explicit product-owner risk acceptance.
 
 **Evidence — 2026-08-08 / committed M3 foundation (`15997ea`)**

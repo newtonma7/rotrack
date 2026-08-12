@@ -98,14 +98,14 @@ Browser / Next.js
 
 This table defines the long-term separated topology and reserved production lane; its production cells are not the current hosted boundary. The current product-owner override uses the shared Supabase project, Vercel Production, and the existing ACA implementation boundary with the `production` runtime label until a second Azure quota boundary exists. That decision is recorded in [`docs/operations/single-environment.md`](docs/operations/single-environment.md). The 2026-08-11 candidate evidence is recorded in Section 2 and [`docs/operations/azure-nonproduction.md`](docs/operations/azure-nonproduction.md). This override does not waive the M3/production-readiness STOP.
 
-| Boundary | Non-production | Production |
-|---|---|---|
-| Supabase | Existing non-production/dev Supabase Free project, shared by development and approved environment-scoped authenticated E2E | Newly created `rotrack-prod` Supabase Free project |
-| Vercel | Preview environment in one Vercel project | Production environment in that same Vercel project |
-| GitHub | Target logical `nonproduction` environment for deployment approvals/secrets | Target logical `production` environment for deployment approvals/secrets |
-| Azure managed environment | Target `rotrack-nonproduction-env` | Target `rotrack-production-env` |
-| Azure resource group / app | Target `rotrack-nonproduction` / `rotrack-api-nonproduction` | Target `rotrack-production` / `rotrack-api-production` |
-| Scaling | Azure Container Apps Consumption, minimum replicas `0`; measure at least 10 wake-ups | Minimum replicas `0` only after explicit acceptance when non-production p95 readiness is ≤30 seconds and no trial exceeds 60 seconds; otherwise `1` |
+| Boundary | Shared hosted environment |
+|---|---|
+| Supabase | Existing shared Supabase Free project used for hosted auth and application data; `rotrack-prod` is reserved but unused |
+| Vercel | One project; `rotrack-ecru.vercel.app` is the canonical public Production alias. Preview deployments are disposable builds, not a separate environment |
+| GitHub | Pull-request CI remains credential-free; no hosted authentication secrets are introduced |
+| Azure managed environment | `rotrack-nonproduction-env` |
+| Azure resource group / app | `rotrack-nonproduction` / `rotrack-api-nonproduction` |
+| Scaling | Azure Container Apps Consumption, currently scale `0..1`; cold-start behavior remains an explicit launch risk |
 
 In the long-term separated topology, the shared non-production Supabase project is an accepted development/approved environment-scoped E2E tradeoff, while `rotrack-prod` is reserved for the separate production lane. Under the current shared-hosted-production override, the existing shared Supabase project is also the current canonical production data boundary; approved authenticated E2E uses disposable users/data and never uses the reserved `rotrack-prod` project. Credential-free pull-request CI uses isolated disposable PostgreSQL and never connects to the hosted project. The single Vercel project uses Vercel's built-in Preview and Production environments rather than a dedicated staging Vercel project. The separated Azure managed environments are the long-term security boundaries; the current canonical path uses the existing ACA implementation boundary with the `production` runtime/telemetry label. The `staging` label applies only to the reserved separated non-production topology.
 
@@ -115,7 +115,7 @@ The backend image is a platform-neutral OCI-compatible artifact: Linux amd64, im
 
 ### Supabase Free-plan operational constraints
 
-Both target Supabase projects are Free-plan projects. According to the official [Free project pausing documentation](https://supabase.com/docs/guides/platform/free-project-pausing), a low-activity Free project may be automatically paused after a 7-day low-activity period; the owner must monitor pause warnings and own resume/recovery. Supabase's [database backup documentation](https://supabase.com/docs/guides/platform/backups) identifies automatic daily backups as a Pro/Team/Enterprise feature and recommends regular exports for Free projects, so this topology requires encrypted, access-controlled off-site logical exports using [`supabase db dump`](https://supabase.com/docs/reference/cli/supabase-db-dump). PITR is not part of this Free topology.
+The shared hosted Supabase project is on the Free plan. According to the official [Free project pausing documentation](https://supabase.com/docs/guides/platform/free-project-pausing), a low-activity Free project may be automatically paused after a 7-day low-activity period; the owner must monitor pause warnings and own resume/recovery. Supabase's [database backup documentation](https://supabase.com/docs/guides/platform/backups) identifies automatic daily backups as a Pro/Team/Enterprise feature and recommends regular exports for Free projects, so this topology requires encrypted, access-controlled off-site logical exports using [`supabase db dump`](https://supabase.com/docs/reference/cli/supabase-db-dump). PITR is not part of this Free topology.
 
 No backup, pause alert, resume procedure, export retention, or restore evidence is claimed as configured. Before production promotion, complete a restore rehearsal from a retained logical export or record a separate explicit product-owner data-loss risk acceptance.
 
@@ -146,7 +146,7 @@ No backup, pause alert, resume procedure, export retention, or restore evidence 
 | Browser tests | Playwright |
 | CI | GitHub Actions with credential-free pull-request jobs; trusted-operator authenticated E2E uses disposable external state, while the hosted credentialed job remains administrator-disabled under the solo-maintainer policy |
 | Container | Digest-pinned multi-stage Java 21 OCI-compatible image, non-root UID/GID `10001:10001` |
-| Hosting | One Vercel project (Preview for non-production, Production for production), Azure Container Apps Consumption backend, two Supabase Free projects |
+| Hosting | One Vercel project with a canonical Production alias, one Azure Container Apps Consumption backend, one shared Supabase Free project; Preview builds are not an environment boundary |
 
 ## 4. Core Data and Time Model
 
@@ -391,7 +391,7 @@ Tests are delivered with each feature; testing is not a cleanup phase.
 - The long-term separated target is the Preview environment of one Vercel project and an immutable-digest Spring backend in a separate non-production Azure Container App, using the shared non-production Supabase Free project; its reserved production counterpart uses Vercel Production, a separate production Azure boundary, and `rotrack-prod`. On 2026-08-09 that non-production Azure/Vercel boundary was created and read back: managed identity ACR pull, digest-bound service version, HTTPS health/readiness, scale `0..1`, budget/log caps, and exact Preview CORS passed. The current shared-hosted-production override instead uses the shared Supabase project, Vercel Production, and existing ACA implementation boundary with the `production` runtime label and `minReplicas=1`. Source-controlled templates or synthetic validation alone are never cloud evidence.
 - The backend promotes the exact tested image digest. The frontend cannot promote the same Preview bytes because `NEXT_PUBLIC_*` environment values are embedded at build time; Vercel Production must build the same reviewed source commit with production-scoped values, record separate immutable deployment provenance, and pass production-safe verification.
 - Apply database migrations before application versions that depend on them; migrations must be backward-compatible during rollout. Application rollback never implies automatic database rollback.
-- Production promotion requires the tested non-production backend digest, matching source-commit provenance for the environment-specific frontend build, redacted smoke evidence, active safeguards/observability, budget/credit-expiry alerting, and a rehearsed application rollback.
+- Shared-environment launch requires the tested backend digest, reviewed Production frontend build provenance, redacted smoke evidence, active safeguards/observability, budget/credit-expiry alerting, and a rehearsed application rollback. The single-environment decision does not waive these safety gates.
 - Consumption scale-to-zero is initially accepted. Runbooks must account for cold-start latency and distinguish a cold start from an outage before paging.
 
 ### Observability and release safeguards
