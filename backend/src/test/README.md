@@ -58,7 +58,7 @@ Spring Data repository test prove that:
 - RLS is enabled with the seven named ownership policies, and the isolated PostgreSQL probe verifies two-user preference read/update/insert isolation;
 - the hardened signup trigger reads raw metadata, creates canonical
   rollback-only fixture profiles, and rejects invalid/reserved/duplicate names; and
-- `TimeEntryRepository.saveAndFlush` reaches those real PostgreSQL constraints and owner-scoped active reads; the JPA integration test also exercises the transactional service update and two users' preferences, while the catalog probe verifies `rotrack_runtime` has exactly SELECT/INSERT/UPDATE on `user_preferences`.
+- `TimeEntryRepository.saveAndFlush` reaches those real PostgreSQL constraints and owner-scoped active reads; the JPA integration test also exercises the transactional service update and two users' preferences, while the catalog probe verifies `rotrack_runtime` has SELECT/INSERT/UPDATE/DELETE on `time_entries`, exactly SELECT/INSERT/UPDATE on `user_preferences`, and no preference DELETE.
 
 When integration is enabled, missing or unsafe configuration fails instead of
 silently skipping. Catalog and rollback-only trigger checks do not prove the

@@ -17,7 +17,7 @@ export JAVA_HOME='/absolute/path/to/java-21'
 export PATH="$JAVA_HOME/bin:$PATH"
 ```
 
-## Verification status — 2026-08-11
+## Verification status — 2026-08-12
 
 **Not fully complete.** The following checks have passing evidence:
 
@@ -29,7 +29,8 @@ export PATH="$JAVA_HOME/bin:$PATH"
 - two external disposable-user storage states outside the repository;
 - required-authenticated hosted smoke: 4 Chromium tests passed, 0 skipped, unexpected, or flaky, with API-target binding;
 - degraded dependency-failure probe: liveness 200 and sanitized readiness 503;
-- final frontend/backend validation and clean configured health/readiness run.
+- final frontend/backend validation and clean configured health/readiness run;
+- isolated migrations 001–005 plus local authenticated M4 acceptance for preferences and completed history, including two-user isolation, pagination, overlap rejection, active-entry exclusion, and create/edit/delete.
 
 The fresh signup trigger gate passes through a redacted administrative
 read-only query confirming matching `auth.users` and `public.users` rows. The
@@ -126,8 +127,13 @@ GRANT USAGE ON SCHEMA public TO rotrack_runtime;
 REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM rotrack_runtime;
 REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM rotrack_runtime;
 
-GRANT SELECT, INSERT, UPDATE
+GRANT SELECT, INSERT, UPDATE, DELETE
   ON TABLE public.time_entries
+  TO rotrack_runtime;
+
+-- Run this preference grant only after migration 004 has created the table.
+GRANT SELECT, INSERT, UPDATE
+  ON TABLE public.user_preferences
   TO rotrack_runtime;
 
 GRANT USAGE
@@ -171,7 +177,11 @@ SELECT
   has_table_privilege(current_user, 'public.time_entries', 'SELECT') AS can_select,
   has_table_privilege(current_user, 'public.time_entries', 'INSERT') AS can_insert,
   has_table_privilege(current_user, 'public.time_entries', 'UPDATE') AS can_update,
-  NOT has_table_privilege(current_user, 'public.time_entries', 'DELETE') AS cannot_delete,
+  has_table_privilege(current_user, 'public.time_entries', 'DELETE') AS can_delete,
+  has_table_privilege(current_user, 'public.user_preferences', 'SELECT') AS can_read_preferences,
+  has_table_privilege(current_user, 'public.user_preferences', 'INSERT') AS can_create_preferences,
+  has_table_privilege(current_user, 'public.user_preferences', 'UPDATE') AS can_update_preferences,
+  NOT has_table_privilege(current_user, 'public.user_preferences', 'DELETE') AS cannot_delete_preferences,
   NOT has_table_privilege(current_user, 'public.time_entries', 'TRUNCATE') AS cannot_truncate,
   NOT has_schema_privilege(current_user, 'public', 'CREATE') AS cannot_create_schema_objects;
 ```
@@ -223,9 +233,7 @@ Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
 BUILD SUCCESS
 ```
 
-The two tests prove both the fail-closed existing-profile probe and the
-migrated username/signup contract. The apply target must be disposable; the
-migration does not invent or rename existing usernames.
+The two tests prove the fail-closed existing-profile probe, migrated username/signup contract, preference defaults/RLS, and completed-history constraints, including the `btree_gist` prerequisite, notes ceiling, and same-user range exclusion. The apply target must be disposable; migrations do not invent usernames, truncate notes, or repair overlapping rows.
 
 Stop the disposable database:
 
@@ -390,6 +398,8 @@ The scenarios cover:
 - Rot start, explicit stop, and dashboard delta;
 - browser-context close/reopen restoration;
 - User B isolation for active sessions, stop requests, totals, daily buckets, Work, and Rot.
+
+M4's 2026-08-12 focused local browser acceptance additionally verified private preference defaults/persistence/isolation; 20-row history pagination; create/edit/delete; `TIME_ENTRY_OVERLAP`; active-entry exclusion; two-user history isolation; saved-timezone form conversion; and loaded mobile layout without horizontal overflow. That focused run is recorded as evidence rather than a permanent credentialed test because it requires operator-owned external auth state and disposable database setup.
 
 ---
 

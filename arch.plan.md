@@ -38,7 +38,7 @@ This section describes what exists in source control today. It is not a completi
 ### Frontend
 
 - Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4, shadcn/ui primitives, Recharts, and `@supabase/supabase-js`
-- Routes: `/`, `/signin`, `/signup`, `/signup/confirmation`, `/tracker`, `/dashboard`, `/settings`
+- Routes: `/`, `/signin`, `/signup`, `/signup/confirmation`, `/tracker`, `/dashboard`, `/history`, `/settings`
 - Client-side Supabase session context and protected-route layouts
 - API client using native `fetch` and Supabase bearer tokens
 - Tracker UI with start, active-session restore, elapsed display, and explicit stop; sessions remain active across reload, navigation, tab changes, minimization, and browser closure until explicitly stopped
@@ -284,7 +284,7 @@ Framework authentication, JSON parsing, validation, domain conflicts, missing re
 ## 7. Frontend Architecture
 
 - Public routes: landing, sign-in, sign-up, confirmation.
-- Protected routes: tracker, dashboard, and future settings, notes/logs, friends, and groups.
+- Protected routes: tracker, dashboard, history, and settings. Notes/logs, friends, and groups remain future routes.
 - After sign-in, redirect to the originally requested protected route when present; otherwise redirect to `/dashboard`.
 - `AuthProvider` owns the Supabase browser session. The API client obtains/refreshes its bearer token and normalizes errors.
 - `useTimeTracking` owns tracker orchestration. Timer display is client-derived, but the API remains authoritative.

@@ -1,11 +1,14 @@
 # M4 API contracts
 
+**Status:** Implemented—unverified. Source, isolated PostgreSQL, and authenticated local-browser checks pass; migrations 004/005 and the application changes have not been applied to the hosted environment.
+
 M4 uses handwritten DTOs and the existing authenticated native `fetch` client. Every route is under `/api/v1` and derives ownership from the validated JWT `sub`; request bodies never contain `userId` or duration.
 
 ## Preferences
 
 - `GET /preferences` → `200 { data: { timeZone: string | null, dailyWorkGoalMinutes: number | null, shareStudySummary: boolean, shareActiveStudyStatus: boolean } }`
 - `PUT /preferences` → the same `200` shape. `timeZone` is `null` or a valid IANA identifier, and `dailyWorkGoalMinutes` is `null` or an integer from 1 through 1440.
+- The protected `/settings` UI leaves `timeZone` nullable. Until one is saved, the browser IANA timezone is the effective dashboard/history fallback. A saved zone controls calendar rendering and `datetime-local` conversion without rewriting stored UTC instants. Both sharing flags remain `false` unless the user opts in.
 
 ## Completed history
 
@@ -14,6 +17,7 @@ M4 uses handwritten DTOs and the existing authenticated native `fetch` client. E
 - `POST /time-entries` creates a completed entry; `PUT /time-entries/{id}` edits it; `DELETE /time-entries/{id}` returns `204`.
 - `HistoryEntry` is `{ id, activityType, startTime, endTime, durationSeconds, notes }`; `durationSeconds` is derived by the server from timestamps. Inputs contain only `activityType`, `startTime`, `endTime`, and `notes` (maximum 280 characters).
 - Ranges are half-open for overlap checks: adjacent entries are valid, overlapping entries are rejected, including overlap with an active session.
+- The protected `/history` UI lists completed entries only, reloads page one after mutations, confirms deletion, and converts wall-clock form values using the saved timezone or browser fallback. Active sessions remain visible only on the tracker.
 
 ## Stable errors
 

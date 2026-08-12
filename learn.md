@@ -213,7 +213,7 @@ Use these questions to review the completed baseline phases and understand the i
 9. Why do rate limiting, named incident staffing, non-production smoke, and rollback rehearsal remain production blockers even when all source-level safeguards pass?
 10. Why should authenticated smoke and rollback commands be prepared in advance but executed only after hosts, protection, identities, and candidate/prior digests are approved and read back?
 11. What evidence is required to move M3.3 from **In progress** to **Verified**?
-12. Why must M4 feature implementation remain gated until the complete M3 MVP release gate passes?
+12. Why did M4 originally depend on the complete M3 gate, and what did the later M3-P exception permit without waiving hosted release gates?
 13. Why are successful public health, readiness, HTTPS, and CORS checks insufficient without fresh-user sign-in and authenticated non-production Playwright 4/4?
 14. Why is a process-local per-user mutation limiter not a substitute for a fleet-wide, authentication-adjacent edge control?
 15. Why must the evidence record distinguish source safeguards, configured cloud state, observed runtime behavior, and still-unverified operations?
@@ -227,6 +227,49 @@ Use these questions to review the completed baseline phases and understand the i
 - Cleanup is a separate claim: product-owner-retained synthetic accounts and stopped rows must remain explicitly unclaimed when they are not removed.
 - Rate limiting remains an accepted blocker even after application-level defenses and smoke pass. Cloudflare Free is future exploration only. Ten cold-start trials, collector redaction, alert delivery/receipt, and alert routing remain open; the Azure action-group provider test-notification command returned failure, so synthetic alert delivery is **NOT VERIFIED** and no successful delivery or receipt is claimed. The documented backup limitation is accepted.
 
+
+## M4 — Preferences, timezone, and completed history
+
+1. Why is a saved timezone stored as an IANA identifier instead of a fixed UTC offset?
+   - Calendar boundaries must follow future and historical daylight-saving rules. A fixed offset cannot represent those transitions.
+2. Why does leaving the timezone unset use the browser timezone rather than persisting it automatically?
+   - Browser detection is a fallback, not explicit user intent. Keeping the database value nullable allows the fallback to change with the user's browser until they deliberately save a zone.
+3. Why must history use the same effective timezone for display and `datetime-local` submission conversion?
+   - A wall time displayed in one zone but converted in another silently shifts the authoritative UTC instant. Browser acceptance exposed this when `Europe/Berlin` was saved while the browser ran in UTC; the form now passes the effective zone into both conversions.
+4. Why does changing the saved timezone not rewrite existing `start_time` or `end_time` values?
+   - Stored timestamps are authoritative instants. Timezone changes alter calendar interpretation and input/display conversion, not when the session actually occurred.
+5. Why are both sharing flags database-defaulted to `false` even though no social projection exists yet?
+   - Privacy defaults belong at the persistence boundary. Future callers or migrations must not accidentally create opt-in state by bypassing the current UI.
+6. Why does completed history exclude active entries instead of displaying them with a live duration?
+   - History is the correction boundary for finished records. Active lifecycle remains on the tracker, preventing manual CRUD from becoming a second stop mechanism.
+7. Why is history ordered by `(start_time DESC, id DESC)` instead of start time alone?
+   - Equal timestamps need a stable tie-breaker. The composite order makes keyset pagination deterministic without offset drift.
+8. Why are cursors opaque but unsigned for the current 0–20-user scope?
+   - They are untrusted ordering anchors, not authorization tokens. Ownership-scoped queries prevent cross-user access; signing adds machinery without protecting authority the cursor never carries.
+9. Why does the frontend pass a returned cursor through unchanged and reload page one after a mutation?
+   - Constructing cursors would couple the UI to server internals. A mutation can move rows across keyset boundaries, so re-reading page one avoids patching stale order locally.
+10. Why is overlap checked in both the service and PostgreSQL?
+    - Service validation returns a useful `TIME_ENTRY_OVERLAP` error, while the exclusion constraint remains race-safe when concurrent writes pass the initial check.
+11. Why does the exclusion range use `[)` and treat an active entry's end as infinity?
+    - Half-open ranges allow exact adjacency, while infinity prevents completed corrections from overlapping an active session.
+12. Why does migration 005 fail closed on legacy overlaps or notes over 280 characters?
+    - Truncating or deleting private user data would be silent corruption. Operators must inspect and remediate incompatible data explicitly before applying the constraint.
+13. Why is `btree_gist` required for the overlap constraint?
+    - PostgreSQL needs GiST equality support for the UUID owner key so it can combine `user_id WITH =` and timestamp-range overlap in one exclusion constraint.
+14. Why do history request DTOs omit `userId` and duration?
+    - The JWT subject selects the owner and timestamps derive duration. Accepting either value would expand the trust boundary and permit forged ownership or totals.
+15. Why do ownership misses return `404` for edit/delete?
+    - A non-enumerating response does not reveal whether another user's completed entry exists.
+16. Why were Java/TypeScript DTOs kept handwritten instead of adding OpenAPI generation?
+    - The existing typed native-fetch boundary plus focused contract tests covers this small slice. A generator would add a second toolchain and generated-file ownership before scale justifies it.
+17. What did isolated PostgreSQL verification prove that unit/controller tests did not?
+    - It executed migrations 001–005, catalog/RLS/grant checks, `btree_gist`, range exclusion, JPA ownership behavior, and runtime-role privileges against real PostgreSQL semantics.
+18. What did authenticated browser acceptance add beyond Vitest and MockMvc?
+    - It exercised Supabase storage state, protected routes, actual browser timezone conversion, CORS/API binding, pagination, mutations, overlap errors, active exclusion, two-user isolation, and responsive layout end to end.
+19. Why does successful local browser acceptance not make M4 **Verified**?
+    - Migrations 004/005 and the application have not passed the release-gated hosted migration/deployment path. Local source and disposable-database evidence cannot be relabeled as hosted evidence.
+20. What must happen before applying migration 005 to hosted data?
+    - Satisfy the applicable M3/release gates, obtain explicit authorization, inspect the target for notes-length and overlap preflight failures, apply migrations database-first, then verify runtime-role grants and authenticated behavior without exposing private data.
 
 ## M2.4 — Canonical username registration
 
