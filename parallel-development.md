@@ -8,9 +8,9 @@
 
 - M3-P is **Verified** for the 0–20-user pre-user scope. Full M3 production readiness remains open; see `todo.md` for the accepted and unresolved operational risks.
 - M4 preferences, completed history/manual corrections, and handwritten typed contracts are integrated and locally accepted.
-- Migrations `004_user_preferences.sql` and `005_time_entry_history.sql` passed disposable PostgreSQL apply/verify probes but were not applied to hosted Supabase.
-- Authenticated local browser acceptance passed settings defaults/persistence/isolation and history pagination/create/edit/delete/overlap/active-exclusion/two-user/mobile checks.
-- The dated 2026-08-12 product-owner override authorizes only the narrow zero-user/pre-user M4 hosted actions: migrations 004/005, reviewed M4 app deployment, and hosted acceptance. M4 remains **Implemented—unverified** until rollout evidence passes; unresolved M3 risks remain unverified, and M5 hosted rollout and broad production-readiness claims remain unauthorized.
+- The shared hosted database was explicitly remediated for legacy usernames, then migrations 003–005 applied in order; schema, RLS, runtime grants, and overlap constraints passed verification.
+- Authenticated local and hosted acceptance passed settings defaults/persistence/isolation and history create/list/delete/overlap/two-user checks; the broader local run also covers pagination/edit/active-exclusion/mobile behavior.
+- M4 is **Verified**. M5 source work may begin from this prerequisite, but M5 hosted rollout, unresolved M3 risks, and broad production-readiness claims remain unauthorized.
 
 ## Coordination rules
 
@@ -24,7 +24,7 @@
 8. Existing shared primitives and handwritten DTOs are the default. Do not add OpenAPI generation unless a later decision replaces the current M4 contract policy.
 9. No milestone becomes **Verified** from source existence, skipped external checks, or local evidence relabeled as hosted evidence.
 
-## Immediate stage — Review and narrowly authorized M4 rollout preparation
+## Immediate stage — M5 source planning after verified M4
 
 ### Lane A — Source/PR review
 
@@ -45,7 +45,7 @@
 - Deploy the reviewed backend/frontend artifacts, then run authenticated settings/history acceptance and rollback-compatible smoke.
 - Never auto-truncate notes, delete overlaps, rewrite UTC instants, or infer user-approved preference values.
 
-**Done when:** Hosted evidence is recorded truthfully and `todo.md` can evaluate the M4 gate. Until then, M4 stays **Implemented—unverified**.
+**Done:** Hosted evidence is recorded in `todo.md`; M4 is Verified. This lane is closed unless a rollback or regression requires reopening it.
 
 ## Later feature lanes
 
