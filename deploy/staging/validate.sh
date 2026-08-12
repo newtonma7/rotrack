@@ -210,7 +210,7 @@ PY
     || fail "runtime-role audit must enforce the public routine allowlist"
   grep -q 'no_direct_create_or_temporary_grant' "$TEMPLATES/runtime-role-audit.sql.template" \
     || fail "runtime-role audit must reject direct database create/temp grants"
-  grep -q 'GRANT SELECT, INSERT, UPDATE ON TABLE public.time_entries' "$TEMPLATES/runtime-role.sql.template" \
+  grep -q 'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.time_entries' "$TEMPLATES/runtime-role.sql.template" \
     || fail "runtime-role template lacks the exact application DML grant"
   grep -q 'REVOKE ALL PRIVILEGES ON TABLE public.user_preferences' "$TEMPLATES/runtime-role.sql.template" \
     || fail "runtime-role template must reset preference table grants idempotently"

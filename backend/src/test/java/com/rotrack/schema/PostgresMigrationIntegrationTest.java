@@ -44,7 +44,8 @@ class PostgresMigrationIntegrationTest {
             "001_initial_schema.sql",
             "002_harden_time_entries.sql",
             "003_require_usernames.sql",
-            "004_user_preferences.sql"
+            "004_user_preferences.sql",
+            "005_time_entry_history.sql"
     );
 
     @Test
@@ -307,6 +308,26 @@ class PostgresMigrationIntegrationTest {
         assertTrue(normalizedActiveIndex.contains("(user_id)"));
         assertTrue(normalizedActiveIndex.contains("where (end_time is null)"));
 
+        String overlapConstraint = querySingleString(connection, """
+                SELECT pg_get_constraintdef(oid)
+                FROM pg_constraint
+                WHERE conrelid = 'public.time_entries'::regclass
+                  AND conname = 'time_entries_no_overlap_per_user'
+                """);
+        assertNotNull(overlapConstraint, "same-user overlap exclusion must exist");
+        String normalizedOverlap = normalize(overlapConstraint);
+        assertTrue(normalizedOverlap.contains("exclude using gist"));
+        assertTrue(normalizedOverlap.contains("user_id with ="));
+        assertTrue(normalizedOverlap.contains("tstzrange"));
+        assertTrue(normalizedOverlap.contains("infinity"));
+        assertTrue(normalizedOverlap.contains("&&"));
+        assertEquals(1, querySingleInt(connection, """
+                SELECT count(*)
+                FROM pg_constraint
+                WHERE conrelid = 'public.time_entries'::regclass
+                  AND conname = 'time_entries_notes_max_length'
+                """));
+
         String reportingIndex = querySingleString(connection, """
                 SELECT indexdef
                 FROM pg_indexes
@@ -404,6 +425,12 @@ class PostgresMigrationIntegrationTest {
                 WHERE conrelid = 'public.user_preferences'::regclass
                   AND conname = 'user_preferences_daily_work_goal_range'
                 """), "daily goal range must be database-enforced");
+        assertEquals(4, querySingleInt(connection, """
+                SELECT count(*)
+                FROM aclexplode((SELECT relacl FROM pg_class WHERE oid = 'public.time_entries'::regclass))
+                WHERE grantee = 'rotrack_runtime'::regrole
+                  AND privilege_type IN ('SELECT', 'INSERT', 'UPDATE', 'DELETE')
+                """), "runtime role must have the four time-entry DML grants");
         assertEquals(3, querySingleInt(connection, """
                 SELECT count(*)
                 FROM aclexplode((SELECT relacl FROM pg_class WHERE oid = 'public.user_preferences'::regclass))
@@ -459,10 +486,13 @@ class PostgresMigrationIntegrationTest {
         assertEquals("alice_one", querySingleString(connection, "SELECT username FROM public.users WHERE id = '" + firstUser + "'"));
 
         OffsetDateTime start = OffsetDateTime.of(2026, 8, 7, 12, 0, 0, 0, ZoneOffset.UTC);
-        insertTimeEntry(connection, UUID.randomUUID(), firstUser, start, null, null);
+        insertTimeEntry(connection, UUID.randomUUID(), firstUser, start.plusHours(8), null, null);
 
         expectSqlState(connection, "23505", () ->
-                insertTimeEntry(connection, UUID.randomUUID(), firstUser, start.plusMinutes(1), null, null));
+                insertTimeEntry(connection, UUID.randomUUID(), firstUser, start.plusHours(8).plusMinutes(1), null, null));
+        expectSqlState(connection, "23P01", () ->
+                insertTimeEntry(connection, UUID.randomUUID(), firstUser,
+                        start.plusHours(8).plusMinutes(1), start.plusHours(8).plusMinutes(2), null));
 
         insertTimeEntry(connection, UUID.randomUUID(), secondUser, start, null, null);
         assertEquals(2, queryCount(connection, """
@@ -482,7 +512,14 @@ class PostgresMigrationIntegrationTest {
         ));
 
         UUID completedEntry = UUID.randomUUID();
-        insertTimeEntry(connection, completedEntry, firstUser, start, start.plusHours(1), 999);
+        insertTimeEntry(connection, completedEntry, firstUser, start.plusHours(2), start.plusHours(3), 999);
+        insertTimeEntry(connection, UUID.randomUUID(), firstUser, start.plusHours(3), start.plusHours(4), null);
+        expectSqlState(connection, "23P01", () -> insertTimeEntry(
+                connection, UUID.randomUUID(), firstUser,
+                start.plusHours(2).plusMinutes(1), start.plusHours(2).plusMinutes(2), null));
+        expectSqlState(connection, "23514", () -> insertTimeEntry(
+                connection, UUID.randomUUID(), firstUser,
+                start.plusHours(4), start.plusHours(4), null));
         try (PreparedStatement statement = connection.prepareStatement("""
                 SELECT duration_minutes,
                        CAST(EXTRACT(EPOCH FROM (end_time - start_time)) AS BIGINT)

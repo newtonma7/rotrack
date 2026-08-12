@@ -2,9 +2,11 @@ package com.rotrack.repository;
 
 import com.rotrack.model.TimeEntry;
 import jakarta.persistence.LockModeType;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -20,6 +22,52 @@ public interface TimeEntryRepository extends JpaRepository<TimeEntry, UUID> {
     Optional<TimeEntry> findByIdAndUserId(UUID id, UUID userId);
 
     Optional<TimeEntry> findFirstByUserIdAndEndTimeIsNullOrderByStartTimeDesc(UUID userId);
+
+    @Query("""
+            SELECT entry
+            FROM TimeEntry entry
+            WHERE entry.userId = :userId
+              AND entry.endTime IS NOT NULL
+            ORDER BY entry.startTime DESC, entry.id DESC
+            """)
+    List<TimeEntry> findCompletedHistory(@Param("userId") UUID userId, Pageable pageable);
+
+    @Query("""
+            SELECT entry
+            FROM TimeEntry entry
+            WHERE entry.userId = :userId
+              AND entry.endTime IS NOT NULL
+              AND (entry.startTime < :cursorStart
+                   OR (entry.startTime = :cursorStart AND entry.id < :cursorId))
+            ORDER BY entry.startTime DESC, entry.id DESC
+            """)
+    List<TimeEntry> findCompletedHistoryAfter(
+            @Param("userId") UUID userId,
+            @Param("cursorStart") Instant cursorStart,
+            @Param("cursorId") UUID cursorId,
+            Pageable pageable
+    );
+
+    /**
+     * Uses the same half-open range rule as the PostgreSQL exclusion constraint.
+     * The database check remains authoritative when concurrent writers race this read.
+     */
+    @Query(value = """
+            SELECT EXISTS (
+              SELECT 1
+              FROM public.time_entries entry
+              WHERE entry.user_id = :userId
+                AND (:excludeId IS NULL OR entry.id <> :excludeId)
+                AND entry.start_time < COALESCE(CAST(:candidateEnd AS timestamptz), 'infinity'::timestamptz)
+                AND COALESCE(entry.end_time, 'infinity'::timestamptz) > CAST(:candidateStart AS timestamptz)
+            )
+            """, nativeQuery = true)
+    boolean existsOverlappingEntry(
+            @Param("userId") UUID userId,
+            @Param("candidateStart") Instant candidateStart,
+            @Param("candidateEnd") Instant candidateEnd,
+            @Param("excludeId") UUID excludeId
+    );
 
     /**
      * Select completed owned sessions that overlap the half-open report range.
