@@ -596,7 +596,7 @@ The gate requires all of the following:
 
 **Goal:** Deliver the saved-timezone and daily-goal prerequisite, then the owned completed-entry history slice for the 0–20-user scope.
 **Source/local dependency:** M3-P **Verified**. This is intentionally narrower than the full M3 production-readiness dependency.
-**Hosted dependency:** The narrow zero-user/pre-user M4 rollout may proceed only under the dated product-owner override and applicable M4 release checks. M4 **Verified** remains blocked until rollout evidence passes; M5 hosted rollout and broad production-readiness claims remain unauthorized.
+**Hosted dependency:** The dated narrow zero-user/pre-user M4 rollout passed and M4 is **Verified**. M5 hosted rollout and broad production-readiness claims remain unauthorized.
 
 ### M4.1 — Profile and preferences
 
@@ -665,38 +665,47 @@ The gate requires all of the following:
 
 ## 8. Milestone 5 — WYSIWYG Notes and Daily Study Logs
 
-**Goal:** Add private study context beside the timer and a trustworthy daily record.
-**Dependencies:** Milestone 4
+**Goal:** Add private study context beside the timer and a trustworthy generated daily record.
+**Dependencies:** Milestone 4 **Verified** for source/local work. M5 hosted migration and rollout remain unauthorized.
+**Contract authority:** [`arch.plan.md`](arch.plan.md) governs; [`CONTEXT.md`](CONTEXT.md) defines domain language, and [`docs/specs/m5-contracts.md`](docs/specs/m5-contracts.md) supplies subordinate implementation detail.
+**Delivery order:** Define all M5 boundaries now, then implement M5.1 → M5.2 → M5.3. Each slice is independently tested and additive.
 
 ### M5.1 — Notes data and API
 
 **Status:** Not started
 
-- Add owned `notes` migration/API with optional time-entry link, Tiptap JSON, derived plain text, size limits, and optimistic version.
-- Use `ON DELETE SET NULL` for a deleted linked session so the user's note survives.
-- Enforce at the database boundary that a note can link only to a session owned by the same user.
-- Validate supported nodes/marks and safe link protocols; never accept arbitrary executable HTML.
-- Test ownership, missing link, deleted session, version conflict, malformed document, and size limit.
+- Add ordered additive Notes plus content-free idempotency/tombstone storage. Keep M4's existing 280-character Session Label contract unchanged.
+- Add owned summary-list/full-read/create/update/hard-delete APIs with optional movable active/completed Time Entry attachment and `ON DELETE SET NULL`.
+- Enforce same-owner links, API-only rich-content access, structural database constraints, whole-resource optimistic locking, idempotent create/delete, separate bounded rich-text save limiting, and browser CORS support for `Idempotency-Key`/`Retry-After`.
+- Implement the shared version-1 validator/normalizer/derived-text value model once: executable tree grammar, deterministic canonical serialization, fixed node/mark/link allowlist, 256 KiB, depth 32, 10,000 nodes, Unicode title/preview limits, and no arbitrary HTML.
+- Add `attachedNoteCount` to entries returned by `GET /time-entries/history` so deletion confirmation warns that Notes survive and detach; leave other Time Entry DTOs unchanged.
+- Test migration/catalog/runtime grants, two-user ownership, attachment races/lifecycle, empty-create rejection, cleared existing Notes, canonical replay/mismatch/deleted replay/tombstones, repeated delete, every validation/grammar ceiling, CORS headers, safe errors, and private-log omission.
 
-### M5.2 — Timer-side WYSIWYG editor
-
-**Status:** Not started
-
-- Add a Tiptap StarterKit client component beside the timer with the formatting set defined in `arch.plan.md`.
-- Allow standalone notes and optional attachment to the active/completed session.
-- Autosave after about 750 ms and show saving/saved/conflict/offline-error states without losing local edits.
-- Add keyboard navigation, accessible toolbar labels, responsive layout, and reload restoration tests.
-
-### M5.3 — Generated daily logs and reflection
+### M5.2 — Rich-text editors and Notes workspace
 
 **Status:** Not started
+**Dependencies:** M5.1
 
-- Add one owned reflection per local date and generate totals/timeline/session-note references from time entries.
-- Build daily and calendar views; generated statistics are read-only.
-- Reuse the safe rich-text document contract for reflections.
-- Test empty days, cross-midnight/DST sessions, timezone changes, version conflicts, and privacy.
+- Add only Tiptap core/React/StarterKit/Link and one client-only editor/toolbar primitive exposing paragraph, H2/H3, bold/italic, lists, blockquote, safe links, undo, and redo.
+- Add the responsive tracker-side editor plus protected `/notes` and `/notes/{id}` library/editor routes; use summary pagination and attachment-status/exact-entry filtering, with search deferred.
+- Create a Note only on a first meaningful edit, capture the then-active entry or standalone status, serialize/coalesce 750 ms autosaves, and expose Draft/Saving/Saved/Waiting/Offline/Conflict.
+- Preserve current-tab edits across rate limits, network errors, and conflicts; flush before in-app leave, warn before discarding/closing, never unload-save, and provide explicit copy/reload or Save-as-new-Note conflict actions without silent merge/overwrite.
+- Test keyboard/toolbar/link safety, size preflight, idempotent ambiguous create, retry timing, route transitions, attachment changes, cross-tab conflict, destructive confirmation, mobile stacking, split desktop workspace, and accessible status/error announcements.
 
-**Milestone gate:** Notes and reflections survive reloads, generated totals match authoritative entries, and cross-user/private-content tests pass.
+### M5.3 — Generated Daily Logs and Reflections
+
+**Status:** Not started
+**Dependencies:** M5.2
+
+- Add ordered additive Reflection/replay storage keyed by owner and original local-date label. Persist no Daily Log or mutable generated statistics.
+- Add `GET /daily-logs` complete half-open summary ranges capped at 42 days, date detail, and versioned Reflection update returning the Reflection only.
+- Generate completed-only clipped segments, Session Labels, Work/Rot totals, distinct entry/Note counts, and deduplicated timeline-ordered Note references from authoritative owned data; exclude active entries.
+- Use explicit timezone override, then saved/browser fallback. Re-bucket generated facts across DST/timezone changes while keeping the Reflection on its original label and exposing immutable creation timezone as context.
+- Reuse the shared validator/editor primitive; create Reflections only from meaningful text, preserve empty cleared rows and monotonic versions, and apply replay/conflict/privacy rules without force overwrite.
+- Build protected `/daily-logs` calendar and `/daily-logs/{localDate}` detail routes with desktop combined and mobile navigated layouts.
+- Test empty/future days, 42-day boundaries, cross-midnight and DST clipping/counting, timezone override/change, Reflection creation/clear/replay/conflict, Note-reference privacy/deduplication/order, two-user isolation, responsive UI, and accessibility.
+
+**Milestone gate:** Focused source/database suites pass, and authenticated local browser acceptance with two users proves ownership, autosave/reload, attachment/detachment, idempotency, cross-tab conflicts, Daily Log/DST correctness, private payload/log omission, responsive layouts, keyboard operation, and accessible states. Hosted rollout requires a separate product-owner decision and release evidence.
 
 ## 9. Milestone 6 — Friends, Privacy, and Active Study Presence
 
@@ -798,4 +807,4 @@ Append evidence beneath the completed task; do not create unsupported global che
 
 ## 13. Next Action
 
-The fresh confirmed-user first-sign-in step is complete. The local-only credential object was purged; the non-production runtime password was rotated, the old password was rejected, and local/Azure redeployment health/readiness passed. Historical author-address retention remains an explicit product-owner decision and is not repeated here. The repository is now public and the approved protected `main`/`nonproduction`/security settings are read back; the checked-in advanced CodeQL workflow was removed because default setup is the sole chosen scanner. PR #18 supplied hosted-green protected-path evidence and PR #19 supplied deliberate-red required-check blocking evidence, so M3.1 is Verified. The 2026-08-11 candidate passed hosted authenticated smoke and the corrected exact no-schema-change rollback rehearsal. Rate limiting remains explicitly deferred/accepted; collector redaction, alert delivery/receipt, and alert routing remain open. Ten genuine zero-replica trials completed on 2026-08-11, but p95 readiness was 39.425 seconds, above the 30-second criterion; scale-to-zero remains an explicitly accepted risk, not a verified pass. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. The backup limitation is accepted as already documented, and retained synthetic accounts/stopped rows are not claimed as cleaned up. M3-P is Verified and M4 source/local work may begin for the 0–20-user scope. The dated 2026-08-12 override permits only the narrow zero-user/pre-user M4 hosted actions; do not run M5 hosted rollout, make broad production-readiness claims, or mark M4 Verified before the applicable M4 rollout evidence passes.
+The M5 domain language, architecture, ADRs, and implementation contracts are accepted. Review and merge the planning changes, then begin M5.1 Notes data/API test-first from a clean `origin/main` worktree; do not start M5.2 before M5.1 is Verified or M5.3 before M5.2 is Verified. M5 hosted rollout and broad production-readiness claims remain unauthorized; unresolved M3 risks and accepted pre-user limitations remain recorded above.
