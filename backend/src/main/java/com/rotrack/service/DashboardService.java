@@ -13,7 +13,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.time.zone.ZoneRulesException;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -38,7 +37,7 @@ public class DashboardService {
             LocalDate requestedStart,
             LocalDate requestedEnd
     ) {
-        ZoneId zoneId = parseTimeZone(timeZone);
+        ZoneId zoneId = TimeZoneValidator.parse(timeZone);
         LocalDate today = LocalDate.ofInstant(clock.instant(), zoneId);
         LocalDate startDate;
         LocalDate endDate;
@@ -169,14 +168,4 @@ public class DashboardService {
         }
     }
 
-    private ZoneId parseTimeZone(String timeZone) {
-        try {
-            if (timeZone == null || !ZoneId.getAvailableZoneIds().contains(timeZone)) {
-                throw new IllegalArgumentException("timeZone must be a valid IANA identifier");
-            }
-            return ZoneId.of(timeZone);
-        } catch (ZoneRulesException exception) {
-            throw new IllegalArgumentException("timeZone must be a valid IANA identifier", exception);
-        }
-    }
 }
