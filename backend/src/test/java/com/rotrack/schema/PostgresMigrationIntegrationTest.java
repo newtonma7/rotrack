@@ -671,8 +671,11 @@ class PostgresMigrationIntegrationTest {
         }
 
         expectSqlState(connection, "23505", () -> insertPreference(connection, userId, "UTC", 60));
+        assertEquals(1, updatePreferenceTimezone(connection, userId, "UTC"));
+        assertEquals(1, updatePreferenceTimezone(connection, userId, "America/New_York"));
         expectSqlState(connection, "23514", () -> insertPreference(connection, UUID.randomUUID(), "UTC", 0));
         expectSqlState(connection, "22023", () -> insertPreference(connection, UUID.randomUUID(), "Not/A_Zone", 60));
+        expectSqlState(connection, "22023", () -> insertPreference(connection, UUID.randomUUID(), "CST", 60));
     }
 
     private void proveTwoUserPreferencesRls(Connection connection) throws SQLException {
@@ -736,6 +739,15 @@ class PostgresMigrationIntegrationTest {
         try (PreparedStatement statement = connection.prepareStatement("SELECT set_config('request.jwt.claim.sub', ?, true)")) {
             statement.setString(1, userId.toString());
             statement.execute();
+        }
+    }
+
+    private int updatePreferenceTimezone(Connection connection, UUID userId, String timezone) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "UPDATE public.user_preferences SET timezone = ? WHERE user_id = ?")) {
+            statement.setString(1, timezone);
+            statement.setObject(2, userId);
+            return statement.executeUpdate();
         }
     }
 

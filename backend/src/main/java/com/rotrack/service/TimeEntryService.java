@@ -246,9 +246,6 @@ public class TimeEntryService {
         if (containsConstraint(exception, OVERLAP_CONSTRAINT)) {
             return overlapConflict();
         }
-        if (!overlapExpected && containsConstraint(exception, "idx_time_entries_one_active_per_user")) {
-            return new ConflictException("ACTIVE_SESSION_EXISTS", "An active session already exists");
-        }
         return exception;
     }
 
