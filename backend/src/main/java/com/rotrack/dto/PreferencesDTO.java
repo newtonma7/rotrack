@@ -1,7 +1,7 @@
 package com.rotrack.dto;
 
 public record PreferencesDTO(
-        String timezone,
+        String timeZone,
         Integer dailyWorkGoalMinutes,
         boolean shareStudySummary,
         boolean shareActiveStudyStatus

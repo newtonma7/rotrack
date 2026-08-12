@@ -56,11 +56,11 @@ class PreferencesControllerOwnershipTest {
         mockMvc.perform(get("/api/v1/preferences").with(jwt().jwt(token -> token
                         .subject(USER_A.toString()).audience(List.of("authenticated")))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.timezone").value("UTC"));
+                .andExpect(jsonPath("$.data.timeZone").value("UTC"));
         mockMvc.perform(get("/api/v1/preferences").with(jwt().jwt(token -> token
                         .subject(USER_B.toString()).audience(List.of("authenticated")))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.timezone").doesNotExist())
+                .andExpect(jsonPath("$.data.timeZone").doesNotExist())
                 .andExpect(jsonPath("$.data.shareStudySummary").value(false));
 
         verify(repository).findById(USER_A);
