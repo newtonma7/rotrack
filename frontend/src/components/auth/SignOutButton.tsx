@@ -7,6 +7,7 @@
  * Data flow: supabase.auth.signOut() → local session cleared → AuthProvider sees null user.
  */
 
+import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -14,9 +15,13 @@ import { Button } from "@/components/ui/button";
 export function SignOutButton({
   className,
   redirectTo = "/signin",
+  children = "Sign out",
+  "aria-label": ariaLabel,
 }: {
   className?: string;
   redirectTo?: string;
+  children?: ReactNode;
+  "aria-label"?: string;
 }) {
   const router = useRouter();
 
@@ -30,9 +35,10 @@ export function SignOutButton({
       type="button"
       variant="ghost"
       onClick={() => void handleSignOut()}
+      aria-label={ariaLabel}
       className={className}
     >
-      Sign out
+      {children}
     </Button>
   );
 }
