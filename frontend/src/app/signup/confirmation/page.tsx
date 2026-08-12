@@ -8,15 +8,10 @@
  */
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 function ConfirmationContent() {
-  const searchParams = useSearchParams();
-  const email = searchParams.get("email");
-
   return (
     <div className="min-h-screen bg-[var(--rt-cream)] flex flex-col items-center justify-center px-6 py-16">
       <Link
@@ -30,16 +25,7 @@ function ConfirmationContent() {
         <CardHeader>
           <CardTitle headingLevel="h1" className="font-heading text-2xl">Check your email</CardTitle>
           <CardDescription className="text-[var(--rt-ink-muted)]">
-            We sent a confirmation link
-            {email ? (
-              <>
-                {" "}
-                to <span className="text-[var(--rt-ink)] font-medium">{email}</span>
-              </>
-            ) : (
-              " to your inbox"
-            )}
-            . Click it to activate your account, then sign in to start tracking.
+            We sent a confirmation link to your inbox. Click it to activate your account, then sign in to start tracking.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -57,15 +43,5 @@ function ConfirmationContent() {
 }
 
 export default function SignUpConfirmationPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-[var(--rt-cream)] flex items-center justify-center text-[var(--rt-ink-muted)]">
-          Loading…
-        </div>
-      }
-    >
-      <ConfirmationContent />
-    </Suspense>
-  );
+  return <ConfirmationContent />;
 }
