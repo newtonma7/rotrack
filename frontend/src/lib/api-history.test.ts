@@ -60,6 +60,18 @@ describe("history API", () => {
     );
   });
 
+  it("preserves typed API errors from a history mutation", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      error: { code: "VALIDATION_ERROR", message: "End time is invalid.", fieldErrors: { endTime: "must be after startTime" } },
+    }), { status: 400 }));
+
+    await expect(createHistoryEntry(input)).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      status: 400,
+      fieldErrors: { endTime: "must be after startTime" },
+    });
+  });
+
   it("uses typed create, update, and delete contracts", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(response(entry))
