@@ -1,0 +1,259 @@
+"use client";
+
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { History as HistoryIcon, Settings2, Timer, Trash2 } from "lucide-react";
+import { SignOutButton } from "@/components/auth/SignOutButton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { createHistoryEntry, deleteHistoryEntry, getHistory, updateHistoryEntry } from "@/lib/api";
+import { ApiRequestError } from "@/lib/api-errors";
+import { toDateTimeLocal, toIsoInstant } from "@/lib/datetime";
+import { formatDuration } from "@/lib/format";
+import type { ActivityType } from "@/types/time-entry";
+import type { HistoryEntry, HistoryEntryInput } from "@/types/history";
+
+type FormValues = {
+  activityType: ActivityType;
+  startTime: string;
+  endTime: string;
+  notes: string;
+};
+type FieldErrors = Partial<Record<keyof FormValues, string>>;
+
+export default function HistoryPage() {
+  const [entries, setEntries] = useState<HistoryEntry[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [formEntry, setFormEntry] = useState<HistoryEntry | null | undefined>(undefined);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const loadHistory = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const page = await getHistory();
+      setEntries(page.entries);
+      setNextCursor(page.nextCursor);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "History could not be loaded.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadHistory();
+  }, [loadHistory]);
+
+  const loadMore = async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    setLoadMoreError(null);
+    try {
+      const page = await getHistory(nextCursor);
+      setEntries((current) => [...current, ...page.entries]);
+      setNextCursor(page.nextCursor);
+    } catch (requestError) {
+      setLoadMoreError(requestError instanceof Error ? requestError.message : "More history could not be loaded.");
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const saveEntry = async (input: HistoryEntryInput, id?: string) => {
+    if (id) {
+      const updated = await updateHistoryEntry(id, input);
+      setEntries((current) => current.map((entry) => entry.id === id ? updated : entry));
+    } else {
+      const created = await createHistoryEntry(input);
+      setEntries((current) => [created, ...current]);
+    }
+    setFormEntry(undefined);
+  };
+
+  const removeEntry = async (entry: HistoryEntry) => {
+    if (!window.confirm("Delete this completed entry?")) return;
+    setDeletingId(entry.id);
+    setDeleteError(null);
+    try {
+      await deleteHistoryEntry(entry.id);
+      setEntries((current) => current.filter((item) => item.id !== entry.id));
+    } catch (requestError) {
+      setDeleteError(requestError instanceof Error ? requestError.message : "Entry could not be deleted.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[var(--rt-cream)] text-[var(--rt-ink)]">
+      <header className="border-b border-[var(--rt-line)] bg-[var(--rt-paper)]/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-4 px-6 py-4 md:px-10">
+          <Link href="/" className="font-display text-2xl tracking-[-0.02em]">rotrack<span className="text-[var(--rt-orange)]">.</span></Link>
+          <nav aria-label="Application" className="flex w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end">
+            <Button variant="ghost" asChild className="rounded-full"><Link href="/dashboard">dashboard</Link></Button>
+            <Button variant="ghost" asChild className="rounded-full"><Link href="/tracker"><Timer aria-hidden="true" />tracker</Link></Button>
+            <span aria-current="page" className="flex items-center gap-2 rounded-full bg-[var(--rt-cream-soft)] px-4 py-2 text-sm font-semibold"><HistoryIcon aria-hidden="true" className="size-4" />history</span>
+            <Button variant="ghost" asChild className="rounded-full"><Link href="/settings"><Settings2 aria-hidden="true" />settings</Link></Button>
+            <SignOutButton className="rounded-full text-[var(--rt-ink-muted)] hover:bg-[var(--rt-cream-soft)] hover:text-[var(--rt-ink)]" />
+          </nav>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-[1100px] px-6 py-12 md:px-10 md:py-16">
+        <div className="mb-10 flex flex-wrap items-end justify-between gap-6">
+          <div className="max-w-3xl">
+            <p className="mb-3 text-[0.8rem] font-semibold uppercase tracking-[0.2em] text-[var(--rt-orange)]">completed, not guessed</p>
+            <h1 className="font-display text-[clamp(2.8rem,7vw,5.5rem)] leading-[0.92] tracking-[-0.02em]">your time, in reverse<span className="text-[var(--rt-orange)]">.</span></h1>
+            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-[var(--rt-ink-muted)]">Review the entries you actually finished. Active tracking stays on the tracker.</p>
+          </div>
+          <Button onClick={() => setFormEntry(null)} className="rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] hover:bg-[var(--rt-orange-deep)]">Add entry</Button>
+        </div>
+
+        {formEntry !== undefined && (
+          <HistoryForm entry={formEntry} onSave={saveEntry} onCancel={() => setFormEntry(undefined)} />
+        )}
+
+        {loading ? (
+          <div role="status" aria-live="polite" className="rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-10">Loading history…</div>
+        ) : error ? (
+          <div role="alert" className="rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-8 md:p-10">
+            <p className="font-display text-3xl">history stayed quiet.</p>
+            <p className="mt-3 text-[var(--rt-ink-muted)]">{error}</p>
+            <Button onClick={() => void loadHistory()} className="mt-6 rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] hover:bg-[var(--rt-orange-deep)]">Try again</Button>
+          </div>
+        ) : (
+          <section aria-label="Completed history" className="space-y-4">
+            {deleteError && <p role="alert" className="rounded-2xl border border-[var(--rt-orange)] bg-[var(--rt-orange-soft)] px-5 py-4">{deleteError}</p>}
+            {entries.length === 0 ? (
+              <div className="rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-10">
+                <p className="font-display text-3xl">no completed entries yet.</p>
+                <p className="mt-3 text-[var(--rt-ink-muted)]">Add a finished Work or Rot block when you need to correct the record.</p>
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)]">
+                <ul className="divide-y divide-[var(--rt-line)]">
+                  {entries.map((entry) => <HistoryRow key={entry.id} entry={entry} deleting={deletingId === entry.id} onEdit={() => setFormEntry(entry)} onDelete={() => void removeEntry(entry)} />)}
+                </ul>
+                {nextCursor && (
+                  <div className="border-t border-[var(--rt-line)] p-5 text-center">
+                    {loadMoreError && <p role="alert" className="mb-3 text-sm text-[var(--rt-orange-deep)]">{loadMoreError}</p>}
+                    <Button variant="outline" onClick={() => void loadMore()} disabled={loadingMore} className="rounded-full">
+                      {loadingMore ? "Loading more…" : loadMoreError ? "Try again" : "Load more"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+        )}
+      </main>
+    </div>
+  );
+}
+
+function HistoryRow({ entry, deleting, onEdit, onDelete }: { entry: HistoryEntry; deleting: boolean; onEdit: () => void; onDelete: () => void }) {
+  const label = entry.notes?.trim() || `${entry.activityType.toLowerCase()} entry`;
+  const duration = Math.max(0, (Date.parse(entry.endTime) - Date.parse(entry.startTime)) / 1000);
+  return (
+    <li className="flex flex-wrap items-center gap-4 px-6 py-5 md:px-8">
+      <span aria-hidden="true" className={`h-3 w-3 shrink-0 rounded-full ${entry.activityType === "WORK" ? "bg-[var(--rt-orange)]" : "bg-[var(--rt-ink-soft)]"}`} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-semibold">{label}</p>
+        <p className="mt-1 text-sm text-[var(--rt-ink-muted)]">{entry.activityType} · {formatDuration(duration)} · {formatHistoryDate(entry.startTime)}</p>
+      </div>
+      <div className="flex items-center gap-2">
+        <Button variant="outline" onClick={onEdit} disabled={deleting} className="rounded-full" aria-label={`Edit ${label}`}>Edit</Button>
+        <Button variant="ghost" onClick={onDelete} disabled={deleting} className="rounded-full text-[var(--rt-ink-muted)] hover:text-[var(--rt-orange-deep)]" aria-label={`Delete ${label}`}>
+          <Trash2 aria-hidden="true" />{deleting ? "Deleting…" : "Delete"}
+        </Button>
+      </div>
+    </li>
+  );
+}
+
+function HistoryForm({ entry, onSave, onCancel }: { entry: HistoryEntry | null; onSave: (input: HistoryEntryInput, id?: string) => Promise<void>; onCancel: () => void }) {
+  const [values, setValues] = useState<FormValues>(() => entry ? {
+    activityType: entry.activityType,
+    startTime: toDateTimeLocal(entry.startTime),
+    endTime: toDateTimeLocal(entry.endTime),
+    notes: entry.notes ?? "",
+  } : { activityType: "WORK", startTime: "", endTime: "", notes: "" });
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [formError, setFormError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const update = <K extends keyof FormValues>(field: K, value: FormValues[K]) => {
+    setValues((current) => ({ ...current, [field]: value }));
+    setErrors((current) => ({ ...current, [field]: undefined }));
+    setFormError(null);
+  };
+
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const nextErrors: FieldErrors = {};
+    if (!values.startTime) nextErrors.startTime = "Start time is required.";
+    if (!values.endTime) nextErrors.endTime = "End time is required.";
+    if (values.notes.length > 280) nextErrors.notes = "Notes must be 280 characters or fewer.";
+    if (Object.keys(nextErrors).length) {
+      setErrors(nextErrors);
+      return;
+    }
+
+    try {
+      const startTime = toIsoInstant(values.startTime);
+      const endTime = toIsoInstant(values.endTime);
+      if (Date.parse(endTime) <= Date.parse(startTime)) {
+        setErrors({ endTime: "End time must be after start time." });
+        return;
+      }
+      setSaving(true);
+      setFormError(null);
+      await onSave({ activityType: values.activityType, startTime, endTime, notes: values.notes.trim() || null }, entry?.id);
+    } catch (requestError) {
+      if (requestError instanceof ApiRequestError) {
+        setErrors(requestError.fieldErrors as FieldErrors);
+        setFormError(requestError.message);
+      } else {
+        setFormError(requestError instanceof Error ? requestError.message : "Entry could not be saved.");
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const field = (name: keyof FormValues, label: string, input: React.ReactNode) => (
+    <div className="space-y-2">
+      <Label htmlFor={`history-${name}`}>{label}</Label>
+      {input}
+      {errors[name] && <p id={`history-${name}-error`} className="text-sm text-[var(--rt-orange-deep)]">{errors[name]}</p>}
+    </div>
+  );
+
+  return (
+    <form onSubmit={submit} noValidate aria-label={entry ? "Edit completed entry" : "Add completed entry"} className="mb-6 rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-6 md:p-8">
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div><p className="text-[0.8rem] font-semibold uppercase tracking-[0.18em] text-[var(--rt-orange)]">manual correction</p><h2 className="mt-2 font-display text-3xl">{entry ? "edit this entry." : "add a finished block."}</h2></div>
+        <Button type="button" variant="ghost" onClick={onCancel} disabled={saving} className="rounded-full">Cancel</Button>
+      </div>
+      {formError && <p role="alert" className="mb-5 rounded-2xl border border-[var(--rt-orange)] bg-[var(--rt-orange-soft)] px-4 py-3">{formError}</p>}
+      <div className="grid gap-5 md:grid-cols-2">
+        {field("activityType", "Activity", <select id="history-activityType" value={values.activityType} onChange={(event) => update("activityType", event.target.value as ActivityType)} disabled={saving} className="h-10 w-full rounded-md border border-[var(--rt-line)] bg-[var(--rt-paper)] px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rt-orange)]"><option value="WORK">Work</option><option value="ROT">Rot</option></select>)}
+        {field("startTime", "Start time", <Input id="history-startTime" type="datetime-local" value={values.startTime} onChange={(event) => update("startTime", event.target.value)} disabled={saving} aria-invalid={Boolean(errors.startTime)} aria-describedby={errors.startTime ? "history-startTime-error" : undefined} />)}
+        {field("endTime", "End time", <Input id="history-endTime" type="datetime-local" value={values.endTime} onChange={(event) => update("endTime", event.target.value)} disabled={saving} aria-invalid={Boolean(errors.endTime)} aria-describedby={errors.endTime ? "history-endTime-error" : undefined} />)}
+        {field("notes", "Notes", <div><Input id="history-notes" value={values.notes} maxLength={280} onChange={(event) => update("notes", event.target.value)} disabled={saving} aria-invalid={Boolean(errors.notes)} aria-describedby={errors.notes ? "history-notes-error" : undefined} /><p className="mt-1 text-right text-xs text-[var(--rt-ink-muted)]">{values.notes.length}/280</p></div>)}
+      </div>
+      <div className="mt-6 flex justify-end"><Button type="submit" disabled={saving} className="rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] hover:bg-[var(--rt-orange-deep)]">{saving ? "Saving…" : entry ? "Save changes" : "Save entry"}</Button></div>
+    </form>
+  );
+}
+
+function formatHistoryDate(iso: string): string {
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
+}
