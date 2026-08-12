@@ -43,7 +43,8 @@ class PostgresMigrationIntegrationTest {
     private static final List<String> MIGRATIONS = List.of(
             "001_initial_schema.sql",
             "002_harden_time_entries.sql",
-            "003_require_usernames.sql"
+            "003_require_usernames.sql",
+            "004_user_preferences.sql"
     );
 
     @Test
@@ -173,6 +174,7 @@ class PostgresMigrationIntegrationTest {
 
                 assertActualSchemaContract(connection);
                 proveTimeEntryInvariants(connection);
+                provePreferencesInvariants(connection);
             } finally {
                 connection.rollback();
             }
@@ -269,6 +271,8 @@ class PostgresMigrationIntegrationTest {
         assertTrue(relationExists(connection, "public.users"), "public.users must be an actual table");
         assertTrue(relationExists(connection, "public.time_entries"),
                 "public.time_entries must be an actual table");
+        assertTrue(relationExists(connection, "public.user_preferences"),
+                "public.user_preferences must be an actual table");
 
         String rangeConstraint = querySingleString(connection, """
                 SELECT pg_get_constraintdef(oid)
@@ -304,13 +308,14 @@ class PostgresMigrationIntegrationTest {
         assertNotNull(reportingIndex, "the reporting index must exist on public.time_entries");
         assertTrue(normalize(reportingIndex).contains("(user_id, start_time)"));
 
-        assertEquals(2, querySingleInt(connection, """
+        assertEquals(3, querySingleInt(connection, """
                 SELECT count(*)
                 FROM pg_class
-                WHERE oid IN ('public.users'::regclass, 'public.time_entries'::regclass)
+                WHERE oid IN ('public.users'::regclass, 'public.time_entries'::regclass,
+                              'public.user_preferences'::regclass)
                   AND relrowsecurity
-                """), "RLS must remain enabled on both application tables");
-        assertEquals(7, querySingleInt(connection, """
+                """), "RLS must remain enabled on all application tables");
+        assertEquals(10, querySingleInt(connection, """
                 SELECT count(*)
                 FROM pg_policies
                 WHERE schemaname = 'public'
@@ -323,8 +328,13 @@ class PostgresMigrationIntegrationTest {
                       'time_entries_select_own', 'time_entries_insert_own',
                       'time_entries_update_own', 'time_entries_delete_own'
                     ))
+                    OR
+                    (tablename = 'user_preferences' AND policyname IN (
+                      'user_preferences_select_own', 'user_preferences_insert_own',
+                      'user_preferences_update_own'
+                    ))
                   )
-                """), "all ownership policies from migration 001 must exist");
+                """), "all ownership policies must exist");
         assertEquals(1, querySingleInt(connection, """
                 SELECT count(*)
                 FROM pg_policies
@@ -371,6 +381,20 @@ class PostgresMigrationIntegrationTest {
         assertNotNull(signupFunction);
         assertTrue(signupFunction.contains("NEW.raw_user_meta_data->>'username'"),
                 "signup must read the username from raw_user_meta_data");
+        assertEquals(1, querySingleInt(connection, """
+                SELECT count(*)
+                FROM pg_trigger
+                WHERE tgrelid = 'public.user_preferences'::regclass
+                  AND tgname = 'user_preferences_timezone_valid'
+                  AND NOT tgisinternal
+                  AND tgenabled <> 'D'
+                """), "saved timezone validation trigger must be enabled");
+        assertEquals(1, querySingleInt(connection, """
+                SELECT count(*)
+                FROM pg_constraint
+                WHERE conrelid = 'public.user_preferences'::regclass
+                  AND conname = 'user_preferences_daily_work_goal_range'
+                """), "daily goal range must be database-enforced");
     }
 
     private void proveTimeEntryInvariants(Connection connection) throws SQLException {
@@ -482,6 +506,56 @@ class PostgresMigrationIntegrationTest {
         }
     }
 
+    private void provePreferencesInvariants(Connection connection) throws SQLException {
+        UUID userId = UUID.randomUUID();
+        insertAuthUser(connection, userId, "preferences_user");
+
+        assertEquals(1, queryCount(connection, """
+                SELECT count(*) FROM public.user_preferences WHERE user_id = ?
+                """, userId));
+        assertEquals(1, querySingleInt(connection, """
+                SELECT count(*)
+                FROM public.user_preferences
+                WHERE user_id = ?
+                  AND timezone IS NULL
+                  AND daily_work_goal_minutes IS NULL
+                  AND share_study_summary = false
+                  AND share_active_study_status = false
+                """, userId), "new preference rows must be private by default");
+
+        try (PreparedStatement statement = connection.prepareStatement("""
+                SELECT timezone, daily_work_goal_minutes,
+                       share_study_summary, share_active_study_status
+                FROM public.user_preferences WHERE user_id = ?
+                """)) {
+            statement.setObject(1, userId);
+            try (ResultSet result = statement.executeQuery()) {
+                assertTrue(result.next());
+                assertEquals(null, result.getString(1));
+                assertEquals(null, result.getObject(2));
+                assertEquals(false, result.getBoolean(3));
+                assertEquals(false, result.getBoolean(4));
+            }
+        }
+
+        expectSqlState(connection, "23505", () -> insertPreference(connection, userId, "UTC", 60));
+        expectSqlState(connection, "23514", () -> insertPreference(connection, UUID.randomUUID(), "UTC", 0));
+        expectSqlState(connection, "22023", () -> insertPreference(connection, UUID.randomUUID(), "Not/A_Zone", 60));
+    }
+
+    private void insertPreference(Connection connection, UUID userId, String timezone, Integer dailyGoal)
+            throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                INSERT INTO public.user_preferences(user_id, timezone, daily_work_goal_minutes)
+                VALUES (?, ?, ?)
+                """)) {
+            statement.setObject(1, userId);
+            statement.setString(2, timezone);
+            statement.setObject(3, dailyGoal);
+            statement.executeUpdate();
+        }
+    }
+
     private void insertTimeEntry(
             Connection connection,
             UUID id,
@@ -567,6 +641,16 @@ class PostgresMigrationIntegrationTest {
     }
 
     private int queryCount(Connection connection, String sql, UUID userId) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setObject(1, userId);
+            try (ResultSet result = statement.executeQuery()) {
+                assertTrue(result.next());
+                return result.getInt(1);
+            }
+        }
+    }
+
+    private int querySingleInt(Connection connection, String sql, UUID userId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setObject(1, userId);
             try (ResultSet result = statement.executeQuery()) {
