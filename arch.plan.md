@@ -1,7 +1,7 @@
 # rotrack Architecture
 
 **Status:** Living architecture and contract document
-**Last reviewed:** 2026-08-11
+**Last reviewed:** 2026-08-12
 **Delivery backlog:** [`todo.md`](todo.md)
 
 ## 1. Purpose and Product Boundaries
@@ -63,7 +63,7 @@ This section describes what exists in source control today. It is not a completi
 - Spring JDBC does not propagate the user JWT into PostgreSQL. The dedicated `rotrack_runtime` role bypasses RLS with only the required application DML, and the recorded live two-user Spring ownership matrix passes.
 - Generated ES256/RS256 failure tests cover the production decoder/filter boundary, while recorded live Supabase sign-in and two-user authenticated ownership flows pass. On 2026-08-09 the product owner/operator attested that the already-confirmed fresh disposable user completed first sign-in and reached `/dashboard`; this is manual acceptance evidence rather than an automated authenticated-suite result.
 - The Playwright harness has recorded external two-user auth evidence. Managed-CA startup/readiness/CORS and the integrated non-root container are locally verified, but those local results are not deployed non-production evidence. For the 2026-08-09 local acceptance run, `http://localhost:3001` received the exact allowed CORS origin while `http://localhost:3000` was denied; this origin-specific local configuration does not change the deployed Preview CORS evidence.
-- Hosted CI and branch protection are read back on the now-public repository. `main` requires pull requests with zero human approvals and strict app-bound checks (`Guards and secret scan`, `Frontend`, `Backend`, `Backend container artifact`, `PostgreSQL migrations`, `Analyze (actions)`, `Analyze (java-kotlin)`, and `Analyze (javascript-typescript)`), applies to administrators, requires linear history, blocks force pushes/deletion, and keeps `CODEOWNERS` advisory. The `nonproduction` environment allows only protected `main`; repository/non-production/production authentication secret inventories are empty and `ROTRACK_AUTHENTICATED_E2E_ENABLED` is absent/default-disabled. PR #18 provided hosted green evidence and merged through the protected rebase path; PR #19 provided deliberate-red enforcement when the required `Frontend` context failed and the open PR reported `mergeStateStatus: BLOCKED`. M3.1 is **Verified**. On 2026-08-11, source commit `744635c` passed focused Azure contract/readback, publish, preflight, RBAC, container, and release checks. The reviewed backend candidate passed canonical ACA readback, selected digest/service-version equality, production runtime label, scale `0..1`, 100% traffic, and readiness; the same reviewed commit passed canonical Vercel Production alias readback. Public smoke and hosted authenticated smoke passed (`4/4`, zero skipped/unexpected/flaky, with API-target binding). The corrected no-schema-change backend/frontend rollback rehearsal passed and ended on the candidate. Rate limiting remains an accepted blocker; collector redaction, alert delivery/receipt, and alert routing evidence remain open. Ten genuine zero-replica trials completed on 2026-08-11 with readiness 10/10, p50 34.586 seconds, and p95/max 39.425 seconds; the 30-second p95 criterion was not met, so scale-to-zero remains an explicitly accepted risk rather than a verified pass. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. Backup limitation is accepted as already documented. M3.2/M3.3 and the M3 release gate remain open. M4 stays gated until the M3 MVP release gate is verified.
+- Hosted CI and branch protection are read back on the now-public repository. `main` requires pull requests with zero human approvals and strict app-bound checks (`Guards and secret scan`, `Frontend`, `Backend`, `Backend container artifact`, `PostgreSQL migrations`, `Analyze (actions)`, `Analyze (java-kotlin)`, and `Analyze (javascript-typescript)`), applies to administrators, requires linear history, blocks force pushes/deletion, and keeps `CODEOWNERS` advisory. The `nonproduction` environment allows only protected `main`; repository/non-production/production authentication secret inventories are empty and `ROTRACK_AUTHENTICATED_E2E_ENABLED` is absent/default-disabled. PR #18 provided hosted green evidence and merged through the protected rebase path; PR #19 provided deliberate-red enforcement when the required `Frontend` context failed and the open PR reported `mergeStateStatus: BLOCKED`. M3.1 is **Verified**. On 2026-08-11, source commit `744635c` passed focused Azure contract/readback, publish, preflight, RBAC, container, and release checks. The reviewed backend candidate passed canonical ACA readback, selected digest/service-version equality, production runtime label, scale `0..1`, 100% traffic, and readiness; the same reviewed commit passed canonical Vercel Production alias readback. Public smoke and hosted authenticated smoke passed (`4/4`, zero skipped/unexpected/flaky, with API-target binding). The corrected no-schema-change backend/frontend rollback rehearsal passed and ended on the candidate. Rate limiting remains an accepted blocker; collector redaction, alert delivery/receipt, and alert routing evidence remain open. Ten genuine zero-replica trials completed on 2026-08-11 with readiness 10/10, p50 34.586 seconds, and p95/max 39.425 seconds; the 30-second p95 criterion was not met, so scale-to-zero remains an explicitly accepted risk rather than a verified pass. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. Backup limitation is accepted as already documented. M3.2/M3.3 and the full M3 release gate remain open. M3-P is verified, so M4 source/local work is unlocked by the decision below; hosted migration/deployment and M4 Verified remain release-gated.
 
 ### Product-owner cold-start deferral — 2026-08-12
 
@@ -76,6 +76,10 @@ The canonical shared-hosted ACA app now runs with `minReplicas=1` and `maxReplic
 ### Product-owner rate-limit deferral — 2026-08-11
 
 The product owner accepts deferring a trusted fleet-wide edge rate limiter until hosted usage/user growth justifies the added domain/provider boundary. The existing process-local authenticated mutation limiter remains enabled as defense in depth. Reopen this decision on material abuse, authentication attack traffic, meaningful user growth, or before broadening public exposure. This is an explicit risk acceptance, not evidence that the rate-limit release gate is verified.
+
+### Product-owner M4 source/local unlock — 2026-08-12
+
+For the 0–20-user pre-user scope, the product owner confirms that verified M3-P is sufficient to begin M4 source and local-environment work. This deliberately replaces a full-M3 production-readiness dependency for implementation sequencing; it does not claim full production readiness. Hosted database migration/deployment, publishing, and the M4 Verified milestone remain blocked on the applicable release checks and the full M3 production-readiness gate.
 
 ### Product-owner pre-user operations scope — 2026-08-11
 
@@ -292,15 +296,23 @@ Future systems are separate vertical slices. Their migrations, API contracts, UI
 `user_preferences` stores:
 
 - `user_id` as the unique owner key
-- `timezone` as a validated IANA identifier
-- optional daily Work goal
+- nullable `timezone` as a validated IANA identifier; when it is unset, the browser's IANA timezone is the effective fallback for local rendering and dashboard/history requests until the user saves one
+- nullable `daily_work_goal_minutes`, an integer from 1 through 1440
 - `share_study_summary BOOLEAN NOT NULL DEFAULT false`
 - `share_active_study_status BOOLEAN NOT NULL DEFAULT false`
 - audit timestamps
 
-All sharing is opt-in and private by default.
+Changing the saved timezone changes future calendar rendering and pagination boundaries without rewriting stored UTC instants. All sharing is opt-in and private by default.
 
-### 8.2 WYSIWYG notes
+### 8.2 Time-entry history and manual corrections
+
+History is an owned, completed-entry view: it returns only entries with a non-null `end_time` and never includes an active session. Users may create completed entries and edit `activity_type`, `start_time`, `end_time`, and short `notes`; duration remains derived from timestamps and `user_id` is never client-controlled. Users may delete their own entries after an explicit confirmation.
+
+The history list uses a fixed page size of 20 and reverse-chronological `(start_time DESC, id DESC)` ordering. Cursors are opaque to clients and deterministic for a stable snapshot; clients send the returned cursor unchanged and never construct or inspect it. Empty pages and a missing/invalid cursor use the standard typed error contract.
+
+The history migration must enforce same-user non-overlap at the PostgreSQL boundary with an exclusion constraint over `tstzrange(start_time, COALESCE(end_time, 'infinity'::timestamptz), '[)')` and `user_id`, allowing adjacent entries but rejecting overlap for completed or active ranges. Service validation provides the user-facing error; the database remains the race-safe authority. Focused backend repository/service/controller tests and frontend API/component contract tests cover ownership, completed-only results, page boundaries/cursors, edits, deletion, invalid ranges, and overlap conflicts.
+
+### 8.3 WYSIWYG notes
 
 Use Tiptap StarterKit in a client-only editor embedded beside the timer. Persist versioned Tiptap/ProseMirror JSON rather than arbitrary HTML.
 
@@ -324,7 +336,7 @@ Behavior:
 - The API validates document structure, supported nodes/marks, link protocols, and size.
 - Notes remain private and never appear in social or group projections.
 
-### 8.3 Daily study logs
+### 8.4 Daily study logs
 
 One daily log exists per user and local calendar date.
 
@@ -335,7 +347,7 @@ One daily log exists per user and local calendar date.
 - Changing timezone re-buckets generated study statistics; an existing reflection remains attached to the local-date label under which the user created it.
 - The UI provides daily and calendar views.
 
-### 8.4 Friendships and presence
+### 8.5 Friendships and presence
 
 Friendships are mutual and use `PENDING` and `ACCEPTED` states. Store one canonical ordered user pair, the requester, and enforce pair uniqueness. Store blocks separately as directional `(blocker_id, blocked_id)` records so a user can block someone without an existing friendship.
 
@@ -348,7 +360,7 @@ Friendships are mutual and use `PENDING` and `ACCEPTED` states. Store one canoni
 - Active presence is a derived boolean: `studying=true` only when an opted-in user has an active `WORK` session.
 - Social screens poll an authenticated presence projection every 30 seconds while visible and stop polling when hidden or unmounted.
 
-### 8.5 Study groups
+### 8.6 Study groups
 
 Groups are private and invitation-only.
 
@@ -363,13 +375,15 @@ Groups are private and invitation-only.
 
 ### Future API areas
 
+- `/preferences`: owned timezone, daily Work goal, and private sharing settings
+- `/time-entries/history`: owned completed-entry history and manual corrections
 - `/friends` and `/friend-requests`: list, request, accept, decline, cancel, remove, block, unblock
 - `/social/summaries` and `/social/presence`: privacy-filtered friend/group projections
 - `/groups`, `/groups/{id}/invitations`, `/groups/{id}/members`, `/groups/{id}/summary`
 - `/notes`: owned CRUD with session/date filters and optimistic version checks
 - `/daily-logs/{localDate}`: generated study data plus owned reflection updates
 
-Detailed OpenAPI schemas are written immediately before each vertical slice and become the executable contract for that slice. Frontend DTO types are generated from OpenAPI; the authenticated native-`fetch` wrapper remains hand-written.
+Each vertical slice documents its implemented request/response contract immediately before delivery. Frontend and backend use handwritten typed DTOs with the existing authenticated native-`fetch` wrapper; focused backend/frontend contract tests protect the JSON shape, error codes, pagination, and validation behavior. OpenAPI/code generation is not part of M4.
 
 ## 9. Quality, Delivery, and Operations
 
@@ -409,7 +423,7 @@ The current product goal is a small pre-user/small-cohort launch, not the full M
 
 ### MVP release boundary
 
-The M3 MVP release gate is currently **not met**. Production-readiness and M4 implementation remain stopped. The 2026-08-11 candidate has passing focused source checks, canonical ACA/Vercel readback, public smoke, hosted authenticated smoke, and corrected no-schema-change backend/frontend rollback evidence. Rate limiting remains an explicitly accepted blocker; collector redaction, alert delivery/receipt, and alert routing evidence remain open. Ten genuine zero-replica trials completed on 2026-08-11, but p95 readiness was 39.425 seconds, above the 30-second criterion; scale-to-zero remains an explicitly accepted risk, not a verified pass. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. The Free-plan backup limitation is accepted as already documented. Any exception requires an explicit product-owner dependency decision in both architecture and backlog.
+The M3 MVP release gate is currently **not met**. Full production-readiness remains unmet, but the verified M3-P decision above unlocks M4 source/local implementation for the 0–20-user scope. Hosted database migration/deployment, publishing, and M4 Verified remain stopped until the applicable release checks and full M3 production-readiness gate pass. The 2026-08-11 candidate has passing focused source checks, canonical ACA/Vercel readback, public smoke, hosted authenticated smoke, and corrected no-schema-change backend/frontend rollback evidence. Rate limiting remains an explicitly accepted blocker; collector redaction, alert delivery/receipt, and alert routing evidence remain open. Ten genuine zero-replica trials completed on 2026-08-11, but p95 readiness was 39.425 seconds, above the 30-second criterion; scale-to-zero remains an explicitly accepted risk, not a verified pass. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. The Free-plan backup limitation is accepted as already documented. Any exception requires an explicit product-owner dependency decision in both architecture and backlog.
 
 ## 10. Architecture Change Rules
 

@@ -1,8 +1,8 @@
 # rotrack Development Backlog
 
 **Architecture and contracts:** [`arch.plan.md`](arch.plan.md)
-**Backlog reviewed:** 2026-08-11
-**Current release target:** Production-ready personal timer and dashboard MVP
+**Backlog reviewed:** 2026-08-12
+**Current release target:** Pre-user/small-cohort personal timer, dashboard, and M4 source/local work; full production readiness remains a separate unmet gate
 
 ## 1. Operating Rules
 
@@ -71,7 +71,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 | Backend container artifact | **Verified** | The non-root Java 21 image passed local liveness/readiness/SIGTERM and sensitive-content inspection. The immutable Linux/amd64 OCI-compatible candidate passed canonical ACA digest/service-version readback; the reserved separate production lane has no claimed artifact. |
 | Canonical hosted deployment | **Implemented—unverified** | On 2026-08-11, source commit `744635c` passed focused Azure contract/readback, publish, preflight, RBAC, container, and release checks. The reviewed backend candidate passed canonical ACA readback, selected digest/service-version equality, production runtime label, scale `1..1`, 100% traffic, and readiness; the same reviewed commit passed canonical Vercel Production alias readback. Public smoke and hosted authenticated smoke passed (`4/4`, zero skipped/unexpected/flaky, with API-target binding). The corrected no-schema-change backend/frontend rollback rehearsal passed and ended on the candidate. Rate limiting remains an accepted blocker; collector redaction, alert delivery/receipt, and alert routing remain open. Ten genuine zero-replica trials completed on 2026-08-11 with readiness 10/10, p50 34.586 seconds, and p95/max 39.425 seconds; the 30-second p95 criterion was not met, so scale-to-zero remains an explicitly accepted risk rather than a verified pass. Retained operator-owned synthetic accounts and stopped rows are not claimed as cleaned up; the separate production Supabase/Azure lane remains reserved. |
 | Release safeguards and observability | **In progress** | Source commit `744635c` includes the Azure readback/rollback-selection hardening and focused release checks passed. Public and hosted authenticated smoke plus the corrected exact rollback rehearsal passed. Rate limiting remains explicitly deferred/accepted; collector redaction, alert delivery/receipt, and alert routing evidence remain incomplete. Ten genuine zero-replica trials completed on 2026-08-11, but p95 readiness was 39.425 seconds, above the 30-second criterion; scale-to-zero remains an explicitly accepted risk, not a verified pass. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. |
-| Notes, logs, friends, groups | **Not started** | Architecture defined; implementation follows the verified M3 release gate. |
+| Notes, logs, friends, groups | **Not started** | Architecture defined; implementation follows the verified M3-P source/local unlock, while hosted work and full production readiness remain release-gated. |
 
 **Canonical hosted residual gate — 2026-08-11:** The shared ACA implementation boundary and canonical Vercel Production alias are deployed from the reviewed source commit, with candidate traffic, readiness/readback, digest/service-version equality, runtime label, scale, public smoke, API-target-bound authenticated smoke, and corrected no-schema-change rollback evidence passing. Retained operator-owned synthetic accounts and stopped rows remain by product-owner decision; cleanup is not claimed. Rate limiting remains explicitly deferred/accepted. Collector redaction, alert delivery/receipt, and alert routing evidence remain open. Ten genuine zero-replica trials completed on 2026-08-11, but p95 readiness was 39.425 seconds, above the 30-second criterion; scale-to-zero remains an explicitly accepted risk, not a verified pass. The Free-plan backup limitation is accepted as already documented. The M3/production-readiness STOP remains.
 
@@ -506,6 +506,8 @@ The product owner first accepted retaining Container Apps scale-to-zero as an ex
 
 This is the launch gate for the current product goal, distinct from the full M3 production-readiness gate below. It requires M3.1 CI/protection, the reviewed immutable hosted candidate, exact health/readiness/CORS, authenticated smoke, rollback rehearsal, `minReplicas=1`, one verified alert path, and no known critical/high security or data-integrity defect. It explicitly accepts the current backup limitation, process-local limiter, deferred edge rate limiting, deferred collector-side redaction proof, and deferred broad alert/tuning/retention work while the product has zero active users. Reopen the deferred controls before onboarding real users or when traffic, abuse, or telemetry risk becomes material.
 
+**Product-owner decision — M4 source/local unlock (2026-08-12):** M3-P is **Verified**, so M4 source and local-environment work may begin for the 0–20-user scope without waiting for the full M3 production-readiness gate. This is a sequencing decision, not a full-readiness claim. Hosted database migration/deployment, publishing, and M4 **Verified** remain blocked on applicable release checks and the full M3 gate.
+
 **Status:** Verified — pre-user risk accepted; full M3 production-readiness remains not met.
 
 ### M3.1 — Pull-request CI
@@ -587,38 +589,44 @@ The gate requires all of the following:
 - Hosted CI/protection, authorized immutable candidate deployment, public smoke, hosted authenticated smoke (`4/4`, zero skipped/unexpected/flaky, API-target bound), and corrected exact application rollback rehearsal pass with sanitized evidence. Fleet-wide/authentication-adjacent rate limiting remains an explicitly deferred/accepted blocker; collector redaction, alert delivery/receipt, and alert routing remain open. Ten genuine zero-replica trials completed on 2026-08-11, but p95 readiness was 39.425 seconds, above the 30-second criterion; scale-to-zero remains an explicitly accepted risk, not a verified pass.
 - Production promotion uses the exact passing backend digest; because `NEXT_PUBLIC_*` values are embedded at build time, the frontend is a separately recorded Vercel Production build from the same reviewed source commit and must pass production-safe verification.
 
-## 7. Milestone 4 — History, Timezone, and Privacy Preferences
+## 7. Milestone 4 — Timezone, Preferences, and History
 
-**Goal:** Deliver prerequisites for logs and social features as complete vertical slices.
-**Dependencies:** MVP release
+**Goal:** Deliver the saved-timezone and daily-goal prerequisite, then the owned completed-entry history slice for the 0–20-user scope.
+**Source/local dependency:** M3-P **Verified**. This is intentionally narrower than the full M3 production-readiness dependency.
+**Hosted dependency:** Database migration/deployment, publishing, and the M4 **Verified** gate remain blocked until the applicable release checks and full M3 production-readiness gate pass.
 
-### M4.1 — Time-entry history and manual corrections
-
-**Status:** Not started
-
-- Add owned list/create/update/delete APIs with cursor pagination and deterministic reverse-chronological ordering.
-- Reject overlapping completed entries and edits that conflict with an active entry; enforce completed-range overlap protection at the database boundary as well as in user-facing validation.
-- Add accessible history/editor UI with validation and confirmation for deletion.
-- Cover ownership, overlap, boundaries, empty state, and error recovery.
-
-### M4.2 — Profile and preferences
+### M4.1 — Profile and preferences
 
 **Status:** Not started
 
-- Add `user_preferences`, owned API, and `/settings` UI.
-- Validate IANA timezone and optional daily Work goal.
+- Add `user_preferences`, an ownership-scoped API, and `/settings` UI.
+- Save a validated IANA timezone or leave it unset; use the browser IANA timezone as the effective fallback until a saved value exists.
+- Store nullable `daily_work_goal_minutes` as an integer from 1 through 1440; reject zero, negative, fractional, and over-limit values.
 - Add `share_study_summary` and `share_active_study_status`, both `false` by default.
-- Changing timezone affects future calendar rendering without rewriting stored UTC instants.
+- Changing timezone affects future calendar rendering and pagination boundaries without rewriting stored UTC instants.
+- Use handwritten typed backend/frontend DTOs and focused contract tests for request/response/error shapes.
 
-### M4.3 — OpenAPI and typed client generation policy
+### M4.2 — Time-entry history and manual corrections
+
+**Status:** Not started
+**Dependencies:** M4.1
+
+- Add owned list/create/update/delete APIs for completed history entries; history excludes every active entry.
+- Allow editing only `activity_type`, `start_time`, `end_time`, and short `notes`; derive duration from timestamps and never accept `user_id` or client duration.
+- Return a fixed page size of 20 in deterministic `(start_time DESC, id DESC)` order with an opaque cursor that clients pass through unchanged.
+- Reject invalid ranges, ownership violations, and overlaps with user-facing validation plus database-enforced same-user range exclusion, including conflicts with an active range; adjacent entries remain valid.
+- Add accessible history/editor UI with validation, empty/error/retry states, and confirmation for deletion.
+- Add focused backend repository/service/controller and frontend API/component contract tests for completed-only results, ownership, cursor boundaries, edits, deletion, invalid ranges, and overlap conflicts.
+
+### M4.3 — Native typed contract policy
 
 **Status:** Not started
 
-- Publish the implemented API contract and stable error codes.
-- Generate frontend DTO types from OpenAPI while keeping the authenticated native-`fetch` wrapper hand-written.
-- Add contract-drift validation to CI.
+- Document each implemented M4 request/response contract and stable error codes at the slice boundary.
+- Keep DTOs handwritten and typed on both backend and frontend, using the existing authenticated native-`fetch` wrapper; do not add OpenAPI/code generation.
+- Protect the JSON shapes, validation, pagination/cursor behavior, and error contract with focused backend/frontend contract tests.
 
-**Milestone gate:** History, overlap protection, timezone preferences, and private-default sharing flags are **Verified**.
+**Milestone gate:** Preferences and completed-only history behavior are **Verified** by focused tests and local acceptance. Hosted migration/deployment and the M4 **Verified** milestone remain release-gated.
 
 ## 8. Milestone 5 — WYSIWYG Notes and Daily Study Logs
 
@@ -755,4 +763,4 @@ Append evidence beneath the completed task; do not create unsupported global che
 
 ## 13. Next Action
 
-The fresh confirmed-user first-sign-in step is complete. The local-only credential object was purged; the non-production runtime password was rotated, the old password was rejected, and local/Azure redeployment health/readiness passed. Historical author-address retention remains an explicit product-owner decision and is not repeated here. The repository is now public and the approved protected `main`/`nonproduction`/security settings are read back; the checked-in advanced CodeQL workflow was removed because default setup is the sole chosen scanner. PR #18 supplied hosted-green protected-path evidence and PR #19 supplied deliberate-red required-check blocking evidence, so M3.1 is Verified. The 2026-08-11 candidate passed hosted authenticated smoke and the corrected exact no-schema-change rollback rehearsal. Rate limiting remains explicitly deferred/accepted; collector redaction, alert delivery/receipt, and alert routing remain open. Ten genuine zero-replica trials completed on 2026-08-11, but p95 readiness was 39.425 seconds, above the 30-second criterion; scale-to-zero remains an explicitly accepted risk, not a verified pass. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. The backup limitation is accepted as already documented, and retained synthetic accounts/stopped rows are not claimed as cleaned up. Do not start M4 or promote to production until the M3 MVP release gate is **Verified**.
+The fresh confirmed-user first-sign-in step is complete. The local-only credential object was purged; the non-production runtime password was rotated, the old password was rejected, and local/Azure redeployment health/readiness passed. Historical author-address retention remains an explicit product-owner decision and is not repeated here. The repository is now public and the approved protected `main`/`nonproduction`/security settings are read back; the checked-in advanced CodeQL workflow was removed because default setup is the sole chosen scanner. PR #18 supplied hosted-green protected-path evidence and PR #19 supplied deliberate-red required-check blocking evidence, so M3.1 is Verified. The 2026-08-11 candidate passed hosted authenticated smoke and the corrected exact no-schema-change rollback rehearsal. Rate limiting remains explicitly deferred/accepted; collector redaction, alert delivery/receipt, and alert routing remain open. Ten genuine zero-replica trials completed on 2026-08-11, but p95 readiness was 39.425 seconds, above the 30-second criterion; scale-to-zero remains an explicitly accepted risk, not a verified pass. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. The backup limitation is accepted as already documented, and retained synthetic accounts/stopped rows are not claimed as cleaned up. M3-P is Verified and M4 source/local work may begin for the 0–20-user scope; do not run hosted M4 migrations/deployments, publish, or mark M4 Verified until the applicable release checks and full M3 production-readiness gate pass.
