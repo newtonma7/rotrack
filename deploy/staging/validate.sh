@@ -212,6 +212,14 @@ PY
     || fail "runtime-role audit must reject direct database create/temp grants"
   grep -q 'GRANT SELECT, INSERT, UPDATE ON TABLE public.time_entries' "$TEMPLATES/runtime-role.sql.template" \
     || fail "runtime-role template lacks the exact application DML grant"
+  grep -q 'REVOKE ALL PRIVILEGES ON TABLE public.user_preferences' "$TEMPLATES/runtime-role.sql.template" \
+    || fail "runtime-role template must reset preference table grants idempotently"
+  grep -q 'GRANT SELECT, INSERT, UPDATE ON TABLE public.user_preferences' "$TEMPLATES/runtime-role.sql.template" \
+    || fail "runtime-role template lacks the exact preferences DML grant"
+  grep -q 'preferences_can_select' "$TEMPLATES/runtime-role-audit.sql.template" \
+    || fail "runtime-role audit must check preference SELECT access"
+  grep -q 'preferences_cannot_delete' "$TEMPLATES/runtime-role-audit.sql.template" \
+    || fail "runtime-role audit must reject preference DELETE access"
   ! grep -Eqi "PASSWORD[[:space:]]+'" "$TEMPLATES/runtime-role.sql.template" \
     || fail "runtime-role template must not contain a password literal"
   scan_for_committed_values

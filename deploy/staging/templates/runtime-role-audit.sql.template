@@ -28,7 +28,7 @@ SELECT
     FROM pg_class relation
     JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
     WHERE namespace.nspname = 'public'
-      AND relation.relname <> 'time_entries'
+      AND relation.relname NOT IN ('time_entries', 'user_preferences')
       AND relation.relkind IN ('r', 'p', 'v', 'm', 'f')
       AND (
         has_table_privilege(current_user, relation.oid, 'SELECT') OR
@@ -52,6 +52,15 @@ SELECT
         has_sequence_privilege(current_user, seq.oid, 'UPDATE')
       )
   ) AS no_public_sequence_privileges;
+
+SELECT
+  has_table_privilege(current_user, 'public.user_preferences', 'SELECT') AS preferences_can_select,
+  has_table_privilege(current_user, 'public.user_preferences', 'INSERT') AS preferences_can_insert,
+  has_table_privilege(current_user, 'public.user_preferences', 'UPDATE') AS preferences_can_update,
+  NOT has_table_privilege(current_user, 'public.user_preferences', 'DELETE') AS preferences_cannot_delete,
+  NOT has_table_privilege(current_user, 'public.user_preferences', 'TRUNCATE') AS preferences_cannot_truncate,
+  NOT has_table_privilege(current_user, 'public.user_preferences', 'REFERENCES') AS preferences_cannot_reference,
+  NOT has_table_privilege(current_user, 'public.user_preferences', 'TRIGGER') AS preferences_cannot_create_trigger;
 
 -- The provider database may grant TEMPORARY through PUBLIC; this audit rejects direct
 -- runtime-role CREATE/TEMP grants and all database CREATE access. A separate project-level
