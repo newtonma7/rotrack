@@ -2,7 +2,7 @@
 
 **Decision date:** 2026-08-11
 **Decision owner:** Product owner/operator
-**Status:** Authorized implementation boundary; M3 and production-readiness gates remain stopped
+**Status:** Authorized implementation boundary; full M3 and production-readiness gates remain stopped, with only the dated narrow M4 override below authorized
 
 ## Decision
 
@@ -17,7 +17,11 @@ The current path is:
 
 The reserved separate production Supabase/Azure lane is unused. Full aliases, project references, revision identifiers, digests, account details, and deployment identifiers remain in private evidence only.
 
-This is an operational boundary decision, not a release approval. It does not waive authentication, authorization, migration, rate-limit, observability, backup, smoke, rollback, or production-readiness gates.
+This is an operational boundary decision, not a release approval. The separate 2026-08-12 product-owner override below is the only exception: it permits the narrow zero-user/pre-user M4 rollout actions while full M3 remains unmet. It does not waive unresolved M3 operational risks, authorize M5 hosted rollout, or support broad production-readiness claims.
+
+## Narrow M4 rollout override — 2026-08-12
+
+For the zero-user/pre-user boundary only, the product owner authorizes applying migrations `004_user_preferences.sql` and `005_time_entry_history.sql`, deploying the reviewed M4 application, and running hosted M4 acceptance despite the full M3 gate. M4 remains **Implemented—unverified** until rollout evidence passes. This override does not authorize M5 hosted rollout or broad production-readiness claims.
 
 ## Accepted risks
 
