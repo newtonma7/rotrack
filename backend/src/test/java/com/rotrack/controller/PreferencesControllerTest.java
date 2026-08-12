@@ -49,6 +49,22 @@ class PreferencesControllerTest {
     private JwtDecoder jwtDecoder;
 
     @Test
+    void serializesPreferencesUsingTheSharedTimeZoneJsonName() throws Exception {
+        String json = objectMapper.writeValueAsString(new PreferencesDTO("America/New_York", 60, false, true));
+
+        org.assertj.core.api.Assertions.assertThat(json)
+                .contains("\"timeZone\":\"America/New_York\"")
+                .doesNotContain("\"timezone\"");
+
+        UpdatePreferencesRequest request = objectMapper.readValue(
+                "{\"timeZone\":\"Europe/Berlin\",\"dailyWorkGoalMinutes\":60,"
+                        + "\"shareStudySummary\":false,\"shareActiveStudyStatus\":true}",
+                UpdatePreferencesRequest.class
+        );
+        org.assertj.core.api.Assertions.assertThat(request.timeZone()).isEqualTo("Europe/Berlin");
+    }
+
+    @Test
     void getsPreferencesForTheJwtSubject() throws Exception {
         when(preferencesService.getPreferences(USER_ID))
                 .thenReturn(new PreferencesDTO("UTC", 60, false, true));
@@ -56,7 +72,7 @@ class PreferencesControllerTest {
         mockMvc.perform(get("/api/v1/preferences")
                         .with(jwt().jwt(token -> token.subject(USER_ID.toString()))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.timezone").value("UTC"))
+                .andExpect(jsonPath("$.data.timeZone").value("UTC"))
                 .andExpect(jsonPath("$.data.dailyWorkGoalMinutes").value(60))
                 .andExpect(jsonPath("$.data.shareStudySummary").value(false))
                 .andExpect(jsonPath("$.data.shareActiveStudyStatus").value(true));
@@ -76,10 +92,22 @@ class PreferencesControllerTest {
                         .content(objectMapper.writeValueAsBytes(request))
                         .with(jwt().jwt(token -> token.subject(USER_ID.toString()))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.timezone").value("America/New_York"))
+                .andExpect(jsonPath("$.data.timeZone").value("America/New_York"))
                 .andExpect(jsonPath("$.data.dailyWorkGoalMinutes").value(120));
 
         verify(preferencesService).updatePreferences(USER_ID, "America/New_York", 120, true, false);
+    }
+
+    @Test
+    void associatesInvalidTimeZoneWithTheTimeZoneField() throws Exception {
+        mockMvc.perform(put("/api/v1/preferences")
+                        .contentType("application/json")
+                        .content("{\"timeZone\":\"Not/A_Zone\",\"dailyWorkGoalMinutes\":60,"
+                                + "\"shareStudySummary\":false,\"shareActiveStudyStatus\":false}")
+                        .with(jwt().jwt(token -> token.subject(USER_ID.toString()))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.error.fieldErrors.timeZone").value("must be a valid IANA identifier"));
     }
 
     @Test

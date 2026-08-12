@@ -25,7 +25,7 @@ class PreferencesServiceTest {
 
         PreferencesDTO result = service.getPreferences(USER_ID);
 
-        assertEquals(null, result.timezone());
+        assertEquals(null, result.timeZone());
         assertEquals(null, result.dailyWorkGoalMinutes());
         assertEquals(false, result.shareStudySummary());
         assertEquals(false, result.shareActiveStudyStatus());
@@ -45,7 +45,7 @@ class PreferencesServiceTest {
                 false
         );
 
-        assertEquals("America/New_York", result.timezone());
+        assertEquals("America/New_York", result.timeZone());
         assertEquals(120, result.dailyWorkGoalMinutes());
         assertEquals(true, result.shareStudySummary());
         assertEquals(false, result.shareActiveStudyStatus());

@@ -36,7 +36,7 @@ public class PreferencesController {
     ) {
         return ApiResponse.success(preferencesService.updatePreferences(
                 userId(jwt),
-                request.timezone(),
+                request.timeZone(),
                 request.dailyWorkGoalMinutes(),
                 request.shareStudySummary(),
                 request.shareActiveStudyStatus()
