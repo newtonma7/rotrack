@@ -51,12 +51,14 @@ Spring Data repository test prove that:
 - a one-hour timestamp range derives 3,600 seconds even when transitional
   `duration_minutes` contains `999`; and
 - the reporting index exists on `(user_id, start_time)`;
+- migration 005 fails closed with diagnostic notes/overlap preflight errors and explicitly installs/checks `btree_gist`;
+- the real JPA service update commits an owned edit, rejects another user's edit, and preserves `ACTIVE_SESSION_EXISTS` for a second start;
 - usernames are non-null, canonical, regex-validated, reserved-name protected,
   unique, and immutable;
 - RLS is enabled with the seven named ownership policies, and the isolated PostgreSQL probe verifies two-user preference read/update/insert isolation;
 - the hardened signup trigger reads raw metadata, creates canonical
   rollback-only fixture profiles, and rejects invalid/reserved/duplicate names; and
-- `TimeEntryRepository.saveAndFlush` reaches those real PostgreSQL constraints and owner-scoped active reads; the JPA integration test also persists and reads two users' preferences, while the catalog probe verifies `rotrack_runtime` has exactly SELECT/INSERT/UPDATE on `user_preferences`.
+- `TimeEntryRepository.saveAndFlush` reaches those real PostgreSQL constraints and owner-scoped active reads; the JPA integration test also exercises the transactional service update and two users' preferences, while the catalog probe verifies `rotrack_runtime` has exactly SELECT/INSERT/UPDATE on `user_preferences`.
 
 When integration is enabled, missing or unsafe configuration fails instead of
 silently skipping. Catalog and rollback-only trigger checks do not prove the
