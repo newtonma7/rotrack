@@ -307,13 +307,13 @@ Future systems are separate vertical slices. Their migrations, API contracts, UI
 - `share_active_study_status BOOLEAN NOT NULL DEFAULT false`
 - audit timestamps
 
-Changing the saved timezone changes future calendar rendering and pagination boundaries without rewriting stored UTC instants. All sharing is opt-in and private by default.
+Changing the saved timezone changes future display, input, and calendar-reporting boundaries without rewriting stored UTC instants. History pagination remains UTC, ordered by `(startTime, id)`, and has no timezone query parameter. All sharing is opt-in and private by default.
 
 ### 8.2 Time-entry history and manual corrections
 
 History is an owned, completed-entry view: it returns only entries with a non-null `end_time` and never includes an active session. Users may create completed entries and edit exactly `activity_type`, `start_time`, `end_time`, and `notes` (at most 280 characters); duration remains derived from timestamps and `user_id` is never client-controlled. Users may delete their own entries after an explicit confirmation.
 
-The history list uses a fixed page size of 20 and reverse-chronological `(start_time DESC, id DESC)` ordering. Cursors are opaque, unpadded base64url values to clients and deterministic for a stable snapshot; clients send the returned cursor unchanged and never construct or inspect it. They are unsigned, untrusted per-user ordering anchors rather than authority-bearing tokens; HMAC is intentionally out of scope for the 0–20-user boundary, while ownership-scoped queries prevent cross-user access. Empty pages return `nextCursor: null`; malformed or noncanonical cursors return the stable `INVALID_CURSOR` validation error.
+The history list uses a fixed page size of 20 and reverse-chronological UTC `(startTime DESC, id DESC)` ordering. Timezone affects display, input conversion, and calendar reporting only—not history pagination boundaries or a history timezone query parameter. Cursors are opaque, unpadded base64url values to clients and deterministic for a stable snapshot; clients send the returned cursor unchanged and never construct or inspect it. They are unsigned, untrusted per-user ordering anchors rather than authority-bearing tokens; HMAC is intentionally out of scope for the 0–20-user boundary, while ownership-scoped queries prevent cross-user access. Empty pages return `nextCursor: null`; malformed or noncanonical cursors return the stable `INVALID_CURSOR` validation error.
 
 The history migration must enforce same-user non-overlap at the PostgreSQL boundary with an exclusion constraint over `tstzrange(start_time, COALESCE(end_time, 'infinity'::timestamptz), '[)')` and `user_id`, allowing adjacent entries but rejecting overlap for completed or active ranges. Service validation provides the user-facing error; the database remains the race-safe authority. Focused backend repository/service/controller tests and frontend API/component contract tests cover ownership, completed-only results, page boundaries/cursors, edits, deletion, invalid ranges, and overlap conflicts.
 

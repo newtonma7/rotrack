@@ -98,13 +98,27 @@ class TimeEntryServiceTest {
         when(repository.findFirstByUserIdAndEndTimeIsNullOrderByStartTimeDesc(userId))
                 .thenReturn(Optional.empty());
         when(repository.saveAndFlush(any(TimeEntry.class)))
+                .thenThrow(new DataIntegrityViolationException("tstzrange infinity"));
+
+        ConflictException exception = assertThrows(ConflictException.class,
+                () -> service.startSession(userId, ActivityType.WORK, null));
+
+        assertEquals("ACTIVE_SESSION_EXISTS", exception.getCode());
+    }
+
+    @Test
+    void namedOverlapConstraintWinsOverTheBroadInfinityHeuristic() {
+        UUID userId = UUID.randomUUID();
+        when(repository.findFirstByUserIdAndEndTimeIsNullOrderByStartTimeDesc(userId))
+                .thenReturn(Optional.empty());
+        when(repository.saveAndFlush(any(TimeEntry.class)))
                 .thenThrow(new DataIntegrityViolationException(
                         "time_entries_no_overlap_per_user tstzrange infinity"));
 
         ConflictException exception = assertThrows(ConflictException.class,
                 () -> service.startSession(userId, ActivityType.WORK, null));
 
-        assertEquals("ACTIVE_SESSION_EXISTS", exception.getCode());
+        assertEquals("TIME_ENTRY_OVERLAP", exception.getCode());
     }
 
     @Test

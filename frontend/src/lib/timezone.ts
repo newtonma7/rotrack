@@ -7,7 +7,7 @@ export function getBrowserTimeZone(): string {
 }
 
 export function isValidTimeZone(timeZone: string): boolean {
-  if (!timeZone.trim()) return false;
+  if (!timeZone.trim() || (timeZone !== "UTC" && !timeZone.includes("/"))) return false;
 
   try {
     new Intl.DateTimeFormat("en-US", { timeZone }).format();

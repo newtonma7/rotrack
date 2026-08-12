@@ -13,7 +13,7 @@ M4 uses handwritten DTOs and the existing authenticated native `fetch` client. E
 ## Completed history
 
 - `GET /time-entries/history` → `200 { data: { entries: HistoryEntry[], nextCursor: string | null } }`.
-- The API returns only completed owned entries, in `(startTime DESC, id DESC)` order, with at most 20 entries. `nextCursor` is opaque and must be sent back unchanged as `?cursor=...`.
+- The API returns only completed owned entries, in UTC `(startTime DESC, id DESC)` order, with at most 20 entries. `nextCursor` is opaque and must be sent back unchanged as `?cursor=...`; history has no timezone query parameter and timezone does not affect page boundaries.
 - `POST /time-entries` creates a completed entry; `PUT /time-entries/{id}` edits it; `DELETE /time-entries/{id}` returns `204`.
 - `HistoryEntry` is `{ id, activityType, startTime, endTime, durationSeconds, notes }`; `durationSeconds` is derived by the server from timestamps. Inputs contain only `activityType`, `startTime`, `endTime`, and `notes` (maximum 280 characters).
 - Ranges are half-open for overlap checks: adjacent entries are valid, overlapping entries are rejected, including overlap with an active session.
