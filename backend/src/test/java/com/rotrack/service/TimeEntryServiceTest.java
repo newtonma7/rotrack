@@ -95,11 +95,11 @@ class TimeEntryServiceTest {
     @Test
     void exclusionRaceWithAnActiveRowStillReturnsActiveSessionConflict() {
         UUID userId = UUID.randomUUID();
-        TimeEntry active = entry(userId, Instant.parse("2026-01-01T10:00:00Z"), null);
         when(repository.findFirstByUserIdAndEndTimeIsNullOrderByStartTimeDesc(userId))
-                .thenReturn(Optional.empty(), Optional.of(active));
+                .thenReturn(Optional.empty());
         when(repository.saveAndFlush(any(TimeEntry.class)))
-                .thenThrow(new DataIntegrityViolationException("time_entries_no_overlap_per_user"));
+                .thenThrow(new DataIntegrityViolationException(
+                        "time_entries_no_overlap_per_user tstzrange infinity"));
 
         ConflictException exception = assertThrows(ConflictException.class,
                 () -> service.startSession(userId, ActivityType.WORK, null));
