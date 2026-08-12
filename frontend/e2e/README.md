@@ -23,6 +23,22 @@ export ROTRACK_E2E_USER_A_STORAGE_STATE=/tmp/rotrack-e2e-user-a.json
 export ROTRACK_E2E_USER_B_STORAGE_STATE=/tmp/rotrack-e2e-user-b.json
 ```
 
+The gated disposable signup flow additionally accepts fresh, disposable signup
+accounts:
+
+```bash
+export ROTRACK_E2E_SIGNUP_EMAIL_A='<DISPOSABLE_A_EMAIL>'
+export ROTRACK_E2E_SIGNUP_EMAIL_B='<DISPOSABLE_B_EMAIL>'
+export ROTRACK_E2E_SIGNUP_PASSWORD='<ENTER_PRIVATELY>'
+export ROTRACK_E2E_REQUIRE_SIGNUP=1
+```
+
+Set `ROTRACK_E2E_SIGNUP_USERNAME` to make the username deterministic; otherwise
+the test generates one. To cover confirmation and subsequent sign-in, provide the
+confirmation link privately through `ROTRACK_E2E_SIGNUP_CONFIRMATION_URL` and set
+`ROTRACK_E2E_REQUIRE_SIGNUP_CONFIRMATION=1`. The link and password must never be
+printed, committed, or included in browser artifacts.
+
 `ROTRACK_E2E_STORAGE_STATE` remains a compatibility alias for User A. Required-auth runs also require `ROTRACK_E2E_EXPECTED_API_URL`; the harness installs a browser request guard before navigation so `/api/v1` requests to any other origin/base are aborted before transmission. A configured
 path that is missing, not a regular file, or resolves inside the repository is a
 configuration error. The hostile two-user request is derived from the same API
@@ -83,7 +99,9 @@ configuration:
 ROTRACK_E2E_REQUIRE_AUTH=1 npm run e2e
 ```
 
-A checked critical-path run therefore uses `ROTRACK_E2E_REQUIRE_AUTH=1` and expects
-all four Chromium tests to pass. HTML and failure artifacts are ignored by Git;
-treat them as sensitive operational output and remove them according to the CI
-retention policy.
+A checked authenticated lifecycle run therefore uses `ROTRACK_E2E_REQUIRE_AUTH=1`
+and expects all four lifecycle Chromium tests to pass. A checked signup run also
+sets `ROTRACK_E2E_REQUIRE_SIGNUP=1`; the full confirmation/sign-in acceptance adds
+`ROTRACK_E2E_REQUIRE_SIGNUP_CONFIRMATION=1` and expects both signup tests to pass.
+HTML and failure artifacts are ignored by Git; treat them as sensitive
+operational output and remove them according to the CI retention policy.
