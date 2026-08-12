@@ -327,6 +327,14 @@ class PostgresMigrationIntegrationTest {
                 """), "all ownership policies from migration 001 must exist");
         assertEquals(1, querySingleInt(connection, """
                 SELECT count(*)
+                FROM pg_policies
+                WHERE schemaname = 'public'
+                  AND tablename = 'users'
+                  AND policyname = 'users_select_own'
+                  AND qual = '(auth.uid() = id)'
+                """), "username visibility must remain owner-scoped");
+        assertEquals(1, querySingleInt(connection, """
+                SELECT count(*)
                 FROM pg_trigger
                 WHERE tgrelid = 'auth.users'::regclass
                   AND tgname = 'on_auth_user_created'
