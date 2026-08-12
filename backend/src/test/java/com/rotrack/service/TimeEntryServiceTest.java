@@ -1,20 +1,26 @@
 package com.rotrack.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.rotrack.dto.HistoryPageDTO;
 import com.rotrack.dto.TimeEntryDTO;
 import com.rotrack.exception.ConflictException;
 import com.rotrack.exception.ResourceNotFoundException;
 import com.rotrack.model.ActivityType;
 import com.rotrack.model.TimeEntry;
 import com.rotrack.repository.TimeEntryRepository;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -97,5 +103,71 @@ class TimeEntryServiceTest {
         TimeEntryDTO result = service.getActiveSession(userId);
 
         assertNull(result.durationSeconds());
+    }
+
+    @Test
+    void historyUsesCompletedOnlyKeysetPagesAndFixedTwentyEntryLimit() {
+        UUID userId = UUID.randomUUID();
+        TimeEntry newest = entry(userId, Instant.parse("2026-01-02T10:00:00Z"), Instant.parse("2026-01-02T11:00:00Z"));
+        TimeEntry twentieth = entry(userId, Instant.parse("2026-01-01T10:00:00Z"), Instant.parse("2026-01-01T11:00:00Z"));
+        when(repository.findCompletedHistory(eq(userId), any())).thenReturn(java.util.stream.IntStream.range(0, 21)
+                .mapToObj(index -> index == 20 ? twentieth : newest)
+                .toList());
+
+        HistoryPageDTO result = service.listHistory(userId, null);
+
+        assertEquals(20, result.entries().size());
+        assertFalse(result.nextCursor().isBlank());
+        verify(repository).findCompletedHistory(eq(userId), argThat(pageable -> pageable.getPageSize() == 21));
+    }
+
+    @Test
+    void manualOverlapIsRejectedBeforePersistence() {
+        UUID userId = UUID.randomUUID();
+        Instant start = Instant.parse("2026-01-01T10:00:00Z");
+        when(repository.existsOverlappingEntry(eq(userId), eq(start), eq(start.plus(Duration.ofHours(1))), isNull(), eq(false)))
+                .thenReturn(true);
+
+        assertThrows(ConflictException.class, () -> service.createCompletedEntry(
+                userId, ActivityType.WORK, start, start.plus(Duration.ofHours(1)), "focus"));
+        verify(repository, never()).saveAndFlush(any(TimeEntry.class));
+    }
+
+    @Test
+    void adjacentManualRangesAreAccepted() {
+        UUID userId = UUID.randomUUID();
+        Instant start = Instant.parse("2026-01-01T11:00:00Z");
+        when(repository.existsOverlappingEntry(eq(userId), eq(start), eq(start.plus(Duration.ofHours(1))), isNull(), eq(false)))
+                .thenReturn(false);
+        TimeEntry saved = entry(userId, start, start.plus(Duration.ofHours(1)));
+        when(repository.saveAndFlush(any(TimeEntry.class))).thenReturn(saved);
+
+        assertEquals(saved.getStartTime(), service.createCompletedEntry(
+                userId, ActivityType.WORK, start, start.plus(Duration.ofHours(1)), null).startTime());
+    }
+
+    @Test
+    void databaseOverlapIsTranslatedToStableConflict() {
+        UUID userId = UUID.randomUUID();
+        Instant start = Instant.parse("2026-01-01T10:00:00Z");
+        when(repository.existsOverlappingEntry(eq(userId), eq(start), eq(start.plus(Duration.ofHours(1))), isNull(), eq(false)))
+                .thenReturn(false);
+        when(repository.saveAndFlush(any(TimeEntry.class)))
+                .thenThrow(new DataIntegrityViolationException("time_entries_no_overlap_per_user"));
+
+        ConflictException exception = assertThrows(ConflictException.class, () -> service.createCompletedEntry(
+                userId, ActivityType.WORK, start, start.plus(Duration.ofHours(1)), null));
+        assertEquals("TIME_ENTRY_OVERLAP", exception.getCode());
+    }
+
+    private TimeEntry entry(UUID userId, Instant start, Instant end) {
+        TimeEntry entry = new TimeEntry();
+        entry.setId(UUID.randomUUID());
+        entry.setUserId(userId);
+        entry.setActivityType(ActivityType.WORK);
+        entry.setStartTime(start);
+        entry.setEndTime(end);
+        entry.setNotes("note");
+        return entry;
     }
 }
