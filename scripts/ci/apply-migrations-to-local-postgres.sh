@@ -45,7 +45,13 @@ CREATE FUNCTION auth.uid()
 RETURNS UUID
 LANGUAGE sql
 STABLE
-AS 'SELECT NULL::UUID';
+AS $$SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid$$;
+DO $$
+BEGIN
+  CREATE ROLE rotrack_runtime NOLOGIN NOSUPERUSER NOBYPASSRLS;
+EXCEPTION WHEN duplicate_object THEN
+  NULL;
+END $$;
 COMMIT;
 SQL
 

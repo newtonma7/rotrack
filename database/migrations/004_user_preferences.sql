@@ -88,6 +88,7 @@ $$;
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'rotrack_runtime') THEN
+    EXECUTE 'REVOKE ALL PRIVILEGES ON TABLE public.user_preferences FROM rotrack_runtime';
     EXECUTE 'GRANT SELECT, INSERT, UPDATE ON TABLE public.user_preferences TO rotrack_runtime';
   END IF;
 END

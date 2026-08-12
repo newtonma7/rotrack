@@ -6,7 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.rotrack.config.DatabaseTlsValidator;
 import com.rotrack.model.ActivityType;
 import com.rotrack.model.TimeEntry;
+import com.rotrack.model.UserPreferences;
 import com.rotrack.repository.TimeEntryRepository;
+import com.rotrack.repository.UserPreferencesRepository;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,6 +40,9 @@ class TimeEntryRepositoryPostgresIntegrationTest {
     private TimeEntryRepository repository;
 
     @Autowired
+    private UserPreferencesRepository preferencesRepository;
+
+    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     // This test isolates repository/schema behavior. Startup TLS policy has its own focused tests.
@@ -67,6 +72,24 @@ class TimeEntryRepositoryPostgresIntegrationTest {
 
         assertThat(repository.findFirstByUserIdAndEndTimeIsNullOrderByStartTimeDesc(USER_A)).isPresent();
         assertThat(repository.findFirstByUserIdAndEndTimeIsNullOrderByStartTimeDesc(USER_B)).isPresent();
+    }
+
+    @Test
+    void twoUsersCanPersistAndReadOwnedPreferencesThroughJpa() {
+        UserPreferences first = preferencesRepository.findById(USER_A).orElseThrow();
+        first.setTimezone("America/New_York");
+        first.setDailyWorkGoalMinutes(60);
+        preferencesRepository.saveAndFlush(first);
+
+        UserPreferences second = preferencesRepository.findById(USER_B).orElseThrow();
+        second.setTimezone("Europe/Berlin");
+        second.setDailyWorkGoalMinutes(90);
+        preferencesRepository.saveAndFlush(second);
+
+        assertThat(preferencesRepository.findById(USER_A).orElseThrow().getTimezone())
+                .isEqualTo("America/New_York");
+        assertThat(preferencesRepository.findById(USER_B).orElseThrow().getTimezone())
+                .isEqualTo("Europe/Berlin");
     }
 
     @Test

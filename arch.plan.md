@@ -296,7 +296,7 @@ Future systems are separate vertical slices. Their migrations, API contracts, UI
 `user_preferences` stores:
 
 - `user_id` as the unique owner key
-- nullable `timezone` as a validated IANA identifier; when it is unset, the browser's IANA timezone is the effective fallback for local rendering and dashboard/history requests until the user saves one
+- nullable `timezone` as a validated IANA identifier; Java and PostgreSQL use their shared IANA catalogs directly (representative compatibility coverage: `UTC`, `America/New_York`, `Europe/Berlin`, `Asia/Tokyo`, and `Australia/Lord_Howe`), without a synchronization framework. When it is unset, the browser's IANA timezone is the effective fallback for local rendering and dashboard/history requests until the user saves one
 - nullable `daily_work_goal_minutes`, an integer from 1 through 1440
 - `share_study_summary BOOLEAN NOT NULL DEFAULT false`
 - `share_active_study_status BOOLEAN NOT NULL DEFAULT false`

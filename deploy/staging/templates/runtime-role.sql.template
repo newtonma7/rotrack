@@ -45,6 +45,8 @@ REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM rotrack_runtime;
 REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM rotrack_runtime;
 REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public FROM rotrack_runtime;
 GRANT SELECT, INSERT, UPDATE ON TABLE public.time_entries TO rotrack_runtime;
+REVOKE ALL PRIVILEGES ON TABLE public.user_preferences FROM rotrack_runtime;
+GRANT SELECT, INSERT, UPDATE ON TABLE public.user_preferences TO rotrack_runtime;
 GRANT USAGE ON TYPE public.activity_type TO rotrack_runtime;
 
 COMMIT;

@@ -175,6 +175,7 @@ class PostgresMigrationIntegrationTest {
                 assertActualSchemaContract(connection);
                 proveTimeEntryInvariants(connection);
                 provePreferencesInvariants(connection);
+                proveTwoUserPreferencesRls(connection);
             } finally {
                 connection.rollback();
             }
@@ -245,9 +246,17 @@ class PostgresMigrationIntegrationTest {
                         RETURNS UUID
                         LANGUAGE sql
                         STABLE
-                        AS 'SELECT NULL::UUID'
+                        AS $$SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid$$
                         """);
             }
+            statement.execute("""
+                    DO $$
+                    BEGIN
+                      IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'rotrack_runtime') THEN
+                        CREATE ROLE rotrack_runtime NOLOGIN NOSUPERUSER NOBYPASSRLS;
+                      END IF;
+                    END $$
+                    """);
         }
     }
 
@@ -395,6 +404,18 @@ class PostgresMigrationIntegrationTest {
                 WHERE conrelid = 'public.user_preferences'::regclass
                   AND conname = 'user_preferences_daily_work_goal_range'
                 """), "daily goal range must be database-enforced");
+        assertEquals(3, querySingleInt(connection, """
+                SELECT count(*)
+                FROM aclexplode((SELECT relacl FROM pg_class WHERE oid = 'public.user_preferences'::regclass))
+                WHERE grantee = 'rotrack_runtime'::regrole
+                  AND privilege_type IN ('SELECT', 'INSERT', 'UPDATE')
+                """), "runtime role must have exactly the three preference DML grants");
+        assertEquals(0, querySingleInt(connection, """
+                SELECT count(*)
+                FROM aclexplode((SELECT relacl FROM pg_class WHERE oid = 'public.user_preferences'::regclass))
+                WHERE grantee = 'rotrack_runtime'::regrole
+                  AND privilege_type NOT IN ('SELECT', 'INSERT', 'UPDATE')
+                """), "runtime role must not have other preference table grants");
     }
 
     private void proveTimeEntryInvariants(Connection connection) throws SQLException {
@@ -541,6 +562,70 @@ class PostgresMigrationIntegrationTest {
         expectSqlState(connection, "23505", () -> insertPreference(connection, userId, "UTC", 60));
         expectSqlState(connection, "23514", () -> insertPreference(connection, UUID.randomUUID(), "UTC", 0));
         expectSqlState(connection, "22023", () -> insertPreference(connection, UUID.randomUUID(), "Not/A_Zone", 60));
+    }
+
+    private void proveTwoUserPreferencesRls(Connection connection) throws SQLException {
+        UUID firstUser = UUID.randomUUID();
+        UUID secondUser = UUID.randomUUID();
+        UUID insertUser = UUID.randomUUID();
+        insertAuthUser(connection, firstUser, "rls_first_user");
+        insertAuthUser(connection, secondUser, "rls_second_user");
+        insertAuthUser(connection, insertUser, "rls_insert_user");
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    DO $$
+                    BEGIN
+                      IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'rotrack_rls_probe') THEN
+                        CREATE ROLE rotrack_rls_probe NOLOGIN NOSUPERUSER NOBYPASSRLS;
+                      END IF;
+                    END $$
+                    """);
+            statement.execute("GRANT USAGE ON SCHEMA public TO rotrack_rls_probe");
+            statement.execute("GRANT SELECT ON public.users, public.user_preferences TO rotrack_rls_probe");
+            statement.execute("GRANT INSERT, UPDATE ON public.user_preferences TO rotrack_rls_probe");
+            statement.execute("DELETE FROM public.user_preferences WHERE user_id = '" + insertUser + "'");
+            statement.execute("SET LOCAL ROLE rotrack_rls_probe");
+        }
+
+        setJwtSubject(connection, firstUser);
+        assertEquals(1, queryCount(connection,
+                "SELECT count(*) FROM public.user_preferences WHERE user_id IN (?, ?)", firstUser, secondUser),
+                "user A can read only user A preferences");
+        assertEquals(1, updatePreferenceGoal(connection, firstUser, secondUser, 30),
+                "user A can update only user A preferences");
+        setJwtSubject(connection, secondUser);
+        assertEquals(1, queryCount(connection,
+                "SELECT count(*) FROM public.user_preferences WHERE user_id IN (?, ?)", firstUser, secondUser),
+                "user B can read only user B preferences");
+        assertEquals(1, updatePreferenceGoal(connection, firstUser, secondUser, 45),
+                "user B can update only user B preferences");
+        setJwtSubject(connection, insertUser);
+        insertPreference(connection, insertUser, "Europe/Berlin", 60);
+        assertEquals(1, queryCount(connection,
+                "SELECT count(*) FROM public.user_preferences WHERE user_id = ? AND timezone = 'Europe/Berlin'",
+                insertUser), "owner-scoped insert is allowed");
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("RESET ROLE");
+            statement.execute("RESET request.jwt.claim.sub");
+        }
+    }
+
+    private int updatePreferenceGoal(Connection connection, UUID firstUser, UUID secondUser, int goal)
+            throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "UPDATE public.user_preferences SET daily_work_goal_minutes = ? WHERE user_id IN (?, ?)")) {
+            statement.setInt(1, goal);
+            statement.setObject(2, firstUser);
+            statement.setObject(3, secondUser);
+            return statement.executeUpdate();
+        }
+    }
+
+    private void setJwtSubject(Connection connection, UUID userId) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT set_config('request.jwt.claim.sub', ?, true)")) {
+            statement.setString(1, userId.toString());
+            statement.execute();
+        }
     }
 
     private void insertPreference(Connection connection, UUID userId, String timezone, Integer dailyGoal)
