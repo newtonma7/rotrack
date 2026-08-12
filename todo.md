@@ -480,8 +480,9 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 - Added `003_require_usernames.sql` with fail-closed preflight, canonical lowercase/format/reserved-name checks, ordinary uniqueness, signup metadata extraction, and database immutability.
 - Updated Supabase signup metadata submission, accessible local validation, safe generic server errors, JPA nullability, migration fixtures, and focused tests.
-- Frontend focused/full tests, lint, typecheck, backend Maven tests, and migration integration evidence passed in isolated implementation lanes. Integrated reruns and disposable browser signup remain required before Verified.
-- CI migration application now uses the minimal `raw_user_meta_data` auth fixture and one transaction per migration.
+- Integrated checks passed: `cd frontend && npm test -- --run` (27 tests), `npm run lint`, `npm run typecheck`, and `NEXT_PUBLIC_SITE_URL=https://example.test npm run build`; Java 21 `mvn clean test` passed 96 tests with five expected opt-in PostgreSQL skips.
+- Disposable PostgreSQL 17.6 apply mode passed 2/2 migration tests; verify mode passed 5 tests with one expected apply-only skip, plus Spring repository checks. The migration helper uses the minimal `raw_user_meta_data` auth fixture and one transaction per migration.
+- The external-auth disposable browser signup/confirmation flow was not run because no disposable inbox/auth state was available; this is the remaining blocker to Verified.
 
 ## 6. Milestone 3 — CI, Staging, and MVP Release
 
