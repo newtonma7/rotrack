@@ -81,6 +81,7 @@ async function apiFetch<T>(
     throw parseApiErrorResponse(body, response.status);
   }
 
+  if (response.status === 204) return undefined as T;
   const json = (await response.json()) as ApiResponse<T>;
   return json.data;
 }
@@ -138,21 +139,21 @@ export async function getHistory(cursor?: string): Promise<HistoryPage> {
 }
 
 export async function createHistoryEntry(entry: HistoryEntryInput): Promise<HistoryEntry> {
-  return apiFetch<HistoryEntry>("/time-entries/history", {
+  return apiFetch<HistoryEntry>("/time-entries", {
     method: "POST",
     body: JSON.stringify(entry),
   });
 }
 
 export async function updateHistoryEntry(id: string, entry: HistoryEntryInput): Promise<HistoryEntry> {
-  return apiFetch<HistoryEntry>(`/time-entries/history/${encodeURIComponent(id)}`, {
+  return apiFetch<HistoryEntry>(`/time-entries/${encodeURIComponent(id)}`, {
     method: "PUT",
     body: JSON.stringify(entry),
   });
 }
 
 export async function deleteHistoryEntry(id: string): Promise<void> {
-  await apiFetch<null>(`/time-entries/history/${encodeURIComponent(id)}`, {
+  await apiFetch<null>(`/time-entries/${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
 }

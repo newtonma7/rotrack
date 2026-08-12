@@ -76,15 +76,23 @@ describe("history API", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(response(entry))
       .mockResolvedValueOnce(response(entry))
-      .mockResolvedValueOnce(response(null));
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
 
     await expect(createHistoryEntry(input)).resolves.toEqual(entry);
     await expect(updateHistoryEntry(entry.id, input)).resolves.toEqual(entry);
     await expect(deleteHistoryEntry(entry.id)).resolves.toBeUndefined();
 
-    expect(fetchMock.mock.calls[0][0]).toBe("http://localhost:8080/api/v1/time-entries/history");
+    expect(fetchMock.mock.calls[0][0]).toBe("http://localhost:8080/api/v1/time-entries");
     expect(fetchMock.mock.calls[0][1]).toEqual(expect.objectContaining({ method: "POST", body: JSON.stringify(input) }));
+    expect(fetchMock.mock.calls[1][0]).toBe("http://localhost:8080/api/v1/time-entries/entry-1");
     expect(fetchMock.mock.calls[1][1]).toEqual(expect.objectContaining({ method: "PUT", body: JSON.stringify(input) }));
+    expect(fetchMock.mock.calls[2][0]).toBe("http://localhost:8080/api/v1/time-entries/entry-1");
     expect(fetchMock.mock.calls[2][1]).toEqual(expect.objectContaining({ method: "DELETE" }));
+  });
+
+  it("accepts a no-content delete response without trying to parse JSON", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
+
+    await expect(deleteHistoryEntry(entry.id)).resolves.toBeUndefined();
   });
 });
