@@ -3,10 +3,10 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import DashboardPage from "@/app/dashboard/page";
-import { getDashboardStats } from "@/lib/api";
+import { getDashboardStats, getPreferences } from "@/lib/api";
 import type { DashboardStats } from "@/types/time-entry";
 
-vi.mock("@/lib/api", () => ({ getDashboardStats: vi.fn() }));
+vi.mock("@/lib/api", () => ({ getDashboardStats: vi.fn(), getPreferences: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/lib/supabase/client", () => ({
   supabase: { auth: { signOut: vi.fn() } },
@@ -69,6 +69,12 @@ describe("DashboardPage", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getPreferences).mockResolvedValue({
+      timeZone: null,
+      dailyWorkGoalMinutes: null,
+      shareStudySummary: false,
+      shareActiveStudyStatus: false,
+    });
   });
 
   it("shows a complete empty state after loading a range with no tracked time", async () => {
@@ -79,6 +85,29 @@ describe("DashboardPage", () => {
     expect(screen.getByText(/loading your last seven days/i)).toBeTruthy();
     expect(await screen.findByText(/nothing tracked yet/i)).toBeTruthy();
     expect(screen.getByRole("link", { name: /start tracking/i }).getAttribute("href")).toBe("/tracker");
+  });
+
+  it("uses the saved timezone for dashboard requests", async () => {
+    vi.mocked(getPreferences).mockResolvedValue({
+      timeZone: "Europe/Berlin",
+      dailyWorkGoalMinutes: 90,
+      shareStudySummary: false,
+      shareActiveStudyStatus: false,
+    });
+    vi.mocked(getDashboardStats).mockResolvedValue(emptyStats);
+
+    render(<DashboardPage />);
+
+    await waitFor(() => expect(getDashboardStats).toHaveBeenCalledWith({ timeZone: "Europe/Berlin" }));
+  });
+
+  it("falls back to the browser timezone when no timezone is saved", async () => {
+    vi.mocked(getDashboardStats).mockResolvedValue(emptyStats);
+    vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions").mockReturnValue({ timeZone: "Asia/Tokyo" } as Intl.ResolvedDateTimeFormatOptions);
+
+    render(<DashboardPage />);
+
+    await waitFor(() => expect(getDashboardStats).toHaveBeenCalledWith({ timeZone: "Asia/Tokyo" }));
   });
 
   it("renders populated summary, distribution, and recent-session data", async () => {
