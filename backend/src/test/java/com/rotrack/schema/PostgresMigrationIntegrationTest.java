@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 /**
- * Opt-in proof that the checked-in migrations enforce the time-entry invariants in PostgreSQL.
+ * Opt-in proof that the checked-in migrations enforce the PostgreSQL schema contract.
  *
  * <p>The caller must explicitly confirm that the target is isolated. Every change, including DDL
  * in apply mode, runs in one transaction and is rolled back. This keeps the default Maven suite
@@ -37,11 +37,45 @@ class PostgresMigrationIntegrationTest {
     private static final String VERIFY_MODE = "verify";
     private static final List<String> MIGRATIONS = List.of(
             "001_initial_schema.sql",
-            "002_harden_time_entries.sql"
+            "002_harden_time_entries.sql",
+            "003_require_usernames.sql"
     );
 
     @Test
-    void actualMigratedTimeEntriesEnforcesDatabaseInvariants() throws Exception {
+    void existingNullUsernameMakesMigrationFailWithoutChangingAccounts() throws Exception {
+        TestDatabaseConfiguration configuration = configuration();
+        Assumptions.assumeTrue(APPLY_MODE.equals(configuration.mode()),
+                "the fail-closed apply probe requires an empty target");
+
+        try (Connection connection = DriverManager.getConnection(
+                configuration.url(), configuration.username(), configuration.password())) {
+            connection.setAutoCommit(false);
+            try {
+                assertMigrationTargetIsEmpty(connection);
+                createMinimalAuthContractWhenNeeded(connection);
+                applyMigration(connection, "001_initial_schema.sql");
+                applyMigration(connection, "002_harden_time_entries.sql");
+
+                UUID existingUser = UUID.randomUUID();
+                insertAuthUser(connection, existingUser, "existing_name");
+                assertEquals(1, queryCount(connection, """
+                        SELECT count(*) FROM public.users WHERE id = ? AND username IS NULL
+                        """, existingUser));
+
+                String usernameMigration = Files.readString(
+                        findRepositoryRoot().resolve("database/migrations/003_require_usernames.sql"));
+                expectSqlState(connection, "23514", () -> executeSql(connection, usernameMigration));
+                assertEquals(1, queryCount(connection, """
+                        SELECT count(*) FROM public.users WHERE id = ? AND username IS NULL
+                        """, existingUser), "failed migration must not rewrite the existing profile");
+            } finally {
+                connection.rollback();
+            }
+        }
+    }
+
+    @Test
+    void actualMigratedSchemaEnforcesDatabaseInvariants() throws Exception {
         TestDatabaseConfiguration configuration = configuration();
 
         try (Connection connection = DriverManager.getConnection(
@@ -115,7 +149,8 @@ class PostgresMigrationIntegrationTest {
                 statement.execute("""
                         CREATE TABLE auth.users (
                             id UUID PRIMARY KEY,
-                            email TEXT
+                            email TEXT,
+                            raw_user_meta_data JSONB NOT NULL DEFAULT '{}'::jsonb
                         )
                         """);
             }
@@ -132,11 +167,18 @@ class PostgresMigrationIntegrationTest {
     }
 
     private void applyOrderedMigrations(Connection connection) throws IOException, SQLException {
-        Path migrationDirectory = findRepositoryRoot().resolve("database/migrations");
+        for (String migration : MIGRATIONS) {
+            applyMigration(connection, migration);
+        }
+    }
+
+    private void applyMigration(Connection connection, String migration) throws IOException, SQLException {
+        executeSql(connection, Files.readString(findRepositoryRoot().resolve("database/migrations").resolve(migration)));
+    }
+
+    private void executeSql(Connection connection, String sql) throws SQLException {
         try (Statement statement = connection.createStatement()) {
-            for (String migration : MIGRATIONS) {
-                statement.execute(Files.readString(migrationDirectory.resolve(migration)));
-            }
+            statement.execute(sql);
         }
     }
 
@@ -216,18 +258,53 @@ class PostgresMigrationIntegrationTest {
                   AND prosecdef
                   AND 'search_path=public' = ANY (proconfig)
                 """), "the signup function must be security-definer with a fixed public search_path");
+        assertEquals(1, querySingleInt(connection, """
+                SELECT count(*)
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'users'
+                  AND column_name = 'username'
+                  AND is_nullable = 'NO'
+                """), "usernames must be NOT NULL");
+        String signupFunction = querySingleString(connection, "SELECT pg_get_functiondef('public.handle_new_user()'::regprocedure)");
+        assertNotNull(signupFunction);
+        assertTrue(signupFunction.contains("NEW.raw_user_meta_data->>'username'"),
+                "signup must read the username from raw_user_meta_data");
     }
 
     private void proveTimeEntryInvariants(Connection connection) throws SQLException {
         UUID firstUser = UUID.randomUUID();
         UUID secondUser = UUID.randomUUID();
-        insertAuthUser(connection, firstUser);
-        insertAuthUser(connection, secondUser);
+        insertAuthUser(connection, firstUser, " Alice_One ");
+        insertAuthUser(connection, secondUser, "second_user");
         assertEquals(2, queryCount(connection, """
                 SELECT count(*)
                 FROM public.users
                 WHERE id IN (?, ?)
                 """, firstUser, secondUser), "the signup trigger must create both public profiles");
+        assertEquals("alice_one", querySingleString(connection, "SELECT username FROM public.users WHERE id = '" + firstUser + "'"));
+        assertEquals("second_user", querySingleString(connection, "SELECT username FROM public.users WHERE id = '" + secondUser + "'"));
+
+        UUID invalidUser = UUID.randomUUID();
+        expectSqlState(connection, "23514", () -> insertAuthUser(connection, invalidUser, "ab"));
+        assertEquals(0, queryCount(connection, """
+                SELECT count(*) FROM auth.users WHERE id = ?
+                """, invalidUser), "invalid signup must not reserve an auth row");
+
+        UUID reservedUser = UUID.randomUUID();
+        expectSqlState(connection, "23514", () -> insertAuthUser(connection, reservedUser, " Dashboard "));
+        assertEquals(0, queryCount(connection, """
+                SELECT count(*) FROM public.users WHERE id = ?
+                """, reservedUser), "reserved signup must not create a profile");
+
+        UUID duplicateUser = UUID.randomUUID();
+        expectSqlState(connection, "23505", () -> insertAuthUser(connection, duplicateUser, "ALICE_ONE"));
+        assertEquals(0, queryCount(connection, """
+                SELECT count(*) FROM auth.users WHERE id = ?
+                """, duplicateUser), "duplicate username must not reserve an auth row");
+
+        expectSqlState(connection, "23514", () -> updateUsername(connection, firstUser, "renamed_user"));
+        assertEquals("alice_one", querySingleString(connection, "SELECT username FROM public.users WHERE id = '" + firstUser + "'"));
 
         OffsetDateTime start = OffsetDateTime.of(2026, 8, 7, 12, 0, 0, 0, ZoneOffset.UTC);
         insertTimeEntry(connection, UUID.randomUUID(), firstUser, start, null, null);
@@ -270,11 +347,21 @@ class PostgresMigrationIntegrationTest {
         }
     }
 
-    private void insertAuthUser(Connection connection, UUID userId) throws SQLException {
+    private void insertAuthUser(Connection connection, UUID userId, String username) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(
-                "INSERT INTO auth.users(id, email) VALUES (?, ?)")) {
+                "INSERT INTO auth.users(id, email, raw_user_meta_data) VALUES (?, ?, ?::jsonb)")) {
             statement.setObject(1, userId);
             statement.setString(2, "rotrack-db-test-" + userId + "@example.invalid");
+            statement.setString(3, "{\"username\":\"" + username + "\"}");
+            statement.executeUpdate();
+        }
+    }
+
+    private void updateUsername(Connection connection, UUID userId, String username) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "UPDATE public.users SET username = ? WHERE id = ?")) {
+            statement.setString(1, username);
+            statement.setObject(2, userId);
             statement.executeUpdate();
         }
     }
@@ -356,6 +443,16 @@ class PostgresMigrationIntegrationTest {
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setObject(1, first);
             statement.setObject(2, second);
+            try (ResultSet result = statement.executeQuery()) {
+                assertTrue(result.next());
+                return result.getInt(1);
+            }
+        }
+    }
+
+    private int queryCount(Connection connection, String sql, UUID userId) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setObject(1, userId);
             try (ResultSet result = statement.executeQuery()) {
                 assertTrue(result.next());
                 return result.getInt(1);
