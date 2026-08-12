@@ -10,7 +10,7 @@
 - M4 preferences, completed history/manual corrections, and handwritten typed contracts are integrated and locally accepted.
 - Migrations `004_user_preferences.sql` and `005_time_entry_history.sql` passed disposable PostgreSQL apply/verify probes but were not applied to hosted Supabase.
 - Authenticated local browser acceptance passed settings defaults/persistence/isolation and history pagination/create/edit/delete/overlap/active-exclusion/two-user/mobile checks.
-- M4 remains **Implemented—unverified** until the applicable hosted migration/deployment gates pass. Do not begin hosted migration/deployment merely because the source PR is green.
+- The dated 2026-08-12 product-owner override authorizes only the narrow zero-user/pre-user M4 hosted actions: migrations 004/005, reviewed M4 app deployment, and hosted acceptance. M4 remains **Implemented—unverified** until rollout evidence passes; unresolved M3 risks remain unverified, and M5 hosted rollout and broad production-readiness claims remain unauthorized.
 
 ## Coordination rules
 
@@ -24,7 +24,7 @@
 8. Existing shared primitives and handwritten DTOs are the default. Do not add OpenAPI generation unless a later decision replaces the current M4 contract policy.
 9. No milestone becomes **Verified** from source existence, skipped external checks, or local evidence relabeled as hosted evidence.
 
-## Immediate stage — Review and release-gated M4 preparation
+## Immediate stage — Review and narrowly authorized M4 rollout preparation
 
 ### Lane A — Source/PR review
 
@@ -34,11 +34,11 @@
 - Preserve ownership scoping, completed-only history, fixed 20-row pagination, opaque cursor pass-through, timestamp-derived duration, and private defaults.
 - Run frontend lint/typecheck/Vitest/build, Java 21 clean test/package, migration/staging guards, and `git diff --check` after fixes.
 
-### Lane B — Hosted migration/deployment plan (read-only until authorized)
+### Lane B — Hosted migration/deployment plan (narrowly authorized by dated override)
 
-**Owns:** Target-data preflight plan, release checklist, and redacted evidence template. It does not mutate hosted resources without explicit authorization.
+**Owns:** Target-data preflight plan, release checklist, and redacted evidence template. It does not mutate hosted resources outside the exact dated override scope.
 
-- Confirm the full M3/applicable release gates are satisfied before hosted action.
+- Confirm the applicable M4 release checks and exact scope of the dated product-owner override before hosted action; the full M3 gate remains open and its unresolved operational risks remain unverified.
 - Inspect migration 005 preflight against the target: `btree_gist` availability, notes over 280 characters, and same-user overlapping completed/active ranges.
 - Apply migrations 004/005 database-first with an administrative migration identity.
 - Verify `rotrack_runtime` has `SELECT/INSERT/UPDATE/DELETE` on `time_entries`, exactly `SELECT/INSERT/UPDATE` on `user_preferences`, and no schema-management privileges.
@@ -49,7 +49,7 @@
 
 ## Later feature lanes
 
-M5 notes/logs and M6 social work may be designed in parallel only after their own architecture/API/privacy contract seeds. Their implementations must not assume M4 is hosted merely because its source is merged.
+M5 notes/logs and M6 social work may be designed in parallel only after their own architecture/API/privacy contract seeds. No M5 hosted rollout is authorized by the M4 override, and implementations must not assume M4 is verified merely because its source is merged.
 
 ### M5 notes/logs
 
