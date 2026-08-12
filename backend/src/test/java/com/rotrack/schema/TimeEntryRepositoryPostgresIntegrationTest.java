@@ -115,7 +115,15 @@ class TimeEntryRepositoryPostgresIntegrationTest {
     @Test
     void sameUserOverlapIsRejectedButAdjacentCompletedRangesAreValid() {
         Instant start = Instant.parse("2026-08-07T10:00:00Z");
-        repository.saveAndFlush(entry(USER_A, start, start.plus(Duration.ofHours(1))));
+        TimeEntry first = entry(USER_A, start, start.plus(Duration.ofHours(1)));
+        repository.saveAndFlush(first);
+
+        assertThat(repository.existsOverlappingEntry(
+                USER_A, start.plus(Duration.ofMinutes(30)), start.plus(Duration.ofMinutes(90)), null)).isTrue();
+        assertThat(repository.existsOverlappingEntry(
+                USER_A, start.plus(Duration.ofHours(1)), start.plus(Duration.ofHours(2)), null)).isFalse();
+        assertThat(repository.existsOverlappingEntry(
+                USER_A, start, start.plus(Duration.ofHours(1)), first.getId())).isFalse();
 
         repository.saveAndFlush(entry(USER_A, start.plus(Duration.ofHours(1)), start.plus(Duration.ofHours(2))));
 
@@ -128,12 +136,10 @@ class TimeEntryRepositoryPostgresIntegrationTest {
     void completedHistoryOrdersByStartThenIdAndExcludesActiveRows() {
         Instant start = Instant.parse("2026-08-07T10:00:00Z");
         TimeEntry first = entry(USER_A, start, start.plus(Duration.ofHours(1)));
-        first.setId(UUID.fromString("aaaaaaaa-0000-4000-8000-000000000001"));
-        TimeEntry second = entry(USER_A, start, start.plus(Duration.ofHours(1)));
-        second.setId(UUID.fromString("aaaaaaaa-0000-4000-8000-000000000002"));
+        TimeEntry second = entry(USER_A, start.plus(Duration.ofHours(2)), start.plus(Duration.ofHours(3)));
         repository.saveAndFlush(first);
         repository.saveAndFlush(second);
-        repository.saveAndFlush(entry(USER_A, start.plus(Duration.ofHours(3)), null));
+        repository.saveAndFlush(entry(USER_A, start.plus(Duration.ofHours(4)), null));
 
         assertThat(repository.findCompletedHistory(USER_A, PageRequest.of(0, 20)))
                 .extracting(TimeEntry::getId)

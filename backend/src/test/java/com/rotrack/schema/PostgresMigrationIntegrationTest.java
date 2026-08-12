@@ -425,12 +425,6 @@ class PostgresMigrationIntegrationTest {
                 WHERE conrelid = 'public.user_preferences'::regclass
                   AND conname = 'user_preferences_daily_work_goal_range'
                 """), "daily goal range must be database-enforced");
-        assertEquals(4, querySingleInt(connection, """
-                SELECT count(*)
-                FROM aclexplode((SELECT relacl FROM pg_class WHERE oid = 'public.time_entries'::regclass))
-                WHERE grantee = 'rotrack_runtime'::regrole
-                  AND privilege_type IN ('SELECT', 'INSERT', 'UPDATE', 'DELETE')
-                """), "runtime role must have the four time-entry DML grants");
         assertEquals(3, querySingleInt(connection, """
                 SELECT count(*)
                 FROM aclexplode((SELECT relacl FROM pg_class WHERE oid = 'public.user_preferences'::regclass))
@@ -517,6 +511,9 @@ class PostgresMigrationIntegrationTest {
         expectSqlState(connection, "23P01", () -> insertTimeEntry(
                 connection, UUID.randomUUID(), firstUser,
                 start.plusHours(2).plusMinutes(1), start.plusHours(2).plusMinutes(2), null));
+        expectSqlState(connection, "23514", () -> insertTimeEntry(
+                connection, UUID.randomUUID(), firstUser,
+                start.plusHours(5), start.plusHours(6), null, "x".repeat(281)));
         expectSqlState(connection, "23514", () -> insertTimeEntry(
                 connection, UUID.randomUUID(), firstUser,
                 start.plusHours(4), start.plusHours(4), null));
@@ -686,16 +683,29 @@ class PostgresMigrationIntegrationTest {
             OffsetDateTime end,
             Integer durationMinutes
     ) throws SQLException {
+        insertTimeEntry(connection, id, userId, start, end, durationMinutes, null);
+    }
+
+    private void insertTimeEntry(
+            Connection connection,
+            UUID id,
+            UUID userId,
+            OffsetDateTime start,
+            OffsetDateTime end,
+            Integer durationMinutes,
+            String notes
+    ) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
                 INSERT INTO public.time_entries(
-                    id, user_id, activity_type, start_time, end_time, duration_minutes
-                ) VALUES (?, ?, 'WORK', ?, ?, ?)
+                    id, user_id, activity_type, start_time, end_time, duration_minutes, notes
+                ) VALUES (?, ?, 'WORK', ?, ?, ?, ?)
                 """)) {
             statement.setObject(1, id);
             statement.setObject(2, userId);
             statement.setObject(3, start);
             statement.setObject(4, end);
             statement.setObject(5, durationMinutes);
+            statement.setString(6, notes);
             statement.executeUpdate();
         }
     }

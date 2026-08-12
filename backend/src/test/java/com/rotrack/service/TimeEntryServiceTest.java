@@ -2,6 +2,7 @@ package com.rotrack.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -20,8 +21,10 @@ import com.rotrack.exception.ResourceNotFoundException;
 import com.rotrack.model.ActivityType;
 import com.rotrack.model.TimeEntry;
 import com.rotrack.repository.TimeEntryRepository;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -119,6 +122,27 @@ class TimeEntryServiceTest {
         assertEquals(20, result.entries().size());
         assertFalse(result.nextCursor().isBlank());
         verify(repository).findCompletedHistory(eq(userId), argThat(pageable -> pageable.getPageSize() == 21));
+    }
+
+    @Test
+    void invalidHistoryCursorHasStableFailure() {
+        assertThrows(com.rotrack.exception.InvalidCursorException.class,
+                () -> service.listHistory(UUID.randomUUID(), "not-a-cursor"));
+    }
+
+    @Test
+    void historyCursorSelectsRowsStrictlyAfterTheLastKey() {
+        UUID userId = UUID.randomUUID();
+        UUID lastId = UUID.randomUUID();
+        Instant lastStart = Instant.parse("2026-01-01T10:00:00Z");
+        String cursor = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                (lastStart + "|" + lastId).getBytes(StandardCharsets.UTF_8));
+        when(repository.findCompletedHistoryAfter(eq(userId), eq(lastStart), eq(lastId), any()))
+                .thenReturn(java.util.List.of());
+
+        assertTrue(service.listHistory(userId, cursor).entries().isEmpty());
+        verify(repository).findCompletedHistoryAfter(eq(userId), eq(lastStart), eq(lastId),
+                argThat(pageable -> pageable.getPageSize() == 21));
     }
 
     @Test

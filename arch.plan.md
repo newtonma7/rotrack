@@ -229,6 +229,10 @@ Production requirements:
 | `POST /time-entries/start` | Yes | Starts one session; returns `201`; concurrent/duplicate active start returns `409` |
 | `GET /time-entries/active` | Yes | Returns the active owned entry or `null` |
 | `PUT /time-entries/{id}/stop` | Yes | Stops the owned entry; repeated calls return the unchanged stopped resource |
+| `GET /time-entries` | Yes | Returns 20 owned completed entries in cursor-paginated reverse-chronological order |
+| `POST /time-entries` | Yes | Creates one owned completed entry |
+| `PUT /time-entries/{id}` | Yes | Edits one owned completed entry |
+| `DELETE /time-entries/{id}` | Yes | Deletes one owned completed entry |
 | `GET /dashboard/stats` | Yes | Returns personal totals and daily buckets for a validated range/timezone |
 
 The frontend and API use `PUT /time-entries/{id}/stop`; the former active-stop compatibility endpoint has been retired after the ID-based path became the only caller contract. Liveness is process-only. Readiness performs a bounded database validation, caches/single-flights the result to limit pool pressure, and never returns dependency or credential details.
@@ -306,9 +310,9 @@ Changing the saved timezone changes future calendar rendering and pagination bou
 
 ### 8.2 Time-entry history and manual corrections
 
-History is an owned, completed-entry view: it returns only entries with a non-null `end_time` and never includes an active session. Users may create completed entries and edit `activity_type`, `start_time`, `end_time`, and short `notes`; duration remains derived from timestamps and `user_id` is never client-controlled. Users may delete their own entries after an explicit confirmation.
+History is an owned, completed-entry view: it returns only entries with a non-null `end_time` and never includes an active session. Users may create completed entries and edit exactly `activity_type`, `start_time`, `end_time`, and `notes` (at most 280 characters); duration remains derived from timestamps and `user_id` is never client-controlled. Users may delete their own entries after an explicit confirmation.
 
-The history list uses a fixed page size of 20 and reverse-chronological `(start_time DESC, id DESC)` ordering. Cursors are opaque to clients and deterministic for a stable snapshot; clients send the returned cursor unchanged and never construct or inspect it. Empty pages and a missing/invalid cursor use the standard typed error contract.
+The history list uses a fixed page size of 20 and reverse-chronological `(start_time DESC, id DESC)` ordering. Cursors are opaque, unpadded base64url values to clients and deterministic for a stable snapshot; clients send the returned cursor unchanged and never construct or inspect it. Empty pages return `nextCursor: null`; an invalid cursor returns the stable `INVALID_CURSOR` validation error.
 
 The history migration must enforce same-user non-overlap at the PostgreSQL boundary with an exclusion constraint over `tstzrange(start_time, COALESCE(end_time, 'infinity'::timestamptz), '[)')` and `user_id`, allowing adjacent entries but rejecting overlap for completed or active ranges. Service validation provides the user-facing error; the database remains the race-safe authority. Focused backend repository/service/controller tests and frontend API/component contract tests cover ownership, completed-only results, page boundaries/cursors, edits, deletion, invalid ranges, and overlap conflicts.
 
