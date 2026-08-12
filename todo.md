@@ -66,7 +66,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 | Spring Boot API core | **Verified** | Recorded live Supabase JWT sign-in, Spring ownership isolation, timer lifecycle, dashboard flow, health, readiness, TLS, and CORS evidence pass. |
 | Initial schema hardening | **Verified** | Empty-database apply and migrated-database rollback/repository verification pass against isolated PostgreSQL targets. |
 | Supabase development integration | **Verified** | Migration, runtime role, Data API RLS, signup trigger, Spring ownership, and two-user technical evidence pass. The fresh confirmed-user first-sign-in acceptance step is operator-attested as complete; the 2026-08-11 hosted authenticated smoke passed `4/4` with API-target binding, while the overall M3 gate remains open. |
-| Automated test suites | **Verified** | The 2026-08-09 candidate run reports frontend 19 passed plus lint/typecheck/build and backend 90 discovered, 86 passed, four expected opt-in integration skips, and zero failures/errors. Migration apply/verify and authenticated Playwright 4/4 remain recorded from prior local/development evidence. |
+| Automated test suites | **Implemented—unverified** | The prior 2026-08-09 candidate evidence remains recorded; the username-registration change currently reports frontend 27 passed plus lint/typecheck and backend 96 discovered, with five expected opt-in integration skips and zero failures/errors. Username migration apply/verify and browser signup evidence remain to be rerun against the integrated tree. |
 | Pull-request CI source | **Verified** | Five credential-free jobs use isolated disposable PostgreSQL and do not touch hosted Supabase. Default CodeQL setup is the sole scanner, with required `Analyze (actions)`, `Analyze (java-kotlin)`, and `Analyze (javascript-typescript)` contexts. PR #18 passed all eight required contexts and merged through the protected rebase path; PR #19 deliberately failed the required `Frontend` context and reported `mergeStateStatus: BLOCKED` while open. The public repository's `main` protection, `nonproduction` branch policy, empty auth-secret inventories, absent `ROTRACK_AUTHENTICATED_E2E_ENABLED`, and security-feature readbacks are recorded; the checked-in advanced CodeQL workflow was removed after its conflicting PR jobs failed against default setup. Authenticated deployed E2E remains an M3.2/M3.3 boundary, not an M3.1 requirement.
 | Backend container artifact | **Verified** | The non-root Java 21 image passed local liveness/readiness/SIGTERM and sensitive-content inspection. The immutable Linux/amd64 OCI-compatible candidate passed canonical ACA digest/service-version readback; the reserved separate production lane has no claimed artifact. |
 | Canonical hosted deployment | **Implemented—unverified** | On 2026-08-11, source commit `744635c` passed focused Azure contract/readback, publish, preflight, RBAC, container, and release checks. The reviewed backend candidate passed canonical ACA readback, selected digest/service-version equality, production runtime label, scale `1..1`, 100% traffic, and readiness; the same reviewed commit passed canonical Vercel Production alias readback. Public smoke and hosted authenticated smoke passed (`4/4`, zero skipped/unexpected/flaky, with API-target binding). The corrected no-schema-change backend/frontend rollback rehearsal passed and ended on the candidate. Rate limiting remains an accepted blocker; collector redaction, alert delivery/receipt, and alert routing remain open. Ten genuine zero-replica trials completed on 2026-08-11 with readiness 10/10, p50 34.586 seconds, and p95/max 39.425 seconds; the 30-second p95 criterion was not met, so scale-to-zero remains an explicitly accepted risk rather than a verified pass. Retained operator-owned synthetic accounts and stopped rows are not claimed as cleaned up; the separate production Supabase/Azure lane remains reserved. |
@@ -464,6 +464,25 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 **Acceptance evidence — 2026-08-09 / local workspace:** The product owner/operator reported that the already-confirmed fresh disposable user signed in through `/signin` and reached `/dashboard`. The password and account details were entered privately and are not recorded. The frontend ran at `http://localhost:3001`; an independent preflight recheck returned exact allow-origin for port 3001 and denied port 3000. This attests the missing fresh-user first-sign-in step; the previously recorded Playwright 4/4 remains the automated local/development technical evidence.
 
+### M2.4 — Require canonical usernames at registration
+
+**Status:** Implemented—unverified
+**Dependencies:** M2.1 and M2.3; product-owner approval recorded in the username-registration grilling session
+
+- Add the fail-closed `003_require_usernames.sql` migration after disposable-account preparation; do not invent, rename, or delete existing accounts in the migration.
+- Consume `raw_user_meta_data.username` in the security-definer signup trigger and enforce canonical lowercase format, the fixed reserved-name list, ordinary uniqueness, and immutable usernames at the database boundary.
+- Add the controlled signup username field, safe generic server-error copy, and tests for local validation, metadata submission, duplicate/concurrent claims, missing/invalid/reserved metadata, direct-update rejection, owner-only visibility, and unconfirmed reservation.
+- Update JPA nullability, migration fixtures, architecture/spec documentation, and browser signup coverage without changing email confirmation or tracker behavior.
+
+**Acceptance:** No new account can be created without a valid canonical username; invalid/reserved/duplicate/concurrent claims fail safely; existing ownership/RLS/authentication flows remain intact; frontend/backend suites, migration apply/verify, typecheck/lint/build, and disposable browser signup evidence pass.
+
+**Implementation evidence — 2026-08-11 / local workspace**
+
+- Added `003_require_usernames.sql` with fail-closed preflight, canonical lowercase/format/reserved-name checks, ordinary uniqueness, signup metadata extraction, and database immutability.
+- Updated Supabase signup metadata submission, accessible local validation, safe generic server errors, JPA nullability, migration fixtures, and focused tests.
+- Frontend focused/full tests, lint, typecheck, backend Maven tests, and migration integration evidence passed in isolated implementation lanes. Integrated reruns and disposable browser signup remain required before Verified.
+- CI migration application now uses the minimal `raw_user_meta_data` auth fixture and one transaction per migration.
+
 ## 6. Milestone 3 — CI, Staging, and MVP Release
 
 **Goal:** Ship the personal tracker/dashboard safely.
@@ -645,7 +664,7 @@ The gate requires all of the following:
 **Status:** Not started
 
 - Add canonical mutual friendship/request storage with `PENDING` and `ACCEPTED` states plus a separate directional user-block table.
-- Add unique case-normalized public handles and rate-limited handle search with a three-character minimum; never search or expose email addresses.
+- Add the canonical usernames as rate-limited search keys with a three-character minimum; never search or expose email addresses.
 - Implement search/request/list/accept/decline/cancel/remove/block/unblock APIs and UI.
 - Reject self, duplicate, and reversed duplicate requests.
 - Blocking deletes friendship/direct-invitation state, prevents new direct requests, and suppresses pairwise activity visibility.

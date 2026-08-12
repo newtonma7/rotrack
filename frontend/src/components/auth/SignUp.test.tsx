@@ -39,7 +39,7 @@ describe("SignUp", () => {
 
     const username = screen.getByLabelText("Username");
     expect(username.getAttribute("aria-describedby")).toBe("username-hint");
-    expect(screen.getByRole("status")).toBeTruthy();
+    expect(screen.getByText("3–24 characters: lowercase letters, numbers, and underscores.")).toBeTruthy();
 
     fillForm({ username: "no!" });
     fireEvent.click(screen.getByRole("button", { name: "Sign up" }));

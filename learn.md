@@ -226,3 +226,25 @@ Use these questions to review the completed baseline phases and understand the i
 - Rollback rehearsal must verify both tiers, public behavior, authenticated behavior, candidate restoration, and final candidate health/CORS/auth. “Rollback passed” is not permission to skip unresolved release safeguards.
 - Cleanup is a separate claim: product-owner-retained synthetic accounts and stopped rows must remain explicitly unclaimed when they are not removed.
 - Rate limiting remains an accepted blocker even after application-level defenses and smoke pass. Cloudflare Free is future exploration only. Ten cold-start trials, collector redaction, alert delivery/receipt, and alert routing remain open; the Azure action-group provider test-notification command returned failure, so synthetic alert delivery is **NOT VERIFIED** and no successful delivery or receipt is claimed. The documented backup limitation is accepted.
+
+
+## M2.4 — Canonical username registration
+
+1. Why is the database the authority for username uniqueness instead of a browser availability check?
+   - A preflight check has a race: two signups can both observe availability. The plain unique constraint is atomic and resolves concurrent claims correctly.
+2. Why store only lowercase usernames and use a normal unique constraint?
+   - Canonicalization makes equivalent spellings identical, so a second case-insensitive index or `citext` dependency adds complexity without stronger enforcement.
+3. Why must the signup trigger read `raw_user_meta_data.username` instead of trusting a browser insert into `public.users`?
+   - Supabase Auth owns registration. The security-definer trigger is the single profile-creation boundary, while the browser must not bypass RLS or server-side validation.
+4. Why does the migration fail closed instead of inventing usernames for existing rows?
+   - An automatic backfill could silently rename a real user's identity. Operators must prepare disposable accounts separately, and future real-user environments need an explicit compatibility rollout.
+5. Why is username immutability enforced by a database trigger when no change UI exists?
+   - “No UI” is not a security boundary. Direct Data API writes must not bypass the registration rules or create an unsupported username-change flow.
+6. Why is an unconfirmed signup allowed to reserve its username?
+   - The existing Auth trigger runs at initial Auth-row creation. Releasing abandoned names would require expiry or post-confirmation lifecycle machinery that is outside this slice.
+7. Why are username errors generic on the server but specific in the form?
+   - Local format/reserved-name feedback is useful; provider and SQL details are not safe to expose. A generic unavailable message avoids leaking implementation details and avoids an availability endpoint.
+8. Why does the CI migration helper use `--single-transaction` and include `raw_user_meta_data`?
+   - A migration that partially commits a `NOT NULL` change before a later constraint fails is unsafe. The auth fixture must also match the trigger's real metadata dependency, and each migration should apply atomically.
+9. What remains before this feature can be marked Verified?
+   - Rerun the integrated frontend/backend suites, apply and verify migrations on disposable PostgreSQL, perform the disposable browser signup/confirmation flow, and record redacted evidence without secrets or private user data.
