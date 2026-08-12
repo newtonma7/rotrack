@@ -4,11 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.rotrack.config.DatabaseTlsValidator;
+import com.rotrack.dto.CompletedTimeEntryRequest;
+import com.rotrack.exception.ConflictException;
+import com.rotrack.exception.ResourceNotFoundException;
 import com.rotrack.model.ActivityType;
 import com.rotrack.model.TimeEntry;
 import com.rotrack.model.UserPreferences;
 import com.rotrack.repository.TimeEntryRepository;
 import com.rotrack.repository.UserPreferencesRepository;
+import com.rotrack.service.TimeEntryService;
 import java.time.Instant;
 import java.time.Duration;
 import java.util.UUID;
@@ -45,6 +49,9 @@ class TimeEntryRepositoryPostgresIntegrationTest {
     private UserPreferencesRepository preferencesRepository;
 
     @Autowired
+    private TimeEntryService timeEntryService;
+
+    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     // This test isolates repository/schema behavior. Startup TLS policy has its own focused tests.
@@ -74,6 +81,37 @@ class TimeEntryRepositoryPostgresIntegrationTest {
 
         assertThat(repository.findFirstByUserIdAndEndTimeIsNullOrderByStartTimeDesc(USER_A)).isPresent();
         assertThat(repository.findFirstByUserIdAndEndTimeIsNullOrderByStartTimeDesc(USER_B)).isPresent();
+    }
+
+    @Test
+    void serviceStartConflictStaysActiveSessionExists() {
+        assertThat(timeEntryService.startSession(USER_A, ActivityType.WORK, null).endTime()).isNull();
+
+        assertThatThrownBy(() -> timeEntryService.startSession(USER_A, ActivityType.ROT, null))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("active session already exists");
+    }
+
+    @Test
+    void serviceUpdateCommitsOwnedChangeAndRejectsAnotherUser() {
+        TimeEntry original = repository.saveAndFlush(entry(
+                USER_A,
+                Instant.parse("2026-08-07T10:00:00Z"),
+                Instant.parse("2026-08-07T11:00:00Z")));
+        CompletedTimeEntryRequest request = new CompletedTimeEntryRequest(
+                ActivityType.ROT,
+                Instant.parse("2026-08-07T12:00:01Z"),
+                Instant.parse("2026-08-07T12:30:02Z"),
+                "updated");
+
+        assertThat(timeEntryService.updateCompletedEntry(USER_A, original.getId(), request).notes())
+                .isEqualTo("updated");
+        assertThat(repository.findByIdAndUserId(original.getId(), USER_A).orElseThrow().getActivityType())
+                .isEqualTo(ActivityType.ROT);
+        assertThat(repository.findByIdAndUserId(original.getId(), USER_A).orElseThrow().getStartTime())
+                .isEqualTo(request.startTime());
+        assertThatThrownBy(() -> timeEntryService.updateCompletedEntry(USER_B, original.getId(), request))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test

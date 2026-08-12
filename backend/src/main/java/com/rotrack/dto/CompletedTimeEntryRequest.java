@@ -17,7 +17,7 @@ public record CompletedTimeEntryRequest(
 ) {
     @JsonIgnore
     @AssertTrue(message = "endTime must be after startTime")
-    public boolean validRange() {
+    public boolean isValidRange() {
         return startTime != null && endTime != null && endTime.isAfter(startTime);
     }
 }

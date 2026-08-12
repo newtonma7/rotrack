@@ -98,6 +98,73 @@ class PostgresMigrationIntegrationTest {
     }
 
     @Test
+    void historyMigrationReportsLegacyNotesBeforeAddingConstraints() throws Exception {
+        TestDatabaseConfiguration configuration = configuration();
+        Assumptions.assumeTrue(APPLY_MODE.equals(configuration.mode()),
+                "the legacy preflight probe requires an empty target");
+
+        try (Connection connection = DriverManager.getConnection(
+                configuration.url(), configuration.username(), configuration.password())) {
+            connection.setAutoCommit(false);
+            try {
+                assertMigrationTargetIsEmpty(connection);
+                createMinimalAuthContractWhenNeeded(connection);
+                applyMigration(connection, "001_initial_schema.sql");
+                applyMigration(connection, "002_harden_time_entries.sql");
+                UUID userId = UUID.randomUUID();
+                insertAuthUser(connection, userId, "legacy_notes");
+                UUID entryId = UUID.randomUUID();
+                insertTimeEntry(connection, entryId, userId,
+                        OffsetDateTime.parse("2026-08-12T10:00:00Z"),
+                        OffsetDateTime.parse("2026-08-12T11:00:00Z"), null, "x".repeat(281));
+
+                SQLException failure = expectSqlFailure(connection, "23514", () ->
+                        applyMigrationForProbe(connection, "005_time_entry_history.sql"));
+
+                assertTrue(failure.getMessage().contains("notes longer than 280 characters"));
+                assertEquals(1, queryCount(connection,
+                        "SELECT count(*) FROM public.time_entries WHERE id = ?", entryId));
+            } finally {
+                connection.rollback();
+            }
+        }
+    }
+
+    @Test
+    void historyMigrationReportsLegacyOverlapsBeforeAddingConstraints() throws Exception {
+        TestDatabaseConfiguration configuration = configuration();
+        Assumptions.assumeTrue(APPLY_MODE.equals(configuration.mode()),
+                "the legacy preflight probe requires an empty target");
+
+        try (Connection connection = DriverManager.getConnection(
+                configuration.url(), configuration.username(), configuration.password())) {
+            connection.setAutoCommit(false);
+            try {
+                assertMigrationTargetIsEmpty(connection);
+                createMinimalAuthContractWhenNeeded(connection);
+                applyMigration(connection, "001_initial_schema.sql");
+                applyMigration(connection, "002_harden_time_entries.sql");
+                UUID userId = UUID.randomUUID();
+                insertAuthUser(connection, userId, "legacy_overlap");
+                insertTimeEntry(connection, UUID.randomUUID(), userId,
+                        OffsetDateTime.parse("2026-08-12T10:00:00Z"),
+                        OffsetDateTime.parse("2026-08-12T11:00:00Z"), null);
+                insertTimeEntry(connection, UUID.randomUUID(), userId,
+                        OffsetDateTime.parse("2026-08-12T10:30:00Z"),
+                        OffsetDateTime.parse("2026-08-12T11:30:00Z"), null);
+
+                SQLException failure = expectSqlFailure(connection, "23P01", () ->
+                        applyMigrationForProbe(connection, "005_time_entry_history.sql"));
+
+                assertTrue(failure.getMessage().contains("same-user time_entry ranges overlap"));
+                assertEquals(0, querySingleInt(connection, "SELECT count(*) FROM pg_constraint WHERE conname = 'time_entries_no_overlap_per_user'"));
+            } finally {
+                connection.rollback();
+            }
+        }
+    }
+
+    @Test
     void concurrentUsernameClaimsAreResolvedByUniqueConstraint() throws Exception {
         TestDatabaseConfiguration configuration = configuration();
         Assumptions.assumeTrue(VERIFY_MODE.equals(configuration.mode()),
@@ -271,6 +338,14 @@ class PostgresMigrationIntegrationTest {
         executeSql(connection, Files.readString(findRepositoryRoot().resolve("database/migrations").resolve(migration)));
     }
 
+    private void applyMigrationForProbe(Connection connection, String migration) throws SQLException {
+        try {
+            applyMigration(connection, migration);
+        } catch (IOException exception) {
+            throw new SQLException("Could not read migration " + migration, exception);
+        }
+    }
+
     private void executeSql(Connection connection, String sql) throws SQLException {
         try (Statement statement = connection.createStatement()) {
             statement.execute(sql);
@@ -315,6 +390,8 @@ class PostgresMigrationIntegrationTest {
                   AND conname = 'time_entries_no_overlap_per_user'
                 """);
         assertNotNull(overlapConstraint, "same-user overlap exclusion must exist");
+        assertEquals(1, querySingleInt(connection, "SELECT count(*) FROM pg_extension WHERE extname = 'btree_gist'"),
+                "005 must install its explicit btree_gist prerequisite");
         String normalizedOverlap = normalize(overlapConstraint);
         assertTrue(normalizedOverlap.contains("exclude using gist"));
         assertTrue(normalizedOverlap.contains("user_id with ="));
@@ -712,12 +789,19 @@ class PostgresMigrationIntegrationTest {
 
     private void expectSqlState(Connection connection, String expectedState, SqlOperation operation)
             throws SQLException {
+        expectSqlFailure(connection, expectedState, operation);
+    }
+
+    private SQLException expectSqlFailure(Connection connection, String expectedState, SqlOperation operation)
+            throws SQLException {
         Savepoint savepoint = connection.setSavepoint();
         try {
             operation.run();
             fail("Expected PostgreSQL SQLSTATE " + expectedState);
+            return null;
         } catch (SQLException exception) {
             assertEquals(expectedState, exception.getSQLState());
+            return exception;
         } finally {
             connection.rollback(savepoint);
             connection.releaseSavepoint(savepoint);

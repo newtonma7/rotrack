@@ -66,7 +66,7 @@ public class TimeEntryService {
             // The exclusion constraint is the final race-safe authority when two writers pass the read check together.
             return toDto(timeEntryRepository.saveAndFlush(entry));
         } catch (DataIntegrityViolationException exception) {
-            throw translateConstraint(exception, false);
+            throw translateConstraint(exception, false, userId);
         }
     }
 
@@ -80,7 +80,7 @@ public class TimeEntryService {
             try {
                 return toDto(timeEntryRepository.saveAndFlush(entry));
             } catch (DataIntegrityViolationException exception) {
-                throw translateConstraint(exception, false);
+                throw translateConstraint(exception, false, userId);
             }
         }
 
@@ -128,10 +128,12 @@ public class TimeEntryService {
         try {
             return toDto(timeEntryRepository.saveAndFlush(entry));
         } catch (DataIntegrityViolationException exception) {
-            throw translateConstraint(exception, true);
+            throw translateConstraint(exception, true, userId);
         }
     }
 
+    /** The controller calls this boundary; keep the transaction here rather than on a self-invoked helper. */
+    @Transactional
     public TimeEntryDTO updateCompletedEntry(UUID userId, UUID entryId, CompletedTimeEntryRequest request) {
         return updateCompletedEntry(
                 userId,
@@ -143,7 +145,6 @@ public class TimeEntryService {
         );
     }
 
-    @Transactional
     public TimeEntryDTO updateCompletedEntry(
             UUID userId,
             UUID entryId,
@@ -165,7 +166,7 @@ public class TimeEntryService {
         try {
             return toDto(timeEntryRepository.saveAndFlush(entry));
         } catch (DataIntegrityViolationException exception) {
-            throw translateConstraint(exception, true);
+            throw translateConstraint(exception, true, userId);
         }
     }
 
@@ -212,19 +213,37 @@ public class TimeEntryService {
             if (parts.length != 2 || !value.equals(Base64.getUrlEncoder().withoutPadding().encodeToString(decoded))) {
                 throw new IllegalArgumentException();
             }
-            return new Cursor(Instant.parse(parts[0]), UUID.fromString(parts[1]));
+            Instant startTime = Instant.parse(parts[0]);
+            UUID id = UUID.fromString(parts[1]);
+            if (!startTime.toString().equals(parts[0]) || !id.toString().equals(parts[1])) {
+                throw new IllegalArgumentException();
+            }
+            return new Cursor(startTime, id);
         } catch (RuntimeException exception) {
             throw new InvalidCursorException();
         }
     }
 
+    /** Unsigned cursors are untrusted per-user ordering anchors, not authority-bearing tokens.
+     * HMAC is intentionally deferred for the 20-user scope; the ownership query still bounds every anchor. */
     private String encodeCursor(TimeEntry entry) {
         String payload = entry.getStartTime() + "|" + entry.getId();
         return Base64.getUrlEncoder().withoutPadding()
                 .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
     }
 
-    private RuntimeException translateConstraint(DataIntegrityViolationException exception, boolean overlapExpected) {
+    private RuntimeException translateConstraint(
+            DataIntegrityViolationException exception,
+            boolean overlapExpected,
+            UUID userId
+    ) {
+        // Both the unique-active and exclusion constraints can reject a racing start.
+        // Re-checking the owned active row keeps the user-facing conflict stable.
+        if (!overlapExpected && timeEntryRepository
+                .findFirstByUserIdAndEndTimeIsNullOrderByStartTimeDesc(userId)
+                .isPresent()) {
+            return new ConflictException("ACTIVE_SESSION_EXISTS", "An active session already exists");
+        }
         if (containsConstraint(exception, OVERLAP_CONSTRAINT)) {
             return overlapConflict();
         }

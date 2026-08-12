@@ -109,9 +109,10 @@ class TimeEntryHistoryControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{"+
                                 "\"activityType\":\"WORK\",\"startTime\":\"2026-01-01T11:00:00Z\","+
-                                "\"endTime\":\"2026-01-01T10:00:00Z\",\"notes\":\"" + "x".repeat(281) + "\"}"))
+                                "\"endTime\":\"2026-01-01T10:00:00Z\",\"notes\":\"focus\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.error.fieldErrors.endTime").value("endTime must be after startTime"));
     }
 
     @Test

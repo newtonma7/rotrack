@@ -13,10 +13,15 @@ class HistoryMigrationTest {
     void enforcesShortNotesAndHalfOpenSameUserRangeExclusion() throws IOException {
         String migration = Files.readString(findMigration());
 
-        assertTrue(migration.contains("CREATE EXTENSION IF NOT EXISTS btree_gist;"));
+        assertTrue(migration.contains("pg_available_extensions"));
+        assertTrue(migration.contains("migration 005 prerequisite missing"));
+        assertTrue(migration.contains("migration 005 blocked"));
         assertTrue(migration.contains("char_length(notes) <= 280"));
+        assertTrue(migration.contains("notes longer than 280 characters"));
+        assertTrue(migration.contains("same-user time_entry ranges overlap"));
         assertTrue(migration.contains("CONSTRAINT time_entries_no_overlap_per_user"));
         assertTrue(migration.contains("tstzrange(start_time, COALESCE(end_time, 'infinity'::timestamptz), '[)') WITH &&"));
+        assertTrue(migration.contains("CREATE EXTENSION IF NOT EXISTS btree_gist;"));
     }
 
     private Path findMigration() {

@@ -59,9 +59,10 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         Map<String, String> fieldErrors = new LinkedHashMap<>();
-        ex.getBindingResult().getFieldErrors().forEach(fieldError ->
-                fieldErrors.putIfAbsent(fieldError.getField(), fieldError.getDefaultMessage())
-        );
+        ex.getBindingResult().getFieldErrors().forEach(fieldError -> {
+            String field = "validRange".equals(fieldError.getField()) ? "endTime" : fieldError.getField();
+            fieldErrors.putIfAbsent(field, fieldError.getDefaultMessage());
+        });
         return error(
                 HttpStatus.BAD_REQUEST,
                 "VALIDATION_ERROR",

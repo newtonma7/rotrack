@@ -93,6 +93,41 @@ class TimeEntryServiceTest {
     }
 
     @Test
+    void exclusionRaceWithAnActiveRowStillReturnsActiveSessionConflict() {
+        UUID userId = UUID.randomUUID();
+        TimeEntry active = entry(userId, Instant.parse("2026-01-01T10:00:00Z"), null);
+        when(repository.findFirstByUserIdAndEndTimeIsNullOrderByStartTimeDesc(userId))
+                .thenReturn(Optional.empty(), Optional.of(active));
+        when(repository.saveAndFlush(any(TimeEntry.class)))
+                .thenThrow(new DataIntegrityViolationException("time_entries_no_overlap_per_user"));
+
+        ConflictException exception = assertThrows(ConflictException.class,
+                () -> service.startSession(userId, ActivityType.WORK, null));
+
+        assertEquals("ACTIVE_SESSION_EXISTS", exception.getCode());
+    }
+
+    @Test
+    void nonCanonicalHistoryCursorIsRejectedAsUntrustedInput() {
+        UUID id = UUID.randomUUID();
+        String cursor = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                ("2026-01-01T10:00:00+00:00|" + id).getBytes(StandardCharsets.UTF_8));
+
+        assertThrows(com.rotrack.exception.InvalidCursorException.class,
+                () -> service.listHistory(UUID.randomUUID(), cursor));
+    }
+
+    @Test
+    void nonCanonicalCursorUuidIsRejected() {
+        String cursor = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                "2026-01-01T10:00:00Z|ABCDEFAB-CDEF-ABCD-EFAB-CDEFABCDEFAB"
+                        .getBytes(StandardCharsets.UTF_8));
+
+        assertThrows(com.rotrack.exception.InvalidCursorException.class,
+                () -> service.listHistory(UUID.randomUUID(), cursor));
+    }
+
+    @Test
     void activeSessionDoesNotExposeTransitionalPersistedDuration() {
         UUID userId = UUID.randomUUID();
         TimeEntry entry = new TimeEntry();

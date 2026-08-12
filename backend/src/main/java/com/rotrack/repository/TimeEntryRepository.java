@@ -52,14 +52,15 @@ public interface TimeEntryRepository extends JpaRepository<TimeEntry, UUID> {
      * Uses the same half-open range rule as the PostgreSQL exclusion constraint.
      * The database check remains authoritative when concurrent writers race this read.
      */
-    @Query("""
-            SELECT CASE WHEN COUNT(entry) > 0 THEN true ELSE false END
-            FROM TimeEntry entry
-            WHERE entry.userId = :userId
-              AND (:excludeId IS NULL OR entry.id <> :excludeId)
-              AND (:candidateEnd IS NULL OR entry.startTime < :candidateEnd)
-              AND (entry.endTime IS NULL OR entry.endTime > :candidateStart)
-            """)
+    @Query(value = """
+            SELECT EXISTS (
+              SELECT 1 FROM public.time_entries entry
+              WHERE entry.user_id = :userId
+                AND (CAST(:excludeId AS uuid) IS NULL OR entry.id <> CAST(:excludeId AS uuid))
+                AND (CAST(:candidateEnd AS timestamptz) IS NULL OR entry.start_time < CAST(:candidateEnd AS timestamptz))
+                AND (entry.end_time IS NULL OR entry.end_time > CAST(:candidateStart AS timestamptz))
+            )
+            """, nativeQuery = true)
     boolean existsOverlappingEntry(
             @Param("userId") UUID userId,
             @Param("candidateStart") Instant candidateStart,
