@@ -18,9 +18,10 @@ public final class RouteTemplates {
     public static final String ACTIVE = "/api/v1/time-entries/active";
     public static final String STOP = "/api/v1/time-entries/{id}/stop";
     public static final String DASHBOARD_STATS = "/api/v1/dashboard/stats";
+    public static final String PREFERENCES = "/api/v1/preferences";
     private static final String UNMATCHED = "/unmatched";
     private static final Set<String> ALLOWED_TEMPLATES = Set.of(
-            HEALTH, READINESS, START, ACTIVE, STOP, DASHBOARD_STATS
+            HEALTH, READINESS, START, ACTIVE, STOP, DASHBOARD_STATS, PREFERENCES
     );
 
     private RouteTemplates() {
@@ -47,7 +48,8 @@ public final class RouteTemplates {
                 || READINESS.equals(path)
                 || START.equals(path)
                 || ACTIVE.equals(path)
-                || DASHBOARD_STATS.equals(path)) {
+                || DASHBOARD_STATS.equals(path)
+                || PREFERENCES.equals(path)) {
             return path;
         }
         if (path != null && path.matches("/api/v1/time-entries/[0-9a-fA-F-]{36}/stop")) {
@@ -63,6 +65,9 @@ public final class RouteTemplates {
         }
         if ("PUT".equals(request.getMethod()) && STOP.equals(route)) {
             return Optional.of(new MutationRoute("PUT", STOP));
+        }
+        if ("PUT".equals(request.getMethod()) && PREFERENCES.equals(route)) {
+            return Optional.of(new MutationRoute("PUT", PREFERENCES));
         }
         return Optional.empty();
     }
