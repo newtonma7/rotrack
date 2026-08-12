@@ -604,7 +604,7 @@ The gate requires all of the following:
 - Save a validated IANA timezone or leave it unset; use the browser IANA timezone as the effective fallback until a saved value exists.
 - Store nullable `daily_work_goal_minutes` as an integer from 1 through 1440; reject zero, negative, fractional, and over-limit values.
 - Add `share_study_summary` and `share_active_study_status`, both `false` by default.
-- Changing timezone affects future calendar rendering and pagination boundaries without rewriting stored UTC instants.
+- Changing timezone affects future display, input, and calendar reporting without rewriting stored UTC instants; history pagination remains UTC `(start_time DESC, id DESC)` with no timezone query parameter.
 - Use handwritten typed backend/frontend DTOs and focused contract tests for request/response/error shapes.
 
 **Implementation evidence — 2026-08-12 / local workspace:**
@@ -622,7 +622,7 @@ The gate requires all of the following:
 
 - Add owned list/create/update/delete APIs for completed history entries; history excludes every active entry.
 - Allow editing only `activity_type`, `start_time`, `end_time`, and short `notes`; derive duration from timestamps and never accept `user_id` or client duration.
-- Return a fixed page size of 20 in deterministic `(start_time DESC, id DESC)` order with an opaque cursor that clients pass through unchanged.
+- Return a fixed page size of 20 in deterministic UTC `(start_time DESC, id DESC)` order with an opaque cursor that clients pass through unchanged; timezone does not affect history pagination boundaries.
 - Reject invalid ranges, ownership violations, and overlaps with user-facing validation plus database-enforced same-user range exclusion, including conflicts with an active range; adjacent entries remain valid.
 - Add accessible history/editor UI with validation, empty/error/retry states, and confirmation for deletion.
 - Add focused backend repository/service/controller and frontend API/component contract tests for completed-only results, ownership, cursor boundaries, edits, deletion, invalid ranges, and overlap conflicts.

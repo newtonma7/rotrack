@@ -239,12 +239,12 @@ public class TimeEntryService {
         // Both the unique-active and exclusion constraints can reject a racing start.
         // The transaction is already rollback-only after flush, so classify the database
         // error without issuing a follow-up query on the aborted transaction.
+        if (containsConstraint(exception, OVERLAP_CONSTRAINT)) {
+            return overlapConflict();
+        }
         if (!overlapExpected && (containsConstraint(exception, "idx_time_entries_one_active_per_user")
                 || containsText(exception, "infinity"))) {
             return new ConflictException("ACTIVE_SESSION_EXISTS", "An active session already exists");
-        }
-        if (containsConstraint(exception, OVERLAP_CONSTRAINT)) {
-            return overlapConflict();
         }
         return exception;
     }

@@ -2,6 +2,7 @@ package com.rotrack.controller;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -115,6 +116,19 @@ class PreferencesControllerTest {
         mockMvc.perform(get("/api/v1/preferences"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("AUTHENTICATION_REQUIRED"));
+    }
+
+    @Test
+    void rejectsFractionalDailyWorkGoalAtTheHttpBoundaryWithoutCoercion() throws Exception {
+        mockMvc.perform(put("/api/v1/preferences")
+                        .contentType("application/json")
+                        .content("{\"timeZone\":\"UTC\",\"dailyWorkGoalMinutes\":1.5,"
+                                + "\"shareStudySummary\":false,\"shareActiveStudyStatus\":false}")
+                        .with(jwt().jwt(token -> token.subject(USER_ID.toString()))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("MALFORMED_JSON"));
+
+        verifyNoInteractions(preferencesService);
     }
 
     @Test

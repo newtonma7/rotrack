@@ -48,6 +48,8 @@ export default function HistoryPage() {
       setTimeZone(preferences.timeZone || browserTimeZone);
       setEntries(page.entries);
       setNextCursor(page.nextCursor);
+      setLoadMoreError(null);
+      setDeleteError(null);
     } catch (requestError) {
       if (requestId === requestSequence.current) {
         setError(requestError instanceof Error ? requestError.message : "History could not be loaded.");
@@ -210,8 +212,17 @@ function HistoryForm({ entry, timeZone, onSave, onCancel }: { entry: HistoryEntr
     }
 
     try {
-      const startTime = toIsoInstant(values.startTime, timeZone);
-      const endTime = toIsoInstant(values.endTime, timeZone);
+      // A repeated wall-clock hour has two instants; unchanged edit fields must keep the server instant.
+      const originalValues = entry && {
+        startTime: toDateTimeLocal(entry.startTime, timeZone),
+        endTime: toDateTimeLocal(entry.endTime, timeZone),
+      };
+      const startTime = entry && originalValues?.startTime === values.startTime
+        ? entry.startTime
+        : toIsoInstant(values.startTime, timeZone);
+      const endTime = entry && originalValues?.endTime === values.endTime
+        ? entry.endTime
+        : toIsoInstant(values.endTime, timeZone);
       if (Date.parse(endTime) <= Date.parse(startTime)) {
         setErrors({ endTime: "End time must be after start time." });
         return;

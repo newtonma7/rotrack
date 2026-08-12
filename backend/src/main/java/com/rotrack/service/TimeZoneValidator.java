@@ -9,8 +9,11 @@ public final class TimeZoneValidator {
     }
 
     public static ZoneId parse(String timeZone) {
+        // Keep Java's broader alias catalog aligned with migration 004: UTC or a known slash-form zone.
         try {
-            if (timeZone == null || !ZoneId.getAvailableZoneIds().contains(timeZone)) {
+            if (timeZone == null
+                    || (!"UTC".equals(timeZone)
+                    && (!timeZone.contains("/") || !ZoneId.getAvailableZoneIds().contains(timeZone)))) {
                 throw new IllegalArgumentException("timeZone must be a valid IANA identifier");
             }
             return ZoneId.of(timeZone);

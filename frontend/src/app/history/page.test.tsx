@@ -116,13 +116,73 @@ describe("HistoryPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /edit deep work/i }));
     fireEvent.change(screen.getByLabelText(/notes/i), { target: { value: "updated note" } });
     fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
-    await waitFor(() => expect(updateHistoryEntry).toHaveBeenCalledWith("entry-1", expect.objectContaining({ notes: "updated note" })));
+    await waitFor(() => expect(updateHistoryEntry).toHaveBeenCalledWith("entry-1", expect.objectContaining({
+      startTime: entries[0].startTime,
+      endTime: entries[0].endTime,
+      notes: "updated note",
+    })));
     await waitFor(() => expect(getHistory).toHaveBeenCalledTimes(2));
 
     fireEvent.click(screen.getByRole("button", { name: /delete deep work/i }));
     expect(confirm).toHaveBeenCalled();
     await waitFor(() => expect(deleteHistoryEntry).toHaveBeenCalledWith("entry-1"));
     await waitFor(() => expect(getHistory).toHaveBeenCalledTimes(3));
+  });
+
+  it.each([
+    ["New York first fallback occurrence", "America/New_York", "2026-11-01T05:30:00Z", "2026-11-01T05:45:00Z"],
+    ["New York second fallback occurrence", "America/New_York", "2026-11-01T06:30:00Z", "2026-11-01T06:45:00Z"],
+    ["Lord Howe half-hour fallback", "Australia/Lord_Howe", "2026-04-04T15:00:00Z", "2026-04-04T15:15:00Z"],
+  ])("preserves unchanged instants for %s", async (_label, timeZone, startTime, endTime) => {
+    const entry = { ...entries[0], startTime, endTime };
+    vi.mocked(getHistory).mockResolvedValue({ entries: [entry], nextCursor: null });
+    vi.mocked(getPreferences).mockResolvedValue({ timeZone, dailyWorkGoalMinutes: null, shareStudySummary: false, shareActiveStudyStatus: false });
+
+    render(<HistoryPage />);
+    await screen.findByText("deep work");
+    fireEvent.click(screen.getByRole("button", { name: /edit deep work/i }));
+    fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
+
+    await waitFor(() => expect(updateHistoryEntry).toHaveBeenCalledWith("entry-1", expect.objectContaining({ startTime, endTime })));
+  });
+
+  it("shows a retryable refresh failure after a successful mutation", async () => {
+    vi.mocked(getHistory)
+      .mockResolvedValueOnce({ entries, nextCursor: null })
+      .mockRejectedValueOnce(new Error("Refresh unavailable"));
+
+    render(<HistoryPage />);
+    await screen.findByText("deep work");
+    fireEvent.click(screen.getByRole("button", { name: /add entry/i }));
+    fireEvent.change(screen.getByLabelText(/start time/i), { target: { value: "2026-08-12T14:30" } });
+    fireEvent.change(screen.getByLabelText(/end time/i), { target: { value: "2026-08-12T14:45" } });
+    fireEvent.click(screen.getByRole("button", { name: /save entry/i }));
+
+    expect(await screen.findByText("Refresh unavailable")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeTruthy();
+  });
+
+  it("clears load-more and delete errors after a successful refresh", async () => {
+    vi.mocked(getHistory)
+      .mockResolvedValueOnce({ entries, nextCursor: "opaque-next" })
+      .mockRejectedValueOnce(new Error("More unavailable"))
+      .mockResolvedValueOnce({ entries, nextCursor: null });
+    vi.mocked(deleteHistoryEntry)
+      .mockRejectedValueOnce(new Error("Delete unavailable"))
+      .mockResolvedValueOnce(undefined);
+
+    render(<HistoryPage />);
+    await screen.findByText("deep work");
+    fireEvent.click(screen.getByRole("button", { name: /load more/i }));
+    expect(await screen.findByText("More unavailable")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /delete deep work/i }));
+    expect(await screen.findByText("Delete unavailable")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /delete deep work/i }));
+    await waitFor(() => expect(getHistory).toHaveBeenCalledTimes(3));
+    expect(screen.queryByText("More unavailable")).toBeNull();
+    expect(screen.queryByText("Delete unavailable")).toBeNull();
+    expect(screen.queryByRole("button", { name: /load more|try again/i })).toBeNull();
   });
 
   it("shows saving and delete-error states", async () => {
