@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { getBrowserTimeZone, isValidTimeZone } from "@/lib/timezone";
 import { updatePreferences } from "@/lib/api";
 import { ApiRequestError } from "@/lib/api-errors";
@@ -152,12 +153,12 @@ export function PreferencesForm({ preferences }: PreferencesFormProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-[var(--rt-line)] p-4 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--rt-orange)]">
-            <input
-              type="checkbox"
+            <Checkbox
+              aria-label="Share study summary"
               disabled={saveState === "saving"}
               checked={draft.shareStudySummary}
-              onChange={(event) => updateDraft((current) => ({ ...current, shareStudySummary: event.target.checked }))}
-              className="mt-1 size-4 accent-[var(--rt-orange)]"
+              onCheckedChange={(checked) => updateDraft((current) => ({ ...current, shareStudySummary: checked === true }))}
+              className="mt-1"
             />
             <span>
               <span className="block font-semibold">Share study summary</span>
@@ -165,12 +166,12 @@ export function PreferencesForm({ preferences }: PreferencesFormProps) {
             </span>
           </label>
           <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-[var(--rt-line)] p-4 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--rt-orange)]">
-            <input
-              type="checkbox"
+            <Checkbox
+              aria-label="Share active study status"
               disabled={saveState === "saving"}
               checked={draft.shareActiveStudyStatus}
-              onChange={(event) => updateDraft((current) => ({ ...current, shareActiveStudyStatus: event.target.checked }))}
-              className="mt-1 size-4 accent-[var(--rt-orange)]"
+              onCheckedChange={(checked) => updateDraft((current) => ({ ...current, shareActiveStudyStatus: checked === true }))}
+              className="mt-1"
             />
             <span>
               <span className="block font-semibold">Share active study status</span>

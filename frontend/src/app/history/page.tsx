@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { History as HistoryIcon, Settings2, Timer, Trash2 } from "lucide-react";
-import { SignOutButton } from "@/components/auth/SignOutButton";
+import { Trash2 } from "lucide-react";
+import { ApplicationHeader } from "@/components/app/ApplicationHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createHistoryEntry, deleteHistoryEntry, getHistory, getPreferences, updateHistoryEntry } from "@/lib/api";
 import { ApiRequestError } from "@/lib/api-errors";
 import { toDateTimeLocal, toIsoInstant } from "@/lib/datetime";
@@ -107,18 +107,7 @@ export default function HistoryPage() {
 
   return (
     <div className="min-h-screen bg-[var(--rt-cream)] text-[var(--rt-ink)]">
-      <header className="border-b border-[var(--rt-line)] bg-[var(--rt-paper)]/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-4 px-6 py-4 md:px-10">
-          <Link href="/" className="font-display text-2xl tracking-[-0.02em]">rotrack<span className="text-[var(--rt-orange)]">.</span></Link>
-          <nav aria-label="Application" className="flex w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end">
-            <Button variant="ghost" asChild className="rounded-full"><Link href="/dashboard">dashboard</Link></Button>
-            <Button variant="ghost" asChild className="rounded-full"><Link href="/tracker"><Timer aria-hidden="true" />tracker</Link></Button>
-            <span aria-current="page" className="flex items-center gap-2 rounded-full bg-[var(--rt-cream-soft)] px-4 py-2 text-sm font-semibold"><HistoryIcon aria-hidden="true" className="size-4" />history</span>
-            <Button variant="ghost" asChild className="rounded-full"><Link href="/settings"><Settings2 aria-hidden="true" />settings</Link></Button>
-            <SignOutButton className="rounded-full text-[var(--rt-ink-muted)] hover:bg-[var(--rt-cream-soft)] hover:text-[var(--rt-ink)]" />
-          </nav>
-        </div>
-      </header>
+      <ApplicationHeader />
 
       <main className="mx-auto max-w-[1100px] px-6 py-12 md:px-10 md:py-16">
         <div className="mb-10 flex flex-wrap items-end justify-between gap-6">
@@ -127,7 +116,7 @@ export default function HistoryPage() {
             <h1 className="font-display text-[clamp(2.8rem,7vw,5.5rem)] leading-[0.92] tracking-[-0.02em]">your time, in reverse<span className="text-[var(--rt-orange)]">.</span></h1>
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-[var(--rt-ink-muted)]">Review the entries you actually finished. Active tracking stays on the tracker.</p>
           </div>
-          <Button onClick={() => setFormEntry(null)} className="rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] hover:bg-[var(--rt-orange-deep)]">Add entry</Button>
+          <Button onClick={() => setFormEntry(null)} className="rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] shadow-[0_10px_30px_-10px_rgba(236,107,14,0.6)] hover:bg-[var(--rt-orange-deep)]">Add entry</Button>
         </div>
 
         {formEntry !== undefined && (
@@ -140,7 +129,7 @@ export default function HistoryPage() {
           <div role="alert" className="rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-8 md:p-10">
             <p className="font-display text-3xl">history stayed quiet.</p>
             <p className="mt-3 text-[var(--rt-ink-muted)]">{error}</p>
-            <Button onClick={() => void loadHistory()} className="mt-6 rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] hover:bg-[var(--rt-orange-deep)]">Try again</Button>
+            <Button onClick={() => void loadHistory()} className="mt-6 rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] shadow-[0_10px_30px_-10px_rgba(236,107,14,0.6)] hover:bg-[var(--rt-orange-deep)]">Try again</Button>
           </div>
         ) : (
           <section aria-label="Completed history" className="space-y-4">
@@ -174,7 +163,7 @@ export default function HistoryPage() {
 
 function HistoryRow({ entry, timeZone, deleting, onEdit, onDelete }: { entry: HistoryEntry; timeZone: string; deleting: boolean; onEdit: () => void; onDelete: () => void }) {
   const label = entry.notes?.trim() || `${entry.activityType.toLowerCase()} entry`;
-  const duration = Math.max(0, (Date.parse(entry.endTime) - Date.parse(entry.startTime)) / 1000);
+  const duration = entry.durationSeconds;
   return (
     <li className="flex flex-wrap items-center gap-4 px-6 py-5 md:px-8">
       <span aria-hidden="true" className={`h-3 w-3 shrink-0 rounded-full ${entry.activityType === "WORK" ? "bg-[var(--rt-orange)]" : "bg-[var(--rt-ink-soft)]"}`} />
@@ -258,12 +247,15 @@ function HistoryForm({ entry, timeZone, onSave, onCancel }: { entry: HistoryEntr
       </div>
       {formError && <p role="alert" className="mb-5 rounded-2xl border border-[var(--rt-orange)] bg-[var(--rt-orange-soft)] px-4 py-3">{formError}</p>}
       <div className="grid gap-5 md:grid-cols-2">
-        {field("activityType", "Activity", <select id="history-activityType" value={values.activityType} onChange={(event) => update("activityType", event.target.value as ActivityType)} disabled={saving} aria-invalid={Boolean(errors.activityType)} aria-describedby={errors.activityType ? "history-activityType-error" : undefined} className="h-10 w-full rounded-md border border-[var(--rt-line)] bg-[var(--rt-paper)] px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rt-orange)]"><option value="WORK">Work</option><option value="ROT">Rot</option></select>)}
+        {field("activityType", "Activity", <Select value={values.activityType} onValueChange={(value) => update("activityType", value as ActivityType)} disabled={saving}>
+          <SelectTrigger id="history-activityType" aria-label="Activity" aria-invalid={Boolean(errors.activityType)} aria-describedby={errors.activityType ? "history-activityType-error" : undefined}><SelectValue /></SelectTrigger>
+          <SelectContent><SelectItem value="WORK">Work</SelectItem><SelectItem value="ROT">Rot</SelectItem></SelectContent>
+        </Select>)}
         {field("startTime", "Start time", <Input id="history-startTime" type="datetime-local" step={1} value={values.startTime} onChange={(event) => update("startTime", event.target.value)} disabled={saving} aria-invalid={Boolean(errors.startTime)} aria-describedby={errors.startTime ? "history-startTime-error" : undefined} />)}
         {field("endTime", "End time", <Input id="history-endTime" type="datetime-local" step={1} value={values.endTime} onChange={(event) => update("endTime", event.target.value)} disabled={saving} aria-invalid={Boolean(errors.endTime)} aria-describedby={errors.endTime ? "history-endTime-error" : undefined} />)}
         {field("notes", "Notes", <div><Input id="history-notes" value={values.notes} maxLength={280} onChange={(event) => update("notes", event.target.value)} disabled={saving} aria-invalid={Boolean(errors.notes)} aria-describedby={errors.notes ? "history-notes-error" : undefined} /><p className="mt-1 text-right text-xs text-[var(--rt-ink-muted)]">{values.notes.length}/280</p></div>)}
       </div>
-      <div className="mt-6 flex justify-end"><Button type="submit" disabled={saving} className="rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] hover:bg-[var(--rt-orange-deep)]">{saving ? "Saving…" : entry ? "Save changes" : "Save entry"}</Button></div>
+      <div className="mt-6 flex justify-end"><Button type="submit" disabled={saving} className="rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] shadow-[0_10px_30px_-10px_rgba(236,107,14,0.6)] hover:bg-[var(--rt-orange-deep)]">{saving ? "Saving…" : entry ? "Save changes" : "Save entry"}</Button></div>
     </form>
   );
 }

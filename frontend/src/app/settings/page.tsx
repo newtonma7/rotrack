@@ -1,10 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { History as HistoryIcon, Settings2, Timer } from "lucide-react";
+import { ApplicationHeader } from "@/components/app/ApplicationHeader";
 import { PreferencesForm } from "@/components/settings/PreferencesForm";
-import { SignOutButton } from "@/components/auth/SignOutButton";
 import { Button } from "@/components/ui/button";
 import { getPreferences } from "@/lib/api";
 import type { UserPreferences } from "@/types/preferences";
@@ -32,28 +30,7 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-[var(--rt-cream)] text-[var(--rt-ink)]">
-      <header className="border-b border-[var(--rt-line)] bg-[var(--rt-paper)]/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-4 px-6 py-4 md:px-10">
-          <Link href="/" className="font-display text-2xl tracking-[-0.02em]">
-            rotrack<span className="text-[var(--rt-orange)]">.</span>
-          </Link>
-          <nav aria-label="Application" className="flex w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end">
-            <Button variant="ghost" asChild className="rounded-full">
-              <Link href="/dashboard">dashboard</Link>
-            </Button>
-            <Button variant="ghost" asChild className="rounded-full">
-              <Link href="/tracker"><Timer aria-hidden="true" />tracker</Link>
-            </Button>
-            <Button variant="ghost" asChild className="rounded-full">
-              <Link href="/history"><HistoryIcon aria-hidden="true" />history</Link>
-            </Button>
-            <span aria-current="page" className="flex items-center gap-2 rounded-full bg-[var(--rt-cream-soft)] px-4 py-2 text-sm font-semibold">
-              <Settings2 aria-hidden="true" className="size-4" />settings
-            </span>
-            <SignOutButton className="rounded-full text-[var(--rt-ink-muted)] hover:bg-[var(--rt-cream-soft)] hover:text-[var(--rt-ink)]" />
-          </nav>
-        </div>
-      </header>
+      <ApplicationHeader />
 
       <main className="mx-auto max-w-[1000px] px-6 py-12 md:px-10 md:py-16">
         <div className="mb-10 max-w-3xl">

@@ -22,13 +22,14 @@ vi.mock("@/lib/api", () => ({
   updateHistoryEntry: vi.fn(),
 }));
 vi.mock("@/lib/supabase/client", () => ({ supabase: { auth: { signOut: vi.fn() } } }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), usePathname: () => "/history" }));
 
 const entries: HistoryEntry[] = [{
   id: "entry-1",
   activityType: "WORK",
   startTime: "2026-08-12T10:00:00Z",
   endTime: "2026-08-12T11:00:00Z",
+  durationSeconds: 61,
   notes: "deep work",
 }];
 
@@ -37,6 +38,7 @@ const secondEntry: HistoryEntry = {
   activityType: "ROT",
   startTime: "2026-08-11T10:00:00Z",
   endTime: "2026-08-11T10:15:00Z",
+  durationSeconds: 901,
   notes: null,
 };
 
@@ -65,7 +67,7 @@ describe("HistoryPage", () => {
     resolve({ entries, nextCursor: null });
 
     expect(await screen.findByText("deep work")).toBeTruthy();
-    expect(screen.getByText(/work · 1h/i)).toBeTruthy();
+    expect(screen.getByText(/work · 1m 1s/i)).toBeTruthy();
   });
 
   it("shows an empty state and retries a failed initial request", async () => {
@@ -90,7 +92,8 @@ describe("HistoryPage", () => {
     expect(await screen.findByText(/start time is required/i)).toBeTruthy();
     expect(screen.getByLabelText(/start time/i).getAttribute("aria-invalid")).toBe("true");
 
-    fireEvent.change(screen.getByLabelText(/activity/i), { target: { value: "ROT" } });
+    fireEvent.click(screen.getByRole("combobox", { name: "Activity" }));
+    fireEvent.click(screen.getByRole("option", { name: "Rot" }));
     fireEvent.change(screen.getByLabelText(/start time/i), { target: { value: "2026-08-12T14:30" } });
     fireEvent.change(screen.getByLabelText(/end time/i), { target: { value: "2026-08-12T14:45" } });
     fireEvent.change(screen.getByLabelText(/notes/i), { target: { value: "a short reset" } });

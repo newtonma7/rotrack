@@ -4,11 +4,11 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarDays, Gauge, Timer, Zap } from "lucide-react";
+import { ApplicationHeader } from "@/components/app/ApplicationHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardStats, getPreferences } from "@/lib/api";
 import { formatDuration, formatSessionDate } from "@/lib/format";
-import { AppNav } from "@/components/layout/AppNav";
 import type { DashboardStats, TimeEntry } from "@/types/time-entry";
 import { getBrowserTimeZone } from "@/lib/timezone";
 
@@ -54,7 +54,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[var(--rt-cream)] text-[var(--rt-ink)]">
-      <AppNav activeRoute="dashboard" signOutRedirectTo="/" />
+      <ApplicationHeader />
 
       <main className="mx-auto max-w-[1400px] px-6 py-12 md:px-10 md:py-16">
         <div className="mb-10 max-w-3xl">

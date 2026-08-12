@@ -7,7 +7,7 @@ import { getDashboardStats, getPreferences } from "@/lib/api";
 import type { DashboardStats } from "@/types/time-entry";
 
 vi.mock("@/lib/api", () => ({ getDashboardStats: vi.fn(), getPreferences: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), usePathname: () => "/dashboard" }));
 vi.mock("@/lib/supabase/client", () => ({
   supabase: { auth: { signOut: vi.fn() } },
 }));
