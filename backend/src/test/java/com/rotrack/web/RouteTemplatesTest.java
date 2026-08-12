@@ -31,11 +31,13 @@ class RouteTemplatesTest {
     @Test
     void includesHistoryCreateEditAndDeleteInStableMutationRoutes() {
         MockHttpServletRequest create = request("POST", "/api/v1/time-entries");
+        MockHttpServletRequest history = request("GET", "/api/v1/time-entries/history");
         MockHttpServletRequest edit = request("PUT", "/api/v1/time-entries/22222222-2222-2222-2222-222222222222");
         MockHttpServletRequest delete = request("DELETE", "/api/v1/time-entries/22222222-2222-2222-2222-222222222222");
 
+        assertThat(RouteTemplates.resolve(history)).isEqualTo(RouteTemplates.HISTORY);
         assertThat(RouteTemplates.mutation(create))
-                .contains(new RouteTemplates.MutationRoute("POST", RouteTemplates.HISTORY));
+                .contains(new RouteTemplates.MutationRoute("POST", RouteTemplates.COLLECTION));
         assertThat(RouteTemplates.mutation(edit))
                 .contains(new RouteTemplates.MutationRoute("PUT", RouteTemplates.ENTRY));
         assertThat(RouteTemplates.mutation(delete))

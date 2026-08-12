@@ -48,7 +48,7 @@ public class TimeEntryController {
         return ApiResponse.success(timeEntryService.startSession(userId, request.activityType(), request.notes()));
     }
 
-    @GetMapping("/time-entries")
+    @GetMapping("/time-entries/history")
     public ApiResponse<HistoryPageDTO> listHistory(
             @AuthenticationPrincipal Jwt jwt,
             @RequestParam(required = false) String cursor
