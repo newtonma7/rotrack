@@ -647,7 +647,7 @@ The gate requires all of the following:
 - Existing handwritten Java records, TypeScript interfaces, authenticated native `fetch`, backend controller/service tests, and frontend API/component tests cover the documented shapes and failure cases.
 - This remains **Implemented—unverified** because hosted migration/deployment and an authenticated real-browser acceptance run remain outside this credential-free lane.
 
-**Milestone gate:** Preferences and completed-only history behavior are **Verified** by focused tests and local acceptance. Hosted migration/deployment and the M4 **Verified** milestone remain release-gated.
+**Milestone gate:** Not met. Preferences, completed-only history, and native typed contracts remain **Implemented—unverified** until authenticated browser acceptance and the applicable hosted migration/deployment release checks pass.
 
 ## 8. Milestone 5 — WYSIWYG Notes and Daily Study Logs
 
