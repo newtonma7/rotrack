@@ -19,7 +19,8 @@ M4 uses handwritten DTOs and the existing authenticated native `fetch` client. E
 
 Errors use the shared envelope `{ error: { code, message, fieldErrors }, timestamp, path }`:
 
-- `VALIDATION_ERROR` — malformed input or an invalid range, timezone, activity, goal, or note; field-level messages are in `fieldErrors`.
+- `VALIDATION_ERROR` — an invalid range, timezone, activity, goal, or note; field-level messages are in `fieldErrors`.
+- `MALFORMED_JSON` — the request body is not valid JSON.
 - `INVALID_CURSOR` — a blank, padded, malformed, or noncanonical history cursor.
 - `TIME_ENTRY_OVERLAP` — the requested completed range overlaps an owned entry.
 - `ACTIVE_SESSION_EXISTS` — a start races or duplicates an active entry.

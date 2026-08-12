@@ -47,7 +47,7 @@ export default function SettingsPage() {
           <div role="alert" className="rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-8 md:p-10">
             <p className="font-display text-3xl">settings stayed put.</p>
             <p className="mt-3 max-w-xl text-[var(--rt-ink-muted)]">{error}</p>
-            <Button onClick={() => void loadPreferences()} className="mt-6 rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] hover:bg-[var(--rt-orange-deep)]">Try again</Button>
+            <Button onClick={() => void loadPreferences()} className="mt-6 rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] shadow-[0_10px_30px_-10px_rgba(236,107,14,0.6)] hover:bg-[var(--rt-orange-deep)]">Try again</Button>
           </div>
         ) : preferences ? (
           <PreferencesForm preferences={preferences} />

@@ -92,7 +92,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
     <div role="alert" className="rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-8 md:p-10">
       <p className="font-display text-3xl">the numbers didn&apos;t land.</p>
       <p className="mt-3 max-w-xl text-[var(--rt-ink-muted)]">{message}</p>
-      <Button onClick={onRetry} className="mt-6 rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] hover:bg-[var(--rt-orange-deep)]">
+      <Button onClick={onRetry} className="mt-6 rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] shadow-[0_10px_30px_-10px_rgba(236,107,14,0.6)] hover:bg-[var(--rt-orange-deep)]">
         Try again
       </Button>
     </div>
@@ -121,7 +121,7 @@ function DashboardContent({ stats }: { stats: DashboardStats }) {
             <p className="text-[0.8rem] font-semibold uppercase tracking-[0.2em] text-[var(--rt-orange-soft)]">clean slate</p>
             <h2 className="mt-3 font-display text-4xl leading-none">nothing tracked yet.</h2>
             <p className="mt-4 text-[var(--rt-cream)]/70">Idle time stays untracked. Start Work or Rot when you want a minute to count.</p>
-            <Button asChild className="mt-7 rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] hover:bg-[var(--rt-orange-deep)]">
+            <Button asChild className="mt-7 rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] shadow-[0_10px_30px_-10px_rgba(236,107,14,0.6)] hover:bg-[var(--rt-orange-deep)]">
               <Link href="/tracker">Start tracking</Link>
             </Button>
           </div>

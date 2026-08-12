@@ -42,7 +42,7 @@ This section describes what exists in source control today. It is not a completi
 - Client-side Supabase session context and protected-route layouts
 - API client using native `fetch` and Supabase bearer tokens
 - Tracker UI with start, active-session restore, elapsed display, and explicit stop; sessions remain active across reload, navigation, tab changes, minimization, and browser closure until explicitly stopped
-- Dashboard using the timestamp-derived daily contract from `GET /api/v1/dashboard/stats`, with the browser IANA timezone
+- Dashboard using the timestamp-derived daily contract from `GET /api/v1/dashboard/stats`, with the saved IANA timezone and browser timezone fallback
 - [`frontend/DESIGN.md`](frontend/DESIGN.md) is the visual UI source of truth; product/domain behavior remains governed by this architecture. The checked-in frontend uses local Figtree for display/body text and Digital-7 only for timer-style readouts
 
 ### Backend and database
