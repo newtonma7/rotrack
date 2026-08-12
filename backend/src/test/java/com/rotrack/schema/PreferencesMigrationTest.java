@@ -24,6 +24,10 @@ class PreferencesMigrationTest {
         assertThat(migration).contains("user_preferences_select_own");
         assertThat(migration).contains("user_preferences_insert_own");
         assertThat(migration).contains("user_preferences_update_own");
+        assertThat(migration).contains("name = 'UTC'");
+        assertThat(migration).contains("name LIKE '%/%'");
+        assertThat(migration).contains("timezone must be a valid IANA identifier");
+        assertThat(migration).doesNotContain("SELECT 1 FROM pg_timezone_names WHERE name = NEW.timezone");
         assertThat(migration).contains("auth.uid() = user_id");
         assertThat(migration).contains("REVOKE ALL PRIVILEGES ON TABLE public.user_preferences FROM rotrack_runtime");
         assertThat(migration).contains("GRANT SELECT, INSERT, UPDATE ON TABLE public.user_preferences TO rotrack_runtime");

@@ -142,7 +142,12 @@ All paths use the `/api/v1` prefix. Authenticated endpoints require `Authorizati
 - `POST /time-entries/start` — start a `WORK` or `ROT` session (`201 Created`)
 - `GET /time-entries/active` — get the authenticated user's active session
 - `PUT /time-entries/{id}/stop` — stop an owned session by ID
+- `GET /time-entries/history?cursor=...` — list up to 20 owned completed entries; pass the opaque cursor back unchanged
+- `POST /time-entries`, `PUT /time-entries/{id}`, `DELETE /time-entries/{id}` — create, edit, or delete completed entries
+- `GET /preferences`, `PUT /preferences` — read or update owned timezone, goal, and private sharing defaults
 - `GET /dashboard/stats?timeZone=Area%2FCity` — get timestamp-derived totals and daily buckets; optional paired `start`/`end` ISO local dates define a half-open range
+
+The M4 request/response shapes and stable errors are documented in [`docs/specs/m4-contracts.md`](docs/specs/m4-contracts.md).
 
 The backend derives the acting user from the validated JWT subject. Clients must not send a `user_id`. Dashboard responses use seconds and UTC range instants while daily bucket labels remain local dates in the requested IANA timezone.
 

@@ -635,11 +635,17 @@ The gate requires all of the following:
 
 ### M4.3 — Native typed contract policy
 
-**Status:** Not started
+**Status:** Implemented—unverified
 
 - Document each implemented M4 request/response contract and stable error codes at the slice boundary.
 - Keep DTOs handwritten and typed on both backend and frontend, using the existing authenticated native-`fetch` wrapper; do not add OpenAPI/code generation.
 - Protect the JSON shapes, validation, pagination/cursor behavior, and error contract with focused backend/frontend contract tests.
+
+**Implementation evidence — 2026-08-12 / local workspace:**
+
+- Added [`docs/specs/m4-contracts.md`](docs/specs/m4-contracts.md), corrected the canonical `GET /api/v1/time-entries/history` route in the API tables/runbook, and documented `VALIDATION_ERROR`, `INVALID_CURSOR`, `TIME_ENTRY_OVERLAP`, `ACTIVE_SESSION_EXISTS`, `NOT_FOUND`, and `RATE_LIMITED` behavior.
+- Existing handwritten Java records, TypeScript interfaces, authenticated native `fetch`, backend controller/service tests, and frontend API/component tests cover the documented shapes and failure cases.
+- This remains **Implemented—unverified** because hosted migration/deployment and an authenticated real-browser acceptance run remain outside this credential-free lane.
 
 **Milestone gate:** Preferences and completed-only history behavior are **Verified** by focused tests and local acceptance. Hosted migration/deployment and the M4 **Verified** milestone remain release-gated.
 

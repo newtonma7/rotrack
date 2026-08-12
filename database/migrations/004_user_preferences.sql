@@ -35,7 +35,10 @@ SET search_path = pg_catalog, public
 AS $$
 BEGIN
   IF NEW.timezone IS NOT NULL AND NOT EXISTS (
-    SELECT 1 FROM pg_timezone_names WHERE name = NEW.timezone
+    SELECT 1
+    FROM pg_timezone_names
+    WHERE name = NEW.timezone
+      AND (name = 'UTC' OR name LIKE '%/%')
   ) THEN
     RAISE EXCEPTION USING
       ERRCODE = '22023',

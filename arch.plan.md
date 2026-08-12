@@ -48,7 +48,7 @@ This section describes what exists in source control today. It is not a completi
 ### Backend and database
 
 - Spring Boot 3.4, Java 21 target, Maven, Spring Web, JPA, OAuth2 Resource Server, validation, and PostgreSQL
-- Implemented endpoints: independent liveness/readiness, start session, get active session, ID-based stop, dashboard stats, and owned preferences GET/PUT
+- Implemented endpoints: independent liveness/readiness, explicit session lifecycle, dashboard stats, owned preferences GET/PUT, and completed-only history/manual-entry routes
 - Supabase migrations defining `users`, `time_entries`, the `ROT|WORK` enum, ownership RLS policies, signup profile creation, timestamp constraints, one-active-session uniqueness, and reporting indexes
 - Source-controlled suites include executable PostgreSQL migration/repository tests, generated signed-JWT filter tests, service/controller ownership tests, Vitest/RTL coverage, and a quarantined external-auth Playwright critical path that can bind observed browser API responses to an approved API base
 - Backend startup rejects PostgreSQL TLS override properties, requires managed JDBC hostname verification with an explicit CA path, validates exact CORS origins, binds bounded Hikari settings, and exposes cached/single-flight database readiness
@@ -229,10 +229,11 @@ Production requirements:
 | `POST /time-entries/start` | Yes | Starts one session; returns `201`; concurrent/duplicate active start returns `409` |
 | `GET /time-entries/active` | Yes | Returns the active owned entry or `null` |
 | `PUT /time-entries/{id}/stop` | Yes | Stops the owned entry; repeated calls return the unchanged stopped resource |
-| `GET /time-entries` | Yes | Returns 20 owned completed entries in cursor-paginated reverse-chronological order |
+| `GET /time-entries/history` | Yes | Returns up to 20 owned completed entries in cursor-paginated reverse-chronological order |
 | `POST /time-entries` | Yes | Creates one owned completed entry |
 | `PUT /time-entries/{id}` | Yes | Edits one owned completed entry |
 | `DELETE /time-entries/{id}` | Yes | Deletes one owned completed entry |
+| `GET /preferences` / `PUT /preferences` | Yes | Reads or updates owned timezone, goal, and private sharing defaults |
 | `GET /dashboard/stats` | Yes | Returns personal totals and daily buckets for a validated range/timezone |
 
 The frontend and API use `PUT /time-entries/{id}/stop`; the former active-stop compatibility endpoint has been retired after the ID-based path became the only caller contract. Liveness is process-only. Readiness performs a bounded database validation, caches/single-flights the result to limit pool pressure, and never returns dependency or credential details.
@@ -387,7 +388,7 @@ Groups are private and invitation-only.
 - `/notes`: owned CRUD with session/date filters and optimistic version checks
 - `/daily-logs/{localDate}`: generated study data plus owned reflection updates
 
-Each vertical slice documents its implemented request/response contract immediately before delivery. Frontend and backend use handwritten typed DTOs with the existing authenticated native-`fetch` wrapper; focused backend/frontend contract tests protect the JSON shape, error codes, pagination, and validation behavior. OpenAPI/code generation is not part of M4.
+Each vertical slice documents its implemented request/response contract immediately before delivery. The M4 contracts and stable errors are recorded in [`docs/specs/m4-contracts.md`](docs/specs/m4-contracts.md). Frontend and backend use handwritten typed DTOs with the existing authenticated native-`fetch` wrapper; focused backend/frontend contract tests protect the JSON shape, error codes, pagination, and validation behavior. OpenAPI/code generation is not part of M4.
 
 ## 9. Quality, Delivery, and Operations
 
