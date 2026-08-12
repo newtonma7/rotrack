@@ -60,7 +60,7 @@ class TimeEntryHistoryControllerTest {
         when(timeEntryService.listHistory(USER_ID, "opaque-next"))
                 .thenReturn(new HistoryPageDTO(List.of(entry), "opaque-next"));
 
-        mockMvc.perform(get("/api/v1/time-entries")
+        mockMvc.perform(get("/api/v1/time-entries/history")
                         .queryParam("cursor", "opaque-next")
                         .with(jwt().jwt(token -> token.subject(USER_ID.toString()).audience(List.of("authenticated")))))
                 .andExpect(status().isOk())
@@ -95,7 +95,7 @@ class TimeEntryHistoryControllerTest {
         when(timeEntryService.listHistory(USER_ID, "bad"))
                 .thenThrow(new InvalidCursorException());
 
-        mockMvc.perform(get("/api/v1/time-entries")
+        mockMvc.perform(get("/api/v1/time-entries/history")
                         .queryParam("cursor", "bad")
                         .with(jwt().jwt(token -> token.subject(USER_ID.toString()).audience(List.of("authenticated")))))
                 .andExpect(status().isBadRequest())
