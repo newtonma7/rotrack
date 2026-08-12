@@ -1,6 +1,6 @@
 # Release and rollback runbook
 
-**Status — 2026-08-11:** source commit `744635c` passed focused Azure contract/readback, publish, preflight, RBAC, container, and release checks. The canonical hosted candidate passed ACA/Vercel readback, public smoke, hosted authenticated smoke (`4/4`, zero skipped/unexpected/flaky, API-target bound), and the corrected exact no-schema-change backend/frontend rollback rehearsal; final state is the candidate. Rate limiting remains explicitly deferred/accepted, and ten cold-start trials, collector redaction, alert delivery/receipt, and alert routing evidence remain open. The backup limitation is accepted as already documented. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. This runbook does not authorize production readiness or M3 completion.
+**Status — 2026-08-12:** source commit `744635c` passed focused Azure contract/readback, publish, preflight, RBAC, container, and release checks. The canonical hosted candidate passed ACA/Vercel readback, public smoke, hosted authenticated smoke (`4/4`, zero skipped/unexpected/flaky, API-target bound), and the corrected exact no-schema-change backend/frontend rollback rehearsal; final state is the candidate. Rate limiting remains explicitly deferred/accepted, and collector redaction, alert delivery/receipt, and alert routing evidence remain open. Ten genuine zero-replica trials completed on 2026-08-11 with readiness 10/10, p50 34.586 seconds, and p95/max 39.425 seconds; the 30-second p95 criterion was not met. The canonical shared-hosted app now uses `minReplicas=1` by product-owner decision; observe actual billing before revisiting. The backup limitation is accepted as already documented. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. This runbook does not authorize production readiness or M3 completion.
 
 The long-term separated topology protected by this runbook is database-first: Supabase Auth in the browser, one Vercel project (Preview for non-production, Production for production), Azure Container Apps Consumption for the Spring API, and two Supabase Free projects. In that long-term topology, approved authenticated E2E uses the non-production project and the separate production lane uses `rotrack-prod`; those are target/inventory labels, not the current canonical boundary. The current product-owner override uses the shared Supabase project, Vercel Production, and the existing ACA implementation boundary with the `production` runtime label. Credential-free PR CI uses isolated PostgreSQL. It preserves explicit timer sessions and the API ownership boundary. Application rollback must not silently rewrite active or completed sessions. Candidate evidence is recorded in [`../azure-nonproduction.md`](../azure-nonproduction.md) and [`../single-environment.md`](../single-environment.md); the M3/production-readiness STOP remains.
 
@@ -68,7 +68,7 @@ For the long-term separated topology, the release owner verifies separate non-pr
 - The previous compatible frontend/backend release is still available by immutable identifier.
 - Container App managed-environment/revision/traffic controls, bounded connection pool, liveness, readiness, exact CORS, TLS CA injection, and secret references are configured and reviewed; the managed environment and app are inside the matching target resource group and match the logical GitHub environment.
 - Azure budget alerts and credit-expiry notifications are reviewed as notifications only, not a hard spending cap; delayed cost/credit data is accounted for in the stop/go decision.
-- At least 10 non-production scale-from-zero trials are recorded. Production may keep minimum replicas at `0` only with explicit product-owner acceptance when p95 readiness is at most 30 seconds and no trial exceeds 60 seconds; otherwise production minimum replicas are `1`.
+- At least 10 non-production scale-from-zero trials are recorded. The 2026-08-11 run recorded readiness 10/10, p50 34.586 seconds, and p95/max 39.425 seconds; because p95 exceeded 30 seconds, the scale-to-zero criterion was not met. The canonical shared-hosted path now uses minimum replicas `1` by product-owner decision; revisit after actual billing is observed.
 - Migration locks/runtime/backfill behavior and checksums were reviewed; a forward-fix owner and decision deadline are named.
 - Incident roles, communication channel, and provider access are staffed for the rollout and observation window.
 - The monitoring owner has tested alert routing in the target environment without generating a production incident, including Free-project pause/resume, logical-export freshness/restore readiness, cold starts, and Azure budget/credit-expiry notifications.
@@ -169,7 +169,11 @@ A release ID maps to the immutable backend digest and the environment-specific i
 5. reruns staging smoke; and
 6. leaves staging on the prior release for an explicit subsequent rollout.
 
-It never applies or reverses a migration. The corrected 2026-08-11 rehearsal passed prior backend health, prior frontend promotion, rollback public smoke, rollback authenticated `4/4`, candidate restoration, and final candidate health/CORS/auth; the final state is the candidate. Keep rate limiting, collector redaction, alert delivery/receipt, alert routing, and ten cold-start evidence open.
+It never applies or reverses a migration. The corrected 2026-08-11 rehearsal passed prior backend health, prior frontend promotion, rollback public smoke, rollback authenticated `4/4`, candidate restoration, and final candidate health/CORS/auth; the final state is the candidate. Keep rate limiting, collector redaction, alert delivery/receipt, and alert routing evidence open. Ten cold-start trials are now recorded, but p95 readiness was 39.425 seconds, above the 30-second criterion; the canonical shared-hosted app now uses `minReplicas=1` by product-owner decision.
+
+## Product-owner pre-user posture — 2026-08-11
+
+The product has zero active users. Broad per-signal alert coverage, threshold tuning/observation windows, dashboard and retention/access expansion, collector-side second-layer redaction proof, and fleet-wide edge rate limiting are deferred until before real-user onboarding or until usage/abuse/telemetry risk makes them material. This is an explicit risk acceptance; it does not turn the M3 release gate into Verified.
 
 ## Stop/go record
 
@@ -190,6 +194,6 @@ Record each gate as `GO`, `STOP`, or `NOT RUN`, with owner, UTC timestamp, and e
 | Encrypted logical export retention and restore rehearsal, or accepted documented limitation | GO (accepted limitation) |
 | Azure budget/credit-expiry notifications reviewed as delayed, non-cap signals | NOT RUN |
 | Rate limits and `429`/bypass/failure tests | STOP (deferred/accepted) |
-| Ten cold-start trials and observation window | NOT RUN |
+| Cold-start trials and observation window | NOT MET — 10 trials recorded; p95 39.425s exceeded 30s; canonical shared-hosted path uses min replicas `1` |
 
 One `STOP` or `NOT RUN` means no production promotion or M3 completion.

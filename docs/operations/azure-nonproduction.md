@@ -5,12 +5,12 @@
 ## Current candidate checkpoint — 2026-08-11
 
 - Source commit `744635c` committed Azure readback/rollback-selection hardening. Focused Azure contract/readback, publish, preflight, RBAC, container, and release checks passed.
-- The reviewed backend candidate was deployed to the canonical ACA implementation boundary. Candidate traffic was 100%; readiness/readback, selected digest/service-version equality, production runtime label, and scale `0..1` passed. Full revision and digest identifiers remain in private evidence.
+- The reviewed backend candidate was deployed to the canonical ACA implementation boundary. Candidate traffic was 100%; readiness/readback, selected digest/service-version equality, production runtime label, and scale `1..1` passed. Full revision and digest identifiers remain in private evidence.
 - The canonical Vercel Production candidate was deployed from the same reviewed commit and canonical alias readback passed.
 - Public smoke passed: frontend `200`, exact API liveness/readiness `200` contracts, HTTP redirect to HTTPS, allowed CORS, and denied unrelated CORS.
 - Hosted authenticated smoke passed `4/4` with zero skipped, unexpected, or flaky results; API-target binding passed. Operator-owned synthetic accounts and stopped rows remain by product-owner decision, so cleanup is not claimed.
 - The corrected exact no-schema-change backend/frontend rollback rehearsal passed prior backend health, prior frontend promotion, rollback public smoke, rollback authenticated `4/4`, candidate restoration, and final candidate health/CORS/auth; final state is the candidate.
-- Rate limiting remains explicitly deferred/accepted. Cloudflare Free is future exploration only. Ten cold-start trials, collector redaction, alert delivery/receipt, and alert routing evidence remain open. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. Backup limitation is accepted as already documented.
+- Rate limiting remains explicitly deferred/accepted. Cloudflare Free is future exploration only. Ten genuine zero-replica trials completed on 2026-08-11 with readiness 10/10, p50 34.586 seconds, and p95/max 39.425 seconds; the 30-second p95 criterion was not met. The product owner subsequently chose `minReplicas=1` for the canonical shared-hosted app and accepted the resulting idle cost pending actual billing. Collector redaction, alert delivery/receipt, and alert routing evidence remain open. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. Backup limitation is accepted as already documented.
 
 The M3/production-readiness STOP remains. Keep full identifiers only in private evidence.
 
@@ -35,7 +35,7 @@ Production resources and `rotrack-prod` were not created, changed, migrated, or 
 ## Cost posture
 
 - ACR Basic is the predictable baseline cost (about USD 5/month at the observed retail rate).
-- Container Apps Consumption scales to zero and uses the subscription free grant before consumption charges.
+- The canonical shared-hosted Container App now keeps one idle replica by product-owner decision; the subscription free grant applies before consumption charges, and actual billing will be observed.
 - Log Analytics has a 0.1 GB daily cap and 30-day retention.
 - The Azure budget is a notification, not a hard spending cap. Cost and student-credit data may be delayed.
 - Initial application scale is one maximum replica. Reassess the fleet-wide rate-limit boundary before increasing it.

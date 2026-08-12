@@ -74,7 +74,7 @@ container_app = app_resources[0]
 props = container_app['properties']
 assert props['configuration']['activeRevisionsMode'] == 'Multiple'
 assert props['template']['terminationGracePeriodSeconds'] == 30
-assert props['template']['scale'] == {'minReplicas': 0, 'maxReplicas': 1}
+assert props['template']['scale'] == {'minReplicas': 1, 'maxReplicas': 1}
 ingress = props['configuration']['ingress']
 assert ingress['external'] is True and ingress['targetPort'] == 8080 and ingress['allowInsecure'] is False
 assert ingress['traffic'] == [{'latestRevision': True, 'weight': 100}]
