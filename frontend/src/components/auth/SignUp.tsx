@@ -31,6 +31,7 @@ const RESERVED_USERNAMES = new Set([
 ]);
 
 const SIGNUP_ERROR_MESSAGE = "That username is unavailable. Try another one.";
+const GENERAL_SIGNUP_ERROR_MESSAGE = "Unable to create account. Please check your details and try again.";
 
 function validateUsername(username: string): string | null {
   if (!username) return "Username is required";
@@ -71,19 +72,18 @@ export default function SignUp() {
 
     setUsername(normalizedUsername);
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: { data: { username: normalizedUsername } },
       });
       if (error) {
-        setMessage(SIGNUP_ERROR_MESSAGE);
+        setMessage(error.code === "unexpected_failure" ? SIGNUP_ERROR_MESSAGE : GENERAL_SIGNUP_ERROR_MESSAGE);
       } else {
-        const confirmedEmail = encodeURIComponent(data?.user?.email ?? email);
-        router.push(`/signup/confirmation?email=${confirmedEmail}`);
+        router.push("/signup/confirmation");
       }
     } catch {
-      setMessage(SIGNUP_ERROR_MESSAGE);
+      setMessage(GENERAL_SIGNUP_ERROR_MESSAGE);
     } finally {
       setLoading(false);
     }

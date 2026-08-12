@@ -72,7 +72,7 @@ describe("SignUp", () => {
     expect(signUp).not.toHaveBeenCalled();
   });
 
-  it("trims and lowercases the username before signup and keeps the confirmation redirect", async () => {
+  it("trims and lowercases the username before signup without putting email in the redirect", async () => {
     render(<SignUp />);
     fillForm({ username: "  Reader_1  " });
 
@@ -83,11 +83,14 @@ describe("SignUp", () => {
       password: "correct horse battery staple",
       options: { data: { username: "reader_1" } },
     }));
-    expect(push).toHaveBeenCalledWith("/signup/confirmation?email=reader%40example.com");
+    expect(push).toHaveBeenCalledWith("/signup/confirmation");
   });
 
-  it("maps signup failures to safe generic username copy", async () => {
-    signUp.mockResolvedValue({ data: null, error: { message: "duplicate key violates unique constraint" } });
+  it("maps trigger failures to safe generic username copy", async () => {
+    signUp.mockResolvedValue({
+      data: null,
+      error: { code: "unexpected_failure", message: "duplicate key violates unique constraint" },
+    });
     render(<SignUp />);
     fillForm();
 
@@ -99,14 +102,24 @@ describe("SignUp", () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it("maps rejected signup requests to the same safe generic copy", async () => {
-    signUp.mockRejectedValue(new Error("trigger details"));
+  it("uses general safe copy for non-username signup failures", async () => {
+    signUp.mockResolvedValue({ data: null, error: { code: "user_already_exists", message: "already registered" } });
     render(<SignUp />);
     fillForm();
 
     fireEvent.click(screen.getByRole("button", { name: "Sign up" }));
 
-    expect((await screen.findByRole("alert")).textContent).toBe("That username is unavailable. Try another one.");
+    expect((await screen.findByRole("alert")).textContent).toBe("Unable to create account. Please check your details and try again.");
+  });
+
+  it("uses general safe copy for rejected signup requests", async () => {
+    signUp.mockRejectedValue(new Error("network details"));
+    render(<SignUp />);
+    fillForm();
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign up" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe("Unable to create account. Please check your details and try again.");
   });
 
   it("preserves password mismatch behavior", async () => {
