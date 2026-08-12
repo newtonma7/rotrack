@@ -83,7 +83,8 @@ describe("HistoryPage", () => {
     expect(await screen.findByText(/no completed entries yet/i)).toBeTruthy();
   });
 
-  it("validates and submits a new completed entry using ISO instants", async () => {
+  it("validates and submits a new completed entry using the saved timezone", async () => {
+    vi.mocked(getPreferences).mockResolvedValue({ timeZone: "Europe/Berlin", dailyWorkGoalMinutes: null, shareStudySummary: false, shareActiveStudyStatus: false });
     render(<HistoryPage />);
     await screen.findByText("deep work");
     fireEvent.click(screen.getByRole("button", { name: /add entry/i }));
@@ -101,8 +102,8 @@ describe("HistoryPage", () => {
 
     await waitFor(() => expect(createHistoryEntry).toHaveBeenCalledWith({
       activityType: "ROT",
-      startTime: toIsoInstant("2026-08-12T14:30", "America/New_York"),
-      endTime: toIsoInstant("2026-08-12T14:45", "America/New_York"),
+      startTime: toIsoInstant("2026-08-12T14:30", "Europe/Berlin"),
+      endTime: toIsoInstant("2026-08-12T14:45", "Europe/Berlin"),
       notes: "a short reset",
     }));
     await waitFor(() => expect(getHistory).toHaveBeenCalledTimes(2));
