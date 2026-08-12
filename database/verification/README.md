@@ -29,7 +29,9 @@ Proved: checked-in migrations execute in order; actual catalog objects; enabled
         canonical username normalization; invalid/reserved/duplicate signup
         rejection; immutable usernames; fail-closed existing-profile probe;
         same-user active rejection (23505); different-user active rows;
-        invalid range rejection (23514); 3,600 timestamp-derived seconds with
+        invalid range rejection (23514); preference defaults and ownership RLS;
+        btree_gist-backed same-user range exclusion, adjacent ranges, and the
+        280-character notes ceiling; 3,600 timestamp-derived seconds with
         duration_minutes=999
 Cleanup: transaction rolled back, including DDL
 Credentials/host/database identifiers: REDACTED
@@ -60,7 +62,10 @@ Proved: actual application-table catalog, enabled RLS/named policies, and
         (23505); different-user active rows; invalid range rejection (23514);
         same-user overlap exclusion (23P01), adjacent ranges, 280-character
         notes ceiling; 3,600 timestamp-derived seconds with duration_minutes=999;
-        Spring Data flushes and owner-scoped active reads against the migrated schema
+        Spring Data flushes and owner-scoped active reads against the migrated
+        schema; transactional owned history edit/foreign-owner rejection;
+        two-user preference reads/updates; exact runtime-role grants including
+        time_entries DELETE and no user_preferences DELETE
 Cleanup: probe transactions rolled back
 Credentials/host/database identifiers: REDACTED
 Limitations: does not prove HTTP Data API RLS, real Supabase Auth signup,
