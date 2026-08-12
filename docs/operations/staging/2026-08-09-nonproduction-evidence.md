@@ -36,8 +36,8 @@
 ## Vercel Preview
 
 - One existing Vercel project used; Preview only.
-- Preview build completed successfully with the three approved `NEXT_PUBLIC_*` names and the ACA `/api/v1` URL.
-- Exact final Preview origin is the only configured ACA CORS origin; an unrelated HTTPS Origin received no allow-origin header.
+- The `READY`, target=`preview` deployment is assigned the stable alias `https://rotrack-newtonma7-7541-newton-mas-projects.vercel.app`.
+- Preview build completed successfully with the three approved `NEXT_PUBLIC_*` names and the non-production ACA `/api/v1` URL; read-only browser-asset inspection confirmed the embedded API mapping.
 - Vercel SSO protection remains enabled. A temporary CLI-generated automation-bypass secret was removed immediately; readback reports zero remaining bypass secrets.
 - Historical direct anonymous Preview smoke was intentionally blocked by Vercel SSO. The current 2026-08-11 canonical Production alias and hosted authenticated smoke are recorded at the top of this file.
 
@@ -57,8 +57,8 @@ ACA runtime contract and secretRef readback: passed
 GET /api/v1/health: 200 {"status":"ok"}
 GET /api/v1/readiness: 200 {"status":"ready"}
 HTTP API request: 301 redirect to HTTPS
-Allowed exact Preview CORS origin: allow-origin present
-Unrelated CORS origin: allow-origin absent
+Allowed stable Preview alias CORS origin: HTTP 200 with exact allow-origin and credentials
+Prior ephemeral Preview, target=production deployment, and Production alias CORS origins: HTTP 403 with no allow-origin
 Vercel Preview build: READY
 Preliminary scale-from-zero trial 1/10: health wake-up 28.185s; readiness immediately afterward 0.062s
 ```
