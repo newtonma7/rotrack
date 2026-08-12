@@ -6,10 +6,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarDays, Gauge, Timer, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getDashboardStats } from "@/lib/api";
+import { getDashboardStats, getPreferences } from "@/lib/api";
 import { formatDuration, formatSessionDate } from "@/lib/format";
 import { AppNav } from "@/components/layout/AppNav";
 import type { DashboardStats, TimeEntry } from "@/types/time-entry";
+import { getBrowserTimeZone } from "@/lib/timezone";
 
 const DailyChart = dynamic(() => import("@/components/dashboard/DailyChart"), {
   ssr: false,
@@ -27,10 +28,7 @@ const DailyChart = dynamic(() => import("@/components/dashboard/DailyChart"), {
 });
 
 export default function DashboardPage() {
-  const timeZone = useMemo(
-    () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-    [],
-  );
+  const browserTimeZone = useMemo(() => getBrowserTimeZone(), []);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,15 +37,16 @@ export default function DashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      // Calendar days only make sense in the user's zone; the API converts these
-      // boundaries to authoritative instants and handles DST before aggregating.
-      setStats(await getDashboardStats({ timeZone }));
+      // Calendar days only make sense in the user's saved zone; the API converts
+      // these boundaries to authoritative instants and handles DST before aggregating.
+      const preferences = await getPreferences();
+      setStats(await getDashboardStats({ timeZone: preferences.timeZone || browserTimeZone }));
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Failed to load dashboard");
     } finally {
       setLoading(false);
     }
-  }, [timeZone]);
+  }, [browserTimeZone]);
 
   useEffect(() => {
     void loadStats();

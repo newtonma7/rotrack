@@ -16,6 +16,7 @@ import type {
   DashboardStatsQuery,
   TimeEntry,
 } from "@/types/time-entry";
+import type { UserPreferences } from "@/types/preferences";
 
 // NEXT_PUBLIC_* vars are embedded at build time and visible in the browser — safe for URLs, not secrets.
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ||
@@ -114,4 +115,17 @@ export async function getDashboardStats(
   if (query.start) search.set("start", query.start);
   if (query.end) search.set("end", query.end);
   return apiFetch<DashboardStats>(`/dashboard/stats?${search.toString()}`);
+}
+
+/** Fetch the authenticated user's owned preferences. */
+export async function getPreferences(): Promise<UserPreferences> {
+  return apiFetch<UserPreferences>("/preferences");
+}
+
+/** Persist the complete preferences document; the API validates nullable values and bounds. */
+export async function updatePreferences(preferences: UserPreferences): Promise<UserPreferences> {
+  return apiFetch<UserPreferences>("/preferences", {
+    method: "PUT",
+    body: JSON.stringify(preferences),
+  });
 }
