@@ -1,47 +1,31 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarDays, Gauge, LogOut, Timer, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardStats } from "@/lib/api";
+import { formatDuration, formatSessionDate } from "@/lib/format";
 import { supabase } from "@/lib/supabase/client";
-import type { ActivityType, DashboardStats, TimeEntry } from "@/types/time-entry";
+import type { DashboardStats, TimeEntry } from "@/types/time-entry";
 import { useRouter } from "next/navigation";
 
-function formatDuration(totalSeconds: number): string {
-  const seconds = Math.max(0, Math.floor(totalSeconds));
-  if (seconds < 60) return `${seconds}s`;
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  if (hours === 0) return `${minutes}m`;
-  return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
-}
-
-function formatAxisDuration(totalSeconds: number): string {
-  if (totalSeconds === 0) return "0";
-  if (totalSeconds < 3600) return `${Math.round(totalSeconds / 60)}m`;
-  const hours = totalSeconds / 3600;
-  return `${Number.isInteger(hours) ? hours : hours.toFixed(1)}h`;
-}
-
-function formatLocalDate(localDate: string, format: Intl.DateTimeFormatOptions): string {
-  return new Intl.DateTimeFormat(undefined, { ...format, timeZone: "UTC" }).format(
-    new Date(`${localDate}T00:00:00Z`),
-  );
-}
-
-function formatSessionDate(instant: string, timeZone: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone,
-  }).format(new Date(instant));
-}
+const DailyChart = dynamic(() => import("@/components/dashboard/DailyChart"), {
+  ssr: false,
+  loading: () => (
+    <Card className="rounded-[32px] border-[var(--rt-line)] bg-[var(--rt-paper)]">
+      <CardHeader>
+        <p className="text-[0.8rem] font-semibold uppercase tracking-[0.18em] text-[var(--rt-orange)]">daily split</p>
+        <CardTitle className="mt-2 font-display text-3xl">where each day landed.</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div role="status" aria-live="polite" className="h-72 animate-pulse rounded-[24px] bg-[var(--rt-cream)]" aria-label="Loading daily chart" />
+      </CardContent>
+    </Card>
+  ),
+});
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -84,7 +68,7 @@ export default function DashboardPage() {
             rotrack<span className="text-[var(--rt-orange)]">.</span>
           </Link>
           <nav aria-label="Application" className="flex items-center gap-2">
-            <span className="rounded-full bg-[var(--rt-cream-soft)] px-4 py-2 text-sm font-semibold">
+            <span aria-current="page" className="rounded-full bg-[var(--rt-cream-soft)] px-4 py-2 text-sm font-semibold">
               dashboard
             </span>
             <Button variant="ghost" asChild className="rounded-full">
@@ -158,32 +142,10 @@ function DashboardContent({ stats }: { stats: DashboardStats }) {
   return (
     <div className="space-y-6">
       <section aria-label="Summary" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          label="work"
-          value={formatDuration(workSeconds)}
-          detail="intentional focus"
-          icon={<Zap aria-hidden="true" />}
-          accent
-        />
-        <MetricCard
-          label="rot"
-          value={formatDuration(rotSeconds)}
-          detail="explicitly tracked"
-          icon={<Timer aria-hidden="true" />}
-        />
-        <MetricCard
-          label="tracked"
-          value={formatDuration(totalSeconds)}
-          detail={`${stats.daily.length} local days`}
-          icon={<CalendarDays aria-hidden="true" />}
-        />
-        <MetricCard
-          label="work share"
-          value={`${stats.productivityScore}%`}
-          detail="work ÷ all tracked time"
-          icon={<Gauge aria-hidden="true" />}
-          inverted
-        />
+        <MetricCard label="work" value={formatDuration(workSeconds)} detail="intentional focus" icon={<Zap aria-hidden="true" />} accent />
+        <MetricCard label="rot" value={formatDuration(rotSeconds)} detail="explicitly tracked" icon={<Timer aria-hidden="true" />} />
+        <MetricCard label="tracked" value={formatDuration(totalSeconds)} detail={`${stats.daily.length} local days`} icon={<CalendarDays aria-hidden="true" />} />
+        <MetricCard label="work share" value={`${stats.productivityScore}%`} detail="work ÷ all tracked time" icon={<Gauge aria-hidden="true" />} inverted />
       </section>
 
       {isEmpty && (
@@ -192,9 +154,7 @@ function DashboardContent({ stats }: { stats: DashboardStats }) {
           <div className="relative max-w-xl">
             <p className="text-[0.8rem] font-semibold uppercase tracking-[0.2em] text-[var(--rt-orange-soft)]">clean slate</p>
             <h2 className="mt-3 font-display text-4xl leading-none">nothing tracked yet.</h2>
-            <p className="mt-4 text-[var(--rt-cream)]/70">
-              Idle time stays untracked. Start Work or Rot when you want a minute to count.
-            </p>
+            <p className="mt-4 text-[var(--rt-cream)]/70">Idle time stays untracked. Start Work or Rot when you want a minute to count.</p>
             <Button asChild className="mt-7 rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] hover:bg-[var(--rt-orange-deep)]">
               <Link href="/tracker">Start tracking</Link>
             </Button>
@@ -206,20 +166,12 @@ function DashboardContent({ stats }: { stats: DashboardStats }) {
         <DailyChart stats={stats} />
         <DistributionCard workSeconds={workSeconds} rotSeconds={rotSeconds} score={stats.productivityScore} />
       </div>
-
       <RecentSessions sessions={stats.recentSessions} timeZone={stats.range.timeZone} />
     </div>
   );
 }
 
-function MetricCard({
-  label,
-  value,
-  detail,
-  icon,
-  accent = false,
-  inverted = false,
-}: {
+function MetricCard({ label, value, detail, icon, accent = false, inverted = false }: {
   label: string;
   value: string;
   detail: string;
@@ -238,104 +190,6 @@ function MetricCard({
         <p className="mt-2 text-sm opacity-60">{detail}</p>
       </CardContent>
     </Card>
-  );
-}
-
-function DailyChart({ stats }: { stats: DashboardStats }) {
-  return (
-    <Card className="rounded-[32px] border-[var(--rt-line)] bg-[var(--rt-paper)]">
-      <CardHeader className="flex flex-row items-end justify-between gap-4">
-        <div>
-          <p className="text-[0.8rem] font-semibold uppercase tracking-[0.18em] text-[var(--rt-orange)]">daily split</p>
-          <CardTitle className="mt-2 font-display text-3xl">where each day landed.</CardTitle>
-        </div>
-        <p className="hidden text-right text-xs text-[var(--rt-ink-muted)] sm:block">
-          {stats.range.timeZone}
-        </p>
-      </CardHeader>
-      <CardContent>
-        <div
-          role="img"
-          aria-label="Daily Work and Rot tracked seconds"
-          className="h-72 rounded-[24px] bg-[var(--rt-cream)] px-1 pb-2 pt-6 sm:px-4"
-        >
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={stats.daily} barGap={4} margin={{ top: 8, right: 8, left: -14, bottom: 0 }}>
-              <CartesianGrid vertical={false} stroke="var(--rt-line)" strokeDasharray="3 5" />
-              <XAxis
-                dataKey="localDate"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: "var(--rt-ink-muted)", fontSize: 11, fontWeight: 600 }}
-                tickFormatter={(date: string) => formatLocalDate(date, { weekday: "short" }).toUpperCase()}
-              />
-              <YAxis
-                axisLine={false}
-                tickLine={false}
-                width={48}
-                tick={{ fill: "var(--rt-ink-muted)", fontSize: 10 }}
-                tickFormatter={formatAxisDuration}
-              />
-              <Tooltip content={<DailyTooltip />} cursor={{ fill: "var(--rt-cream-soft)" }} />
-              <Bar dataKey="workSeconds" name="Work" fill="var(--rt-orange)" radius={[10, 10, 0, 0]} isAnimationActive={false} />
-              <Bar dataKey="rotSeconds" name="Rot" fill="var(--rt-ink-soft)" radius={[10, 10, 0, 0]} isAnimationActive={false} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <table aria-label="Daily tracked seconds" className="sr-only">
-          <caption>Daily Work and Rot tracked seconds</caption>
-          <thead>
-            <tr>
-              <th scope="col">Local date</th>
-              <th scope="col">Work seconds</th>
-              <th scope="col">Rot seconds</th>
-            </tr>
-          </thead>
-          <tbody>
-            {stats.daily.map((day) => (
-              <tr key={day.localDate}>
-                <th scope="row">{day.localDate}</th>
-                <td>{day.workSeconds}</td>
-                <td>{day.rotSeconds}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="mt-4 flex gap-5 text-xs text-[var(--rt-ink-muted)]">
-          <LegendDot type="WORK" />
-          <LegendDot type="ROT" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function DailyTooltip({ active, payload, label }: {
-  active?: boolean;
-  payload?: Array<{ name?: string; value?: number; color?: string }>;
-  label?: string;
-}) {
-  if (!active || !payload?.length || !label) return null;
-  return (
-    <div className="rounded-xl border border-[var(--rt-line)] bg-[var(--rt-paper)] p-3 shadow-lg">
-      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--rt-ink-muted)]">
-        {formatLocalDate(label, { month: "short", day: "numeric" })}
-      </p>
-      {payload.map((item) => (
-        <p key={item.name} className="text-sm" style={{ color: item.color }}>
-          {item.name}: {formatDuration(item.value ?? 0)}
-        </p>
-      ))}
-    </div>
-  );
-}
-
-function LegendDot({ type }: { type: ActivityType }) {
-  return (
-    <span className="flex items-center gap-2">
-      <span className={`h-2.5 w-2.5 rounded-full ${type === "WORK" ? "bg-[var(--rt-orange)]" : "bg-[var(--rt-ink-soft)]"}`} />
-      {type === "WORK" ? "Work" : "Rot"}
-    </span>
   );
 }
 
@@ -368,18 +222,8 @@ function DistributionCard({ workSeconds, rotSeconds, score }: { workSeconds: num
 function ShareRow({ label, share, duration, accent = false }: { label: string; share: number; duration: string; accent?: boolean }) {
   return (
     <div>
-      <div className="mb-2 flex justify-between text-sm">
-        <span>{label}</span>
-        <span className="tabular-nums text-[var(--rt-ink-muted)]">{duration} · {share}%</span>
-      </div>
-      <div
-        role="progressbar"
-        aria-label={`${label} share`}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={share}
-        className="h-2 overflow-hidden rounded-full bg-[var(--rt-cream-soft)]"
-      >
+      <div className="mb-2 flex justify-between text-sm"><span>{label}</span><span className="tabular-nums text-[var(--rt-ink-muted)]">{duration} · {share}%</span></div>
+      <div role="progressbar" aria-label={`${label} share`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={share} className="h-2 overflow-hidden rounded-full bg-[var(--rt-cream-soft)]">
         <div className={`h-full rounded-full ${accent ? "bg-[var(--rt-orange)]" : "bg-[var(--rt-ink-soft)]"}`} style={{ width: `${share}%` }} />
       </div>
     </div>
@@ -401,7 +245,7 @@ function RecentSessions({ sessions, timeZone }: { sessions: TimeEntry[]; timeZon
             {sessions.map((session) => (
               <li key={session.id} className="flex flex-wrap items-center justify-between gap-4 py-5 first:pt-0 last:pb-0">
                 <div className="flex min-w-0 items-center gap-4">
-                  <span className={`h-3 w-3 shrink-0 rounded-full ${session.activityType === "WORK" ? "bg-[var(--rt-orange)]" : "bg-[var(--rt-ink-soft)]"}`} />
+                  <span aria-hidden="true" className={`h-3 w-3 shrink-0 rounded-full ${session.activityType === "WORK" ? "bg-[var(--rt-orange)]" : "bg-[var(--rt-ink-soft)]"}`} />
                   <div className="min-w-0">
                     <p className="truncate font-semibold">{session.notes?.trim() || session.activityType.toLowerCase()}</p>
                     <p className="text-sm text-[var(--rt-ink-muted)]">{formatSessionDate(session.endTime!, timeZone)}</p>

@@ -72,10 +72,12 @@ app_resources = app['resources']
 assert {resource['type'] for resource in app_resources} == {'Microsoft.App/containerApps'}
 container_app = app_resources[0]
 props = container_app['properties']
+assert props['configuration']['activeRevisionsMode'] == 'Multiple'
 assert props['template']['terminationGracePeriodSeconds'] == 30
-assert props['template']['scale'] == {'minReplicas': 0, 'maxReplicas': 1}
+assert props['template']['scale'] == {'minReplicas': 1, 'maxReplicas': 1}
 ingress = props['configuration']['ingress']
 assert ingress['external'] is True and ingress['targetPort'] == 8080 and ingress['allowInsecure'] is False
+assert ingress['traffic'] == [{'latestRevision': True, 'weight': 100}]
 container = props['template']['containers'][0]
 assert 'imageDigest' in container['image']
 env = {entry['name']: entry for entry in container['env']}
@@ -97,6 +99,7 @@ assert set(env) == expected, sorted(set(env) ^ expected)
 assert env['ROTRACK_MUTATION_RATE_LIMIT_REQUESTS']['value'] == '30'
 assert env['ROTRACK_MUTATION_RATE_LIMIT_WINDOW']['value'] == '1m'
 assert env['ROTRACK_MUTATION_RATE_LIMIT_MAX_KEYS']['value'] == '10000'
+assert env['ROTRACK_LOGGING_ENVIRONMENT']['value'] == 'production'
 assert 'imageDigest' in json.dumps(env['ROTRACK_SERVICE_VERSION'])
 probes = {probe['type']: probe for probe in container['probes']}
 assert probes['Liveness']['httpGet']['path'] == '/api/v1/health'

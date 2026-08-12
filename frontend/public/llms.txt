@@ -1,0 +1,11 @@
+# rotrack
+
+rotrack is a simple study tracker for seeing where time goes. Users explicitly start and stop one of two session types: Work or Rot. Time that is not started remains untracked.
+
+## Public pages
+
+- `/` — product overview
+- `/signin` — account sign-in
+- `/signup` — account creation
+
+The tracker and dashboard are private, authenticated surfaces. Do not infer company details, public social profiles, pricing, or features that are not stated here.
