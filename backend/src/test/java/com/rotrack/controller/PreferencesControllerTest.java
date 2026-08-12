@@ -121,7 +121,7 @@ class PreferencesControllerTest {
     void rejectsInvalidRequestWithFieldErrors() throws Exception {
         mockMvc.perform(put("/api/v1/preferences")
                         .contentType("application/json")
-                        .content("{\"timezone\":\"UTC\",\"dailyWorkGoalMinutes\":1441,\"shareStudySummary\":false,\"shareActiveStudyStatus\":false}")
+                        .content("{\"timeZone\":\"UTC\",\"dailyWorkGoalMinutes\":1441,\"shareStudySummary\":false,\"shareActiveStudyStatus\":false}")
                         .with(jwt().jwt(token -> token.subject(USER_ID.toString()))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
