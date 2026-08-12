@@ -6,6 +6,7 @@ export interface HistoryEntry {
   activityType: ActivityType;
   startTime: string;
   endTime: string;
+  durationSeconds: number;
   notes: string | null;
 }
 

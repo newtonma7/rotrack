@@ -11,7 +11,7 @@ vi.mock("@/lib/api", () => ({ getPreferences: vi.fn(), updatePreferences: vi.fn(
 vi.mock("@/lib/supabase/client", () => ({
   supabase: { auth: { signOut: vi.fn() } },
 }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/settings" }));
 
 const preferences: UserPreferences = {
   timeZone: "America/New_York",
@@ -35,7 +35,7 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("status").textContent).toMatch(/loading preferences/i);
     expect(await screen.findByDisplayValue("America/New_York")).toBeTruthy();
     expect(screen.getByDisplayValue("90")).toBeTruthy();
-    expect((screen.getByRole("checkbox", { name: /share active study status/i }) as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByRole("checkbox", { name: /share active study status/i }).getAttribute("data-state")).toBe("checked");
   });
 
   it("shows a retry action when loading fails", async () => {
