@@ -121,7 +121,7 @@ export default function SignUp() {
                 aria-invalid={usernameError ? "true" : undefined}
                 aria-describedby={usernameError ? "username-hint username-error" : "username-hint"}
               />
-              <p id="username-hint" role="status" aria-live="polite" className="text-xs text-[var(--rt-ink-muted)]">
+              <p id="username-hint" className="text-xs text-[var(--rt-ink-muted)]">
                 3–24 characters: lowercase letters, numbers, and underscores.
               </p>
               {usernameError && (

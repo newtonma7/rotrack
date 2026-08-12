@@ -96,11 +96,9 @@ class TimeEntryRepositoryPostgresIntegrationTest {
                 email,
                 "{\"username\":\"" + username + "\"}"
         );
-        jdbcTemplate.update("""
-                INSERT INTO public.users(id, email, username)
-                VALUES (?, ?, ?)
-                ON CONFLICT (id) DO NOTHING
-                """, userId, email, username);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT username FROM public.users WHERE id = ?", String.class, userId
+        )).isEqualTo(username);
     }
 
     private TimeEntry entry(UUID userId, Instant start, Instant end) {

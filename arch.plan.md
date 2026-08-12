@@ -156,7 +156,7 @@ No backup, pause alert, resume procedure, export retention, or restore evidence 
 
 - `id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE`
 - `email TEXT UNIQUE NOT NULL`
-- `username TEXT UNIQUE NULL`
+- `username TEXT UNIQUE NOT NULL` — canonical lowercase `^[a-z0-9_]{3,24}$`, reserved names rejected by a database constraint, and immutable after profile creation
 - `created_at TIMESTAMPTZ NOT NULL`
 - `updated_at TIMESTAMPTZ NOT NULL`
 
@@ -339,7 +339,7 @@ One daily log exists per user and local calendar date.
 
 Friendships are mutual and use `PENDING` and `ACCEPTED` states. Store one canonical ordered user pair, the requester, and enforce pair uniqueness. Store blocks separately as directional `(blocker_id, blocked_id)` records so a user can block someone without an existing friendship.
 
-- Friend discovery uses a unique case-normalized public handle. Search requires at least three characters, returns a small rate-limited result set, and never searches or exposes email addresses.
+- The canonical lowercase username becomes the future public handle. It remains owner-readable only until a later architecture decision adds public profiles/search. Search requires at least three characters, returns a small rate-limited result set, and never searches or exposes email addresses.
 - Users cannot friend themselves.
 - Duplicate and reversed requests are rejected.
 - Blocking deletes pending/accepted friendship state and pairwise invitations, prevents new direct interaction, and suppresses pairwise activity/presence projections.

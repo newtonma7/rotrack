@@ -10,10 +10,21 @@ BEGIN
     SELECT 1
     FROM public.users
     WHERE username IS NULL
+       OR username IS DISTINCT FROM lower(btrim(username))
+       OR username !~ '^[a-z0-9_]{3,24}$'
+       OR lower(btrim(username)) = ANY (ARRAY[
+         'admin', 'api', 'support', 'help', 'rotrack', 'signin', 'signup',
+         'confirmation', 'dashboard', 'tracker', 'settings'
+       ]::text[])
+  ) OR EXISTS (
+    SELECT lower(btrim(username))
+    FROM public.users
+    GROUP BY lower(btrim(username))
+    HAVING count(*) > 1
   ) THEN
     RAISE EXCEPTION USING
       ERRCODE = '23514',
-      MESSAGE = 'cannot require usernames while existing users have no username';
+      MESSAGE = 'cannot require usernames while existing data violates the username contract';
   END IF;
 END
 $$;

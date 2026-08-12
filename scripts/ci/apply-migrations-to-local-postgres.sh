@@ -38,7 +38,8 @@ BEGIN;
 CREATE SCHEMA auth;
 CREATE TABLE auth.users (
   id UUID PRIMARY KEY,
-  email TEXT
+  email TEXT,
+  raw_user_meta_data JSONB NOT NULL DEFAULT '{}'::jsonb
 );
 CREATE FUNCTION auth.uid()
 RETURNS UUID
@@ -50,7 +51,7 @@ SQL
 
 while IFS= read -r migration; do
   printf 'Applying %s\n' "$migration"
-  psql "${psql_args[@]}" --file "$migration"
+  psql "${psql_args[@]}" --single-transaction --file "$migration"
 done < <(find database/migrations -maxdepth 1 -type f -name '*.sql' | sort)
 
 printf 'Applied all ordered migrations to the isolated local PostgreSQL target.\n'

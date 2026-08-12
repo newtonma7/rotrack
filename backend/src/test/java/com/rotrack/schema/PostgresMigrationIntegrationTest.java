@@ -42,7 +42,7 @@ class PostgresMigrationIntegrationTest {
     );
 
     @Test
-    void existingNullUsernameMakesMigrationFailWithoutChangingAccounts() throws Exception {
+    void existingUsernameViolationsMakeMigrationFailWithoutChangingAccounts() throws Exception {
         TestDatabaseConfiguration configuration = configuration();
         Assumptions.assumeTrue(APPLY_MODE.equals(configuration.mode()),
                 "the fail-closed apply probe requires an empty target");
@@ -68,6 +68,22 @@ class PostgresMigrationIntegrationTest {
                 assertEquals(1, queryCount(connection, """
                         SELECT count(*) FROM public.users WHERE id = ? AND username IS NULL
                         """, existingUser), "failed migration must not rewrite the existing profile");
+
+                try (PreparedStatement statement = connection.prepareStatement(
+                        "UPDATE public.users SET username = ? WHERE id = ?")) {
+                    statement.setString(1, "Bad Name");
+                    statement.setObject(2, existingUser);
+                    statement.executeUpdate();
+                }
+                expectSqlState(connection, "23514", () -> executeSql(connection, usernameMigration));
+                assertEquals("Bad Name", querySingleString(connection, "SELECT username FROM public.users WHERE id = '" + existingUser + "'"));
+                assertEquals("YES", querySingleString(connection, """
+                        SELECT is_nullable
+                        FROM information_schema.columns
+                        WHERE table_schema = 'public'
+                          AND table_name = 'users'
+                          AND column_name = 'username'
+                        """), "failed migration must not partially set NOT NULL");
             } finally {
                 connection.rollback();
             }

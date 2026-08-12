@@ -219,9 +219,13 @@ mvn -Drotrack.postgres.integration=true \
 Expected result:
 
 ```text
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
 BUILD SUCCESS
 ```
+
+The two tests prove both the fail-closed existing-profile probe and the
+migrated username/signup contract. The apply target must be disposable; the
+migration does not invent or rename existing usernames.
 
 Stop the disposable database:
 
@@ -317,12 +321,13 @@ curl --include --request OPTIONS \
 Verify that the signup trigger created both profiles using an administrative SQL connection:
 
 ```sql
-SELECT count(*)
+SELECT email, username
 FROM public.users
 WHERE email IN ('USER_A_EMAIL', 'USER_B_EMAIL');
 ```
 
-Expected count: `2`.
+Expected result: two rows with valid, distinct lowercase usernames. Do not
+record the real email addresses or usernames in committed evidence.
 
 Do not record the real email addresses in committed evidence.
 
