@@ -31,6 +31,7 @@ export default function TrackerPage() {
         </div>
       </header>
       <main className="px-6 py-16">
+        <h1 className="sr-only">Track your time</h1>
         <ActiveTracker />
       </main>
     </div>

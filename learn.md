@@ -218,3 +218,11 @@ Use these questions to review the completed baseline phases and understand the i
 14. Why is a process-local per-user mutation limiter not a substitute for a fleet-wide, authentication-adjacent edge control?
 15. Why must the evidence record distinguish source safeguards, configured cloud state, observed runtime behavior, and still-unverified operations?
 16. Why is globally disabling Spring CSRF protection a valid CodeQL finding even when the current stateless bearer-token API is not directly vulnerable to browser cookie CSRF, and why should only the `/api/v1/**` boundary be exempted?
+
+### Evidence reconciliation — 2026-08-11
+
+- Source commit `744635c` made the Azure readback/rollback-selection hardening testable; focused contract/readback, publish, preflight, RBAC, container, and release checks passed.
+- A candidate can be fully read back at the canonical ACA/Vercel boundary without making the full production-readiness gate true. Candidate traffic, runtime label, scale, readiness, selected digest/service-version equality, public smoke, API-target-bound authenticated `4/4`, and corrected exact no-schema-change rollback all passed, but M3 remains stopped.
+- Rollback rehearsal must verify both tiers, public behavior, authenticated behavior, candidate restoration, and final candidate health/CORS/auth. “Rollback passed” is not permission to skip unresolved release safeguards.
+- Cleanup is a separate claim: product-owner-retained synthetic accounts and stopped rows must remain explicitly unclaimed when they are not removed.
+- Rate limiting remains an accepted blocker even after application-level defenses and smoke pass. Cloudflare Free is future exploration only. Ten cold-start trials, collector redaction, alert delivery/receipt, and alert routing remain open; the Azure action-group provider test-notification command returned failure, so synthetic alert delivery is **NOT VERIFIED** and no successful delivery or receipt is claimed. The documented backup limitation is accepted.

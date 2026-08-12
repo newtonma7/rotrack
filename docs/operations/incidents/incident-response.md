@@ -1,6 +1,6 @@
 # Incident response and release-stop procedure
 
-**Status:** role and procedure template. Replace placeholders, test routing in staging, and obtain organizational approval before production promotion.
+**Status — 2026-08-12:** procedure remains the incident/release-stop contract. The canonical hosted candidate passed public smoke, hosted authenticated smoke (`4/4`, zero skipped/unexpected/flaky, API-target bound), and corrected exact no-schema-change backend/frontend rollback rehearsal. Rate limiting remains explicitly deferred/accepted; collector redaction, alert delivery/receipt, and alert routing remain open. Ten genuine zero-replica trials completed on 2026-08-11, but p95 readiness was 39.425 seconds, above the 30-second criterion; the canonical shared-hosted app now uses `minReplicas=1` by product-owner decision. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. The backup limitation is accepted as already documented. M3/production-readiness remains STOP.
 
 ## Roles
 
@@ -90,7 +90,7 @@ Any cross-user ownership anomaly, unexpected timer/session mutation, migration m
 
 ## Rollback decision
 
-Application rollback is preferred when impact is release-correlated and the new schema is explicitly compatible with the prior app. Follow the [release runbook](../release/release-runbook.md) and restore immutable frontend/backend artifacts. Leave compatible additive migrations applied.
+Application rollback is preferred when impact is release-correlated and the new schema is explicitly compatible with the prior app. Follow the [release runbook](../release/release-runbook.md) and restore immutable frontend/backend artifacts. Leave compatible additive migrations applied. The 2026-08-11 rehearsal verified prior backend health, prior frontend promotion, rollback public/authenticated smoke, candidate restoration, and final candidate health/CORS/auth; final state was the candidate.
 
 If rollback compatibility is unknown, do not guess. IC, application lead, and database lead choose between traffic containment, reviewed forward fix, and disaster recovery. Active user sessions must not be mass-stopped or rewritten as a mitigation.
 
@@ -120,4 +120,4 @@ The incident record contains sanitized:
 - provider evidence links with access restrictions, not copied raw artifacts;
 - notification/rotation actions and known evidence gaps.
 
-After stabilization, rotate any exposed credentials, remove temporary access, verify telemetry deletion/retention actions, and open corrective work. Hold a blameless review for SEV-1/2 with detection, response, rollback, privacy, and recurrence actions, each with owner and due date. A failed non-production rehearsal produces a problem record and blocks production even when it caused no production incident. Budget alerts are notifications rather than hard spending caps, and cost/credit-expiry data can be delayed; use them to stop scale-out and escalate, not to claim spend is technically capped. Repeated cold-start failures, Free-project pause failures, or backup/restore failures are release risks, not reasons to weaken health or readiness.
+After stabilization, rotate any exposed credentials, remove temporary access, verify telemetry deletion/retention actions, and open corrective work. Hold a blameless review for SEV-1/2 with detection, response, rollback, privacy, and recurrence actions, each with owner and due date. A failed rehearsal produces a problem record and blocks production even when it caused no production incident. The current rehearsal passed, but unresolved rate limiting and observation safeguards still produce STOP. Budget alerts are notifications rather than hard spending caps, and cost/credit-expiry data can be delayed; use them to stop scale-out and escalate, not to claim spend is technically capped. Repeated cold-start failures, Free-project pause failures, or backup/restore failures are release risks, not reasons to weaken health or readiness.
