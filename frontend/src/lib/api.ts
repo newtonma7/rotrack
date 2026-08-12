@@ -17,6 +17,7 @@ import type {
   TimeEntry,
 } from "@/types/time-entry";
 import type { UserPreferences } from "@/types/preferences";
+import type { HistoryEntry, HistoryEntryInput, HistoryPage } from "@/types/history";
 
 // NEXT_PUBLIC_* vars are embedded at build time and visible in the browser — safe for URLs, not secrets.
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ||
@@ -127,5 +128,31 @@ export async function updatePreferences(preferences: UserPreferences): Promise<U
   return apiFetch<UserPreferences>("/preferences", {
     method: "PUT",
     body: JSON.stringify(preferences),
+  });
+}
+
+/** Completed-only history; cursors are returned by the API and passed back unchanged. */
+export async function getHistory(cursor?: string): Promise<HistoryPage> {
+  const search = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
+  return apiFetch<HistoryPage>(`/time-entries/history${search}`);
+}
+
+export async function createHistoryEntry(entry: HistoryEntryInput): Promise<HistoryEntry> {
+  return apiFetch<HistoryEntry>("/time-entries/history", {
+    method: "POST",
+    body: JSON.stringify(entry),
+  });
+}
+
+export async function updateHistoryEntry(id: string, entry: HistoryEntryInput): Promise<HistoryEntry> {
+  return apiFetch<HistoryEntry>(`/time-entries/history/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(entry),
+  });
+}
+
+export async function deleteHistoryEntry(id: string): Promise<void> {
+  await apiFetch<null>(`/time-entries/history/${encodeURIComponent(id)}`, {
+    method: "DELETE",
   });
 }
