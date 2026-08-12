@@ -210,8 +210,8 @@ function HistoryForm({ entry, timeZone, onSave, onCancel }: { entry: HistoryEntr
     }
 
     try {
-      const startTime = toIsoInstant(values.startTime);
-      const endTime = toIsoInstant(values.endTime);
+      const startTime = toIsoInstant(values.startTime, timeZone);
+      const endTime = toIsoInstant(values.endTime, timeZone);
       if (Date.parse(endTime) <= Date.parse(startTime)) {
         setErrors({ endTime: "End time must be after start time." });
         return;
