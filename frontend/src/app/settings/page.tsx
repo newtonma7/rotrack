@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Settings2, Timer } from "lucide-react";
+import { History as HistoryIcon, Settings2, Timer } from "lucide-react";
 import { PreferencesForm } from "@/components/settings/PreferencesForm";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,9 @@ export default function SettingsPage() {
             </Button>
             <Button variant="ghost" asChild className="rounded-full">
               <Link href="/tracker"><Timer aria-hidden="true" />tracker</Link>
+            </Button>
+            <Button variant="ghost" asChild className="rounded-full">
+              <Link href="/history"><HistoryIcon aria-hidden="true" />history</Link>
             </Button>
             <span aria-current="page" className="flex items-center gap-2 rounded-full bg-[var(--rt-cream-soft)] px-4 py-2 text-sm font-semibold">
               <Settings2 aria-hidden="true" className="size-4" />settings

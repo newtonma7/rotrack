@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutDashboard, LogOut, Timer } from "lucide-react";
+import { History, LayoutDashboard, LogOut, Settings2, Timer } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { Button } from "@/components/ui/button";
 
@@ -20,13 +20,19 @@ export function AppNav({
         <Link href="/" className="font-display text-2xl tracking-[-0.02em]">
           rotrack<span className="text-[var(--rt-orange)]">.</span>
         </Link>
-        <nav aria-label="Application" className="flex items-center gap-2">
+        <nav aria-label="Application" className="flex w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end">
           <NavItem route="dashboard" activeRoute={activeRoute} href="/dashboard" icon={<LayoutDashboard aria-hidden="true" />}>
             dashboard
           </NavItem>
           <NavItem route="tracker" activeRoute={activeRoute} href="/tracker" icon={<Timer aria-hidden="true" />}>
             tracker
           </NavItem>
+          <Button variant="ghost" asChild className="rounded-full">
+            <Link href="/history"><History aria-hidden="true" />history</Link>
+          </Button>
+          <Button variant="ghost" asChild className="rounded-full">
+            <Link href="/settings"><Settings2 aria-hidden="true" />settings</Link>
+          </Button>
           <SignOutButton
             aria-label="log out"
             redirectTo={signOutRedirectTo}
