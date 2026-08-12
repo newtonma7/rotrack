@@ -1,6 +1,6 @@
 # M4 API contracts
 
-**Status:** Implemented—unverified. Source, isolated PostgreSQL, and authenticated local-browser checks pass; migrations 004/005 and the application changes have not been applied to the hosted environment.
+**Status:** Verified. Source, isolated PostgreSQL, shared-hosted migrations 003–005, immutable application rollout, and authenticated local/hosted acceptance pass.
 
 M4 uses handwritten DTOs and the existing authenticated native `fetch` client. Every route is under `/api/v1` and derives ownership from the validated JWT `sub`; request bodies never contain `userId` or duration.
 

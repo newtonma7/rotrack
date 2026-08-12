@@ -2,7 +2,15 @@
 
 **Scope:** the approved ACA implementation boundary and its non-production guardrails. This runbook must not target the reserved separate production Azure/Supabase lane. The product-owner-approved single-environment decision allows the canonical hosted candidate to use the shared ACA boundary; it does not waive the M3/production-readiness STOP.
 
-## Current candidate checkpoint — 2026-08-11
+## M4 hosted checkpoint — 2026-08-12
+
+- PR #32 passed all protected checks and merged through the rebase path. The shared hosted database applied ordered migrations 003–005 after explicit product-owner username remediation; no accounts or time entries were deleted.
+- Target preflight and postflight passed: zero overlong notes/overlaps, `btree_gist`, preference backfill/RLS, completed-history constraints, exact runtime grants, and no runtime schema-create privilege.
+- The reviewed M4 backend was published as an immutable Linux/amd64 image and deployed to the canonical ACA boundary. Digest/service-version equality, 100% traffic, scale `1..1`, readiness, health, and exact Production-alias CORS passed. Full provider identifiers remain in private evidence.
+- Vercel Production rebuilt the reviewed tree and the canonical alias returned `200`. Authenticated tracker smoke passed `4/4` with API-target binding; focused settings/history acceptance passed persistence, two-user isolation, create/list/delete, and overlap behavior.
+- M4 is **Verified**. Full M3 production readiness and M5 hosted rollout remain unauthorized/open.
+
+## Previous candidate checkpoint — 2026-08-11
 
 - Source commit `744635c` committed Azure readback/rollback-selection hardening. Focused Azure contract/readback, publish, preflight, RBAC, container, and release checks passed.
 - The reviewed backend candidate was deployed to the canonical ACA implementation boundary. Candidate traffic was 100%; readiness/readback, selected digest/service-version equality, production runtime label, and scale `1..1` passed. Full revision and digest identifiers remain in private evidence.

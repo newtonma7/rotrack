@@ -71,7 +71,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 | Backend container artifact | **Verified** | The non-root Java 21 image passed local liveness/readiness/SIGTERM and sensitive-content inspection. The immutable Linux/amd64 OCI-compatible candidate passed canonical ACA digest/service-version readback; the reserved separate production lane has no claimed artifact. |
 | Canonical hosted deployment | **Implemented—unverified** | On 2026-08-11, source commit `744635c` passed focused Azure contract/readback, publish, preflight, RBAC, container, and release checks. The reviewed backend candidate passed canonical ACA readback, selected digest/service-version equality, production runtime label, scale `1..1`, 100% traffic, and readiness; the same reviewed commit passed canonical Vercel Production alias readback. Public smoke and hosted authenticated smoke passed (`4/4`, zero skipped/unexpected/flaky, with API-target binding). The corrected no-schema-change backend/frontend rollback rehearsal passed and ended on the candidate. Rate limiting remains an accepted blocker; collector redaction, alert delivery/receipt, and alert routing remain open. Ten genuine zero-replica trials completed on 2026-08-11 with readiness 10/10, p50 34.586 seconds, and p95/max 39.425 seconds; the 30-second p95 criterion was not met, so scale-to-zero remains an explicitly accepted risk rather than a verified pass. Retained operator-owned synthetic accounts and stopped rows are not claimed as cleaned up; the separate production Supabase/Azure lane remains reserved. |
 | Release safeguards and observability | **In progress** | Source commit `744635c` includes the Azure readback/rollback-selection hardening and focused release checks passed. Public and hosted authenticated smoke plus the corrected exact rollback rehearsal passed. Rate limiting remains explicitly deferred/accepted; collector redaction, alert delivery/receipt, and alert routing evidence remain incomplete. Ten genuine zero-replica trials completed on 2026-08-11, but p95 readiness was 39.425 seconds, above the 30-second criterion; scale-to-zero remains an explicitly accepted risk, not a verified pass. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. |
-| M4 preferences and completed history | **Implemented—unverified** | Owned settings/history source, migrations 004/005, typed contracts, real PostgreSQL probes, and authenticated local-browser acceptance pass. Hosted rollout may proceed only under the dated zero-user/pre-user M4 override and applicable M4 checks; M4 remains unverified until rollout evidence passes. |
+| M4 preferences and completed history | **Verified** | PR #32 merged through the protected path. The shared hosted database was remediated with product-owner-supplied usernames, then migrations 003–005 applied; catalog/grants/readiness, immutable ACA/Vercel rollout, authenticated tracker smoke, and focused hosted settings/history acceptance passed. |
 | Notes, logs, friends, groups | **Not started** | Architecture defined; implementation follows the verified M3-P source/local unlock, while hosted work and full production readiness remain release-gated. |
 
 **Canonical hosted residual gate — 2026-08-11:** The shared ACA implementation boundary and canonical Vercel Production alias are deployed from the reviewed source commit, with candidate traffic, readiness/readback, digest/service-version equality, runtime label, scale, public smoke, API-target-bound authenticated smoke, and corrected no-schema-change rollback evidence passing. Retained operator-owned synthetic accounts and stopped rows remain by product-owner decision; cleanup is not claimed. Rate limiting remains explicitly deferred/accepted. Collector redaction, alert delivery/receipt, and alert routing evidence remain open. Ten genuine zero-replica trials completed on 2026-08-11, but p95 readiness was 39.425 seconds, above the 30-second criterion; scale-to-zero remains an explicitly accepted risk, not a verified pass. The Free-plan backup limitation is accepted as already documented. The M3/production-readiness STOP remains.
@@ -509,7 +509,7 @@ This is the launch gate for the current product goal, distinct from the full M3 
 
 **Product-owner decision — M4 source/local unlock (2026-08-12):** M3-P is **Verified**, so M4 source and local-environment work may begin for the 0–20-user scope without waiting for the full M3 production-readiness gate. This is a sequencing decision, not a full-readiness claim.
 
-**Product-owner decision — narrow shared-hosted M4 rollout override (2026-08-12):** For the zero-user/pre-user boundary only, migrations `004_user_preferences.sql` and `005_time_entry_history.sql`, the reviewed M4 application deployment, and hosted M4 acceptance may proceed despite the full M3 gate. Unresolved M3 operational risks remain unverified. This does not authorize M5 hosted rollout or broad production-readiness claims. M4 remains **Implemented—unverified** until rollout evidence passes.
+**Product-owner decision — narrow shared-hosted M4 rollout override (2026-08-12):** For the zero-user/pre-user boundary only, migrations `004_user_preferences.sql` and `005_time_entry_history.sql`, the reviewed M4 application deployment, and hosted M4 acceptance could proceed despite the full M3 gate. The authorized rollout passed, so M4 is **Verified**. Unresolved M3 operational risks remain unverified. This does not authorize M5 hosted rollout or broad production-readiness claims.
 
 **Status:** Verified — pre-user risk accepted; full M3 production-readiness remains not met.
 
@@ -600,7 +600,7 @@ The gate requires all of the following:
 
 ### M4.1 — Profile and preferences
 
-**Status:** Implemented—unverified
+**Status:** Verified
 
 - Add `user_preferences`, an ownership-scoped API, and `/settings` UI.
 - Save a validated IANA timezone or leave it unset; use the browser IANA timezone as the effective fallback until a saved value exists.
@@ -615,11 +615,12 @@ The gate requires all of the following:
 - Focused red/green checks passed for JSON serialization/deserialization, invalid-timezone `timeZone` field errors, preference mutation `429`, stable route templates, two-user preference RLS/runtime-role/JPA behavior, settings save locking/state reset/field associations, and sign-in return routing.
 - Java 21 `mvn clean test package` passed: 114 tests, 0 failures/errors, 7 expected opt-in PostgreSQL skips. Frontend `npm run lint`, `npm run typecheck`, full Vitest, and production build passed: 41 tests across 12 files. Migration order, staging runtime-role operational guards, and `git diff --check` passed. Disposable Podman PostgreSQL 17.6 apply and verify runs passed, including the two-user preference/RLS/runtime-role/JPA probes.
 - Authenticated browser acceptance — 2026-08-12: the settings flow passed against `http://localhost:3001` and a disposable loopback PostgreSQL 17.10 database with migrations 001–005. The run verified private defaults, client-side invalid-IANA rejection without an API mutation, persisted `Europe/Berlin`/90-minute/sharing values after reload, and unchanged defaults for a second user. Approved external disposable auth states were copied to temporary mode-`0600` files and rebound to the local origin; no hosted database or cloud resource was mutated.
-- Frontend revalidation after the browser-discovered timezone fix passed lint, typecheck, 65/65 Vitest tests, and the placeholder-config production build. This remains **Implemented—unverified** because hosted migration/deployment and the M4 Verified gate remain release-gated.
+- Frontend revalidation after the browser-discovered timezone fix passed lint, typecheck, 65/65 Vitest tests, and the placeholder-config production build.
+- Hosted verification — 2026-08-12: after product-owner-supplied usernames remediated four legacy null profiles, ordered migrations 003–005 applied to the shared hosted database. Preference backfill/RLS/runtime grants passed; authenticated hosted preference persistence and two-user isolation passed.
 
 ### M4.2 — Time-entry history and manual corrections
 
-**Status:** Implemented—unverified
+**Status:** Verified
 **Dependencies:** M4.1
 
 - Add owned list/create/update/delete APIs for completed history entries; history excludes every active entry.
@@ -640,7 +641,7 @@ The gate requires all of the following:
 
 ### M4.3 — Native typed contract policy
 
-**Status:** Implemented—unverified
+**Status:** Verified
 
 - Document each implemented M4 request/response contract and stable error codes at the slice boundary.
 - Keep DTOs handwritten and typed on both backend and frontend, using the existing authenticated native-`fetch` wrapper; do not add OpenAPI/code generation.
@@ -650,9 +651,17 @@ The gate requires all of the following:
 
 - Added [`docs/specs/m4-contracts.md`](docs/specs/m4-contracts.md), corrected the canonical `GET /api/v1/time-entries/history` route in the API tables/runbook, and documented `VALIDATION_ERROR`, `INVALID_CURSOR`, `TIME_ENTRY_OVERLAP`, `ACTIVE_SESSION_EXISTS`, `NOT_FOUND`, and `RATE_LIMITED` behavior.
 - Existing handwritten Java records, TypeScript interfaces, authenticated native `fetch`, backend controller/service tests, and frontend API/component tests cover the documented shapes and failure cases.
-- Authenticated real-browser acceptance now passes locally for the documented preference and history contracts. This remains **Implemented—unverified** because hosted migration/deployment remains outside this release-gated lane.
+- Authenticated real-browser acceptance passes locally and against the shared hosted boundary for the documented preference and history contracts.
 
-**Milestone gate:** Not met. Authenticated local browser acceptance now passes, but preferences, completed-only history, and native typed contracts remain **Implemented—unverified** until the applicable hosted migration/deployment release checks pass.
+**Hosted verification evidence — 2026-08-12:**
+
+- PR #32 passed all protected required checks and merged through the rebase path. Source commit `73d2610` produced the reviewed release.
+- Hosted preflight found zero overlong notes and zero same-user overlaps with `btree_gist` available. Migration 003 was missing and four profiles had null usernames, so rollout stopped before mutation; the product owner supplied `newton`, `newton1`, and `newton2`, while the fourth profile retained its valid Auth metadata username. Migrations 003, 004, and 005 then applied in order without deleting accounts or time entries.
+- Catalog verification passed username constraints, preference backfill/RLS, `btree_gist`, notes and overlap constraints, exact `rotrack_runtime` grants, BYPASSRLS safety fields, no schema-create privilege, and no remaining overlaps. The hosted JPA/repository suite passed 8/8; its broader RLS-role probe was not applicable because the migration identity cannot `SET ROLE` to the temporary probe role.
+- The immutable Linux/amd64 backend image was published and deployed to the canonical ACA boundary; digest/service-version readback, 100% latest traffic, scale `1..1`, health, readiness, and exact allowed/denied CORS passed. Vercel Production rebuilt the same reviewed tree and the canonical alias returned `200`.
+- Authenticated hosted Playwright passed the four required tracker/ownership scenarios with API-target binding. Focused hosted M4 acceptance passed private defaults, preference persistence and two-user isolation, completed-history create/list/delete and isolation, and stable `TIME_ENTRY_OVERLAP`; acceptance mutations were cleaned up or restored.
+
+**Milestone gate:** **Verified.** M4 is ready as the database/application prerequisite for M5 source work. This does not authorize M5 hosted rollout or claim full M3 production readiness.
 
 ## 8. Milestone 5 — WYSIWYG Notes and Daily Study Logs
 
