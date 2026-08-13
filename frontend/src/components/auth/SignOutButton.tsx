@@ -10,6 +10,7 @@
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
+import { requestAppNavigation } from "@/lib/navigation-guard";
 import { Button } from "@/components/ui/button";
 
 export function SignOutButton({
@@ -34,7 +35,7 @@ export function SignOutButton({
     <Button
       type="button"
       variant="ghost"
-      onClick={() => void handleSignOut()}
+      onClick={() => requestAppNavigation(() => void handleSignOut())}
       aria-label={ariaLabel}
       className={className}
     >

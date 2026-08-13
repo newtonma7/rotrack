@@ -70,7 +70,7 @@ export function validateRichTextDocument(value: unknown): RichTextValidation {
       case "orderedList": {
         requireAllowedKeys(node, ["type", "attrs", "content"]);
         if (!Array.isArray(node.content) || node.content.length === 0) throw new Error("Lists must contain an item.");
-        if (node.attrs !== undefined && (!isObject(node.attrs) || !exactKeys(node.attrs, ["start", "type"]) || ("type" in node.attrs && node.attrs.type !== null))) throw new Error("Ordered list attributes are invalid.");
+        if (node.attrs !== undefined && (!isObject(node.attrs) || !exactKeys(node.attrs, ["start"]))) throw new Error("Ordered list attributes are invalid.");
         const startValue = node.attrs === undefined ? 1 : node.attrs.start ?? 1;
         if (!Number.isInteger(startValue) || (startValue as number) < 1) throw new Error("Ordered list start must be a positive integer.");
         const items = node.content.map((item) => validateListItem(item, depth + 1));
@@ -134,7 +134,7 @@ export function validateRichTextDocument(value: unknown): RichTextValidation {
         if (!exactKeys(mark, ["type"])) throw new Error("Text mark attributes are invalid.");
         return { type: mark.type } as RichTextMark;
       }
-      if (mark.type === "link" && isObject(mark.attrs) && exactKeys(mark.attrs, ["href"]) && typeof mark.attrs.href === "string" && isSafeLink(mark.attrs.href)) {
+      if (mark.type === "link" && isObject(mark.attrs) && exactKeys(mark.attrs, ["href"]) && typeof mark.attrs.href === "string" && isSafeRichTextLink(mark.attrs.href)) {
         return { type: "link", attrs: { href: mark.attrs.href } } as RichTextMark;
       }
       throw new Error("Only safe http(s) and mailto links are supported.");
@@ -163,7 +163,7 @@ function markOrder(type: string): number {
   return type === "bold" ? 0 : type === "italic" ? 1 : 2;
 }
 
-function isSafeLink(value: string): boolean {
+export function isSafeRichTextLink(value: string): boolean {
   try {
     const url = new URL(value);
     if (url.protocol === "http:" || url.protocol === "https:") return Boolean(url.hostname);

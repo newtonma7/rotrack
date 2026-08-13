@@ -4,31 +4,18 @@ import { useEffect, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
-import { validateRichTextDocument } from "@/lib/rich-text";
+import { isSafeRichTextLink, validateRichTextDocument } from "@/lib/rich-text";
 import type { RichTextDocument } from "@/types/notes";
 
 const EMPTY_DOCUMENT: RichTextDocument = { schemaVersion: 1, document: { type: "doc", content: [] } };
 
-export function isSafeRichTextLink(value: string): boolean {
-  try {
-    const url = new URL(value.trim());
-    if (url.protocol === "http:" || url.protocol === "https:") return Boolean(url.hostname);
-    if (url.protocol === "mailto:") return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(url.pathname);
-    return false;
-  } catch {
-    return false;
-  }
-}
-
 export function RichTextEditor({
   initialContent = EMPTY_DOCUMENT,
   onChange,
-  onSelectedLinkChange,
   ariaLabel = "Note content",
 }: {
   initialContent?: RichTextDocument;
   onChange?: (document: RichTextDocument, text: string) => void;
-  onSelectedLinkChange?: (href: string | null) => void;
   ariaLabel?: string;
 }) {
   const [linkOpen, setLinkOpen] = useState(false);
@@ -57,14 +44,14 @@ export function RichTextEditor({
       },
     },
     onUpdate: ({ editor: current }) => {
-      const draft = { schemaVersion: 1 as const, document: { type: "doc" as const, content: (current.getJSON() as unknown as { content?: RichTextDocument["document"]["content"] }).content ?? [] } };
+      const json = adaptTiptapJson(current.getJSON()) as { content?: RichTextDocument["document"]["content"] };
+      const draft = { schemaVersion: 1 as const, document: { type: "doc" as const, content: json.content ?? [] } };
       const validation = validateRichTextDocument(draft);
       onChange?.(validation.ok ? validation.document : draft, current.getText());
     },
     onSelectionUpdate: ({ editor: current }) => {
       const href = current.getAttributes("link").href ?? null;
       setSelectedLink(href);
-      onSelectedLinkChange?.(href);
     },
   });
 
@@ -78,12 +65,11 @@ export function RichTextEditor({
       if (!href) return;
       event.preventDefault();
       setSelectedLink(href);
-      onSelectedLinkChange?.(href);
     };
     const editorDom = editor.view.dom;
     editorDom.addEventListener("click", handleLinkClick);
     return () => editorDom.removeEventListener("click", handleLinkClick);
-  }, [editor, onSelectedLinkChange]);
+  }, [editor]);
 
   useEffect(() => {
     if (!editor) return;
@@ -153,6 +139,18 @@ export function RichTextEditor({
       )}
     </div>
   );
+}
+
+function adaptTiptapJson(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(adaptTiptapJson);
+  if (!value || typeof value !== "object") return value;
+  const node = Object.fromEntries(Object.entries(value).map(([key, child]) => [key, adaptTiptapJson(child)]));
+  if (node.type === "orderedList" && node.attrs && typeof node.attrs === "object" && (node.attrs as { type?: unknown }).type === null) {
+    const attrs = { ...node.attrs as Record<string, unknown> };
+    delete attrs.type;
+    node.attrs = attrs;
+  }
+  return node;
 }
 
 function ToolbarButton({ label, active, disabled, onClick, children }: { label: string; active?: boolean; disabled?: boolean; onClick: () => void; children: React.ReactNode }) {

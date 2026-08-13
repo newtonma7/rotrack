@@ -144,7 +144,7 @@ export function useNoteAutosave({
       return true;
     } catch (requestError) {
       if (!mountedRef.current) return false;
-      if (requestError instanceof ApiRequestError && (requestError.code === "RICH_TEXT_VERSION_CONFLICT" || requestError.status === 409 && requestError.code.includes("VERSION"))) {
+      if (requestError instanceof ApiRequestError && requestError.code === "RICH_TEXT_VERSION_CONFLICT") {
         setStatus("Conflict");
         setError("This Note changed elsewhere. Your edits are preserved.");
         return false;
@@ -157,7 +157,7 @@ export function useNoteAutosave({
           retryRef.current = setTimeout(() => void performSave(revision, true), requestError.retryAfterMs ?? 1000);
         }
       } else {
-        setStatus(navigator.onLine === false ? "Offline" : "Offline");
+        setStatus("Offline");
         setError("Your edits are safe in this tab. Edit again or retry when the connection returns.");
       }
       return false;
@@ -266,6 +266,6 @@ export function useNoteAutosave({
     retry,
     reloadServerVersion,
     saveAsNew,
-    emptyDocument: EMPTY_DOCUMENT,
+    getCurrentNote: () => noteRef.current,
   };
 }
