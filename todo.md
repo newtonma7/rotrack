@@ -690,7 +690,7 @@ The gate requires all of the following:
 
 ### M5.2 — Rich-text editors and Notes workspace
 
-**Status:** Not started
+**Status:** Implemented—unverified
 **Dependencies:** M5.1
 
 - Add only Tiptap core/React/StarterKit/Link and one client-only editor/toolbar primitive exposing paragraph, H2/H3, bold/italic, lists, blockquote, safe links, undo, and redo.
@@ -698,6 +698,13 @@ The gate requires all of the following:
 - Create a Note only on a first meaningful edit, capture the then-active entry or standalone status, serialize/coalesce 750 ms autosaves, and expose Draft/Saving/Saved/Waiting/Offline/Conflict.
 - Preserve current-tab edits across rate limits, network errors, and conflicts; flush before in-app leave, warn before discarding/closing, never unload-save, and provide explicit copy/reload or Save-as-new-Note conflict actions without silent merge/overwrite.
 - Test keyboard/toolbar/link safety, size preflight, idempotent ambiguous create, retry timing, route transitions, attachment changes, cross-tab conflict, destructive confirmation, mobile stacking, split desktop workspace, and accessible status/error announcements.
+
+**Implementation and local verification evidence — 2026-08-13:**
+
+- Added the four approved Tiptap packages, one client-only version-1 editor/toolbar, server-compatible rich-text canonicalization and size preflight, serialized/coalesced autosave, stable creation keys, explicit rate-limit/offline/conflict handling, navigation and unload-loss safeguards, and copy/reload/Save-as-new conflict actions.
+- Added protected `/notes` and `/notes/{id}` routes, summary pagination and attachment filters, a desktop split/mobile navigated workspace, tracker-side editor integration, attachment changes, deletion confirmation, and accessible save/error states without changing explicit timer lifecycle behavior.
+- Frontend lint, typecheck, 101/101 Vitest tests, and the placeholder-config production build passed. Authenticated local Playwright passed 1/1 against the local frontend/API and disposable PostgreSQL, covering autosave, persisted reload, two-tab optimistic conflict, Save as new Note, two-user isolation, mobile stable-route behavior, and cleanup.
+- Independent Standards/Spec review against baseline `7dff25c4` found no material contract issue after fixes; the final complexity review found no shipment-blocking simplification. Hosted M5 migration/rollout was not performed or authorized. Status remains **Implemented—unverified** until the protected pull-request checks and review path complete.
 
 ### M5.3 — Generated Daily Logs and Reflections
 
