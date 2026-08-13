@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createNote, updateNote } from "@/lib/api";
 import { ApiRequestError } from "@/lib/api-errors";
+import { validateRichTextDocument } from "@/lib/rich-text";
 import type { CreateNoteRequest, Note, RichTextDocument } from "@/types/notes";
 
 export type NoteSaveStatus = "Draft" | "Saving" | "Saved" | "Waiting" | "Offline" | "Conflict";
@@ -94,7 +95,13 @@ export function useNoteAutosave({
       return performSave(revisionRef.current);
     }
     if (!dirtyRef.current || (!noteRef.current && !meaningful())) return true;
-    const serializedSize = noteContentSize(documentRef.current);
+    const validation = validateRichTextDocument(documentRef.current);
+    if (!validation.ok) {
+      setError(validation.error);
+      setStatus("Waiting");
+      return false;
+    }
+    const serializedSize = noteContentSize(validation.document);
     if (serializedSize > 262_144) {
       setSizeError("This document is too large to save. Remove content until it is under 256 KiB.");
       setStatus("Waiting");
@@ -106,7 +113,7 @@ export function useNoteAutosave({
     inFlightRef.current = true;
     const request: CreateNoteRequest = {
       title: titleRef.current.trim() || null,
-      contentJson: documentRef.current,
+      contentJson: validation.document,
       timeEntryId: attachmentRef.current,
     };
     try {
@@ -202,6 +209,8 @@ export function useNoteAutosave({
   }, [clearScheduled, performSave]);
 
   const setAttachment = useCallback((value: string | null) => {
+    // An explicit choice is the draft's context, even when the title/editor is still empty.
+    capturedRef.current = true;
     markChanged(titleRef.current, documentRef.current, contentTextRef.current, value);
   }, [markChanged]);
 
