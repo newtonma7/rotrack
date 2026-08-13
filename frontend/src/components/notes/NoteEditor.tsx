@@ -107,8 +107,9 @@ export const NoteEditor = forwardRef<NoteEditorHandle, {
   };
 
   return (
-    <section aria-label="Note editor" className="min-w-0 rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-5 shadow-[0_20px_50px_-20px_rgba(10,10,10,0.12)] md:p-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <section aria-label="Note editor" className="group relative min-w-0 overflow-hidden rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-5 shadow-[0_20px_50px_-20px_rgba(10,10,10,0.12)] md:p-8">
+      <span aria-hidden="true" className="pointer-events-none absolute -right-20 -top-20 size-48 rounded-full bg-[var(--rt-orange)] opacity-[0.06] transition-transform duration-500 group-hover:scale-110" />
+      <div className="relative flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <label htmlFor="note-title" className="sr-only">Note title</label>
           <input id="note-title" value={autosave.title} onChange={(event) => autosave.setTitle(event.target.value)} placeholder={initialNote?.preview || "untitled note"} maxLength={120} className="w-full bg-transparent font-display text-3xl tracking-[-0.02em] outline-none placeholder:text-[var(--rt-ink-muted)] focus-visible:ring-2 focus-visible:ring-[var(--rt-orange)] md:text-4xl" />
@@ -126,8 +127,8 @@ export const NoteEditor = forwardRef<NoteEditorHandle, {
         </div>
       </div>
 
-      <div className="mt-6"><RichTextEditor initialContent={autosave.document} onChange={autosave.setContent} /></div>
-      <div className="mt-5 flex flex-wrap items-end gap-4">
+      <div className="relative mt-6"><RichTextEditor initialContent={autosave.document} onChange={autosave.setContent} /></div>
+      <div className="relative mt-5 flex flex-wrap items-end gap-4">
         <label className="min-w-56 flex-1 text-sm font-semibold" htmlFor="note-attachment">Attachment
           <select id="note-attachment" value={autosave.attachmentId ?? "standalone"} onChange={(event) => autosave.setAttachment(event.target.value === "standalone" ? null : event.target.value)} className="mt-2 block w-full rounded-full border border-[var(--rt-line)] bg-[var(--rt-paper)] px-4 py-2 font-normal outline-none focus-visible:ring-2 focus-visible:ring-[var(--rt-orange)]">
             <option value="standalone">Standalone</option>
