@@ -11,7 +11,7 @@ export type NoteSaveStatus = "Draft" | "Saving" | "Saved" | "Waiting" | "Offline
 const EMPTY_DOCUMENT: RichTextDocument = { schemaVersion: 1, document: { type: "doc", content: [] } };
 
 function createKey(): string {
-  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return globalThis.crypto.randomUUID();
 }
 
 function byteLength(value: string): number {

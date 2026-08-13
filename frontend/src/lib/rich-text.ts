@@ -48,15 +48,19 @@ export function validateRichTextDocument(value: unknown): RichTextValidation {
     visit(depth);
     if (!isObject(node) || typeof node.type !== "string") throw new Error("The document contains an unsupported node.");
     switch (node.type) {
-      case "paragraph":
+      case "paragraph": {
         requireAllowedKeys(node, ["type", "content"]);
-        return { type: "paragraph", content: validateTextContent(node.content, depth + 1) };
-      case "heading":
+        const content = validateTextContent(node.content, depth + 1);
+        return { type: "paragraph", ...(content.length ? { content } : {}) };
+      }
+      case "heading": {
         requireAllowedKeys(node, ["type", "attrs", "content"]);
         if (!isObject(node.attrs) || !exactKeys(node.attrs, ["level"]) || (node.attrs.level !== 2 && node.attrs.level !== 3)) {
           throw new Error("Only level 2 and 3 headings are supported.");
         }
-        return { type: "heading", attrs: { level: node.attrs.level }, content: validateTextContent(node.content, depth + 1) };
+        const content = validateTextContent(node.content, depth + 1);
+        return { type: "heading", attrs: { level: node.attrs.level }, ...(content.length ? { content } : {}) };
+      }
       case "bulletList": {
         requireAllowedKeys(node, ["type", "content"]);
         if (!Array.isArray(node.content) || node.content.length === 0) throw new Error("Lists must contain an item.");
@@ -111,7 +115,8 @@ export function validateRichTextDocument(value: unknown): RichTextValidation {
   function validateParagraph(node: unknown, depth: number): RichTextParagraph {
     visit(depth);
     if (!isObject(node) || node.type !== "paragraph" || !exactKeys(node, ["type", "content"])) throw new Error("Paragraph is invalid.");
-    return { type: "paragraph", content: validateTextContent(node.content, depth + 1) };
+    const content = validateTextContent(node.content, depth + 1);
+    return { type: "paragraph", ...(content.length ? { content } : {}) };
   }
 
   function validateQuoteChild(node: unknown, depth: number): RichTextBlockquoteChild {

@@ -12,13 +12,13 @@ export interface RichTextText {
 
 export interface RichTextParagraph {
   type: "paragraph";
-  content: RichTextText[];
+  content?: RichTextText[];
 }
 
 export interface RichTextHeading {
   type: "heading";
   attrs: { level: 2 | 3 };
-  content: RichTextText[];
+  content?: RichTextText[];
 }
 
 export interface RichTextListItem {

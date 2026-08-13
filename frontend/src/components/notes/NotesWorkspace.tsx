@@ -105,7 +105,16 @@ export function NotesWorkspace({ selectedNoteId = null }: { selectedNoteId?: str
       router.replace(`/notes/${saved.id}`);
     }
     setNotes((current) => dedupeSummaries([saved, ...current]));
-    if (!selectedNoteId) setDraftNonce((current) => current + 1);
+  };
+
+  const startNewNote = async () => {
+    const flushed = await editorRef.current?.flush() ?? true;
+    if (!flushed && !window.confirm("Your edits could not be saved. Leave and lose these edits?")) return;
+    if (selectedNoteId) {
+      router.push("/notes");
+    } else {
+      setDraftNonce((current) => current + 1);
+    }
   };
 
   const handleDelete = async (note: Note) => {
@@ -130,7 +139,7 @@ export function NotesWorkspace({ selectedNoteId = null }: { selectedNoteId?: str
       <main className="mx-auto max-w-[1400px] px-6 py-10 md:px-10 md:py-14">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-5">
           <div><p className="mb-2 text-[0.8rem] font-semibold uppercase tracking-[0.2em] text-[var(--rt-orange)]">private study context</p><h1 className="font-display text-[clamp(2.8rem,7vw,5.5rem)] leading-[0.92]">notes<span className="text-[var(--rt-orange)]">.</span></h1></div>
-          <Button onClick={() => void leaveEditor("/notes")} className="rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] hover:bg-[var(--rt-orange-deep)]">New note</Button>
+          <Button onClick={() => void startNewNote()} className="rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] hover:bg-[var(--rt-orange-deep)]">New note</Button>
         </div>
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(260px,0.75fr)_minmax(0,1.5fr)]">
           <aside aria-label="Notes library" className="rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-5 md:p-6">
