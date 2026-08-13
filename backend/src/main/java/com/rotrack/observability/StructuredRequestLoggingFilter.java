@@ -42,10 +42,16 @@ public final class StructuredRequestLoggingFilter extends OncePerRequestFilter {
             "FORBIDDEN",
             "INTERNAL_ERROR",
             "INVALID_PARAMETER",
+            "INVALID_CURSOR",
             "INVALID_TOKEN",
             "MALFORMED_JSON",
             "NOT_FOUND",
             "RATE_LIMITED",
+            "RICH_TEXT_VERSION_CONFLICT",
+            "IDEMPOTENCY_CONFLICT",
+            "NOTE_DELETED",
+            "TIME_ENTRY_OVERLAP",
+            "TIME_ENTRY_NOT_FOUND",
             "VALIDATION_ERROR"
     );
 

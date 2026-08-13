@@ -18,6 +18,13 @@ import type {
 } from "@/types/time-entry";
 import type { UserPreferences } from "@/types/preferences";
 import type { HistoryEntry, HistoryEntryInput, HistoryPage } from "@/types/history";
+import type {
+  CreateNoteRequest,
+  Note,
+  NoteListFilters,
+  NotePage,
+  UpdateNoteRequest,
+} from "@/types/notes";
 
 // NEXT_PUBLIC_* vars are embedded at build time and visible in the browser — safe for URLs, not secrets.
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ||
@@ -154,6 +161,42 @@ export async function updateHistoryEntry(id: string, entry: HistoryEntryInput): 
 
 export async function deleteHistoryEntry(id: string): Promise<void> {
   await apiFetch<null>(`/time-entries/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+/** List owned Note summaries; filters are opaque API values and combine with AND. */
+export async function getNotes(filters: NoteListFilters = {}): Promise<NotePage> {
+  const search = new URLSearchParams();
+  if (filters.cursor !== undefined) search.set("cursor", filters.cursor);
+  if (filters.attachment !== undefined) search.set("attachment", filters.attachment);
+  if (filters.timeEntryId !== undefined) search.set("timeEntryId", filters.timeEntryId);
+  const query = search.toString();
+  return apiFetch<NotePage>(`/notes${query ? `?${query}` : ""}`);
+}
+
+export async function createNote(request: CreateNoteRequest, idempotencyKey: string): Promise<Note> {
+  return apiFetch<Note>("/notes", {
+    method: "POST",
+    headers: { "Idempotency-Key": idempotencyKey },
+    body: JSON.stringify(request),
+  });
+}
+
+export async function getNote(id: string): Promise<Note> {
+  return apiFetch<Note>(`/notes/${encodeURIComponent(id)}`);
+}
+
+export async function updateNote(id: string, request: UpdateNoteRequest): Promise<Note> {
+  return apiFetch<Note>(`/notes/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(request),
+  });
+}
+
+export async function deleteNote(id: string, expectedVersion: number): Promise<void> {
+  const search = new URLSearchParams({ expectedVersion: String(expectedVersion) });
+  await apiFetch<null>(`/notes/${encodeURIComponent(id)}?${search.toString()}`, {
     method: "DELETE",
   });
 }

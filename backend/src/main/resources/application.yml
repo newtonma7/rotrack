@@ -40,6 +40,9 @@ rotrack:
     enabled: ${ROTRACK_STRUCTURED_LOGGING_ENABLED:false}
     environment: ${ROTRACK_LOGGING_ENVIRONMENT:staging}
     service-version: ${ROTRACK_SERVICE_VERSION:local}
+  notes:
+    writes-enabled: ${ROTRACK_NOTES_WRITES_ENABLED:true}
+    hmac-secret: ${ROTRACK_NOTES_HMAC_SECRET:}
   security:
     jwt:
       audience: ${SUPABASE_JWT_AUDIENCE:authenticated}

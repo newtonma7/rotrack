@@ -59,8 +59,10 @@ class CorsConfigurationTest {
         assertThat(configuration).isNotNull();
         assertThat(configuration.getAllowedOrigins()).containsExactly("https://app.example.test");
         assertThat(configuration.getAllowedMethods()).containsExactly("GET", "POST", "PUT", "DELETE", "OPTIONS");
-        assertThat(configuration.getAllowedHeaders()).containsExactly("Authorization", "Content-Type", "Accept");
+        assertThat(configuration.getAllowedHeaders()).containsExactly(
+                "Authorization", "Content-Type", "Accept", "Idempotency-Key");
         assertThat(configuration.getAllowCredentials()).isTrue();
+        assertThat(configuration.getExposedHeaders()).containsExactly("X-Request-ID", "Retry-After");
         assertThat(configuration.checkOrigin("https://untrusted.example.test")).isNull();
     }
 

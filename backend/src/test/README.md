@@ -23,7 +23,7 @@ Choose one target and mode:
 
 - `apply` requires an empty disposable database. It creates a minimal
   `auth.users`/`auth.uid()` test contract only when PostgreSQL does not already
-  provide one, applies checked-in migrations `001` through `005`, proves the
+  provide one, applies checked-in migrations `001` through `006`, proves the
   invariants, and rolls back all DDL and data. Run only the raw migration test,
   because the rollback intentionally leaves no schema for a later Spring context:
 
@@ -38,8 +38,14 @@ Choose one target and mode:
 
   ```bash
   ROTRACK_TEST_DATABASE_MODE=verify mvn -Drotrack.postgres.integration=true \
-    -Dtest='PostgresMigrationIntegrationTest,TimeEntryRepositoryPostgresIntegrationTest' test
+    -Dtest='PostgresMigrationIntegrationTest,TimeEntryRepositoryPostgresIntegrationTest,NoteServicePostgresIntegrationTest' test
   ```
+
+`NoteServicePostgresIntegrationTest` uses the public Note service/repository seam to verify
+non-transactional reads, exactly-one concurrent creation, replay conflicts/deleted replays,
+attachment move/detach and Time Entry deletion, history attachment counts, stale versions,
+and ownership. It is intentionally verify-mode only because it needs a committed migrated
+schema.
 
 The role needs enough permission for the selected mode, including temporary
 fixture inserts into `auth.users` and `public.users`. The raw migration test and
@@ -58,7 +64,8 @@ Spring Data repository test prove that:
 - RLS is enabled with the seven named ownership policies, and the isolated PostgreSQL probe verifies two-user preference read/update/insert isolation;
 - the hardened signup trigger reads raw metadata, creates canonical
   rollback-only fixture profiles, and rejects invalid/reserved/duplicate names; and
-- `TimeEntryRepository.saveAndFlush` reaches those real PostgreSQL constraints and owner-scoped active reads; the JPA integration test also exercises the transactional service update and two users' preferences, while the catalog probe verifies `rotrack_runtime` has SELECT/INSERT/UPDATE/DELETE on `time_entries`, exactly SELECT/INSERT/UPDATE on `user_preferences`, and no preference DELETE.
+- `TimeEntryRepository.saveAndFlush` reaches those real PostgreSQL constraints and owner-scoped active reads; the JPA integration test also exercises the transactional service update and two users' preferences; and
+- the Notes catalog probe verifies API-only browser access, ownership/link constraints, and exact `rotrack_runtime` grants for Notes and creation replay metadata.
 
 When integration is enabled, missing or unsafe configuration fails instead of
 silently skipping. Catalog and rollback-only trigger checks do not prove the

@@ -20,6 +20,7 @@ import com.rotrack.exception.ConflictException;
 import com.rotrack.exception.ResourceNotFoundException;
 import com.rotrack.model.ActivityType;
 import com.rotrack.model.TimeEntry;
+import com.rotrack.repository.NoteRepository;
 import com.rotrack.repository.TimeEntryRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -34,6 +35,7 @@ class TimeEntryServiceTest {
 
     private final TimeEntryRepository repository = mock(TimeEntryRepository.class);
     private final TimeEntryService service = new TimeEntryService(repository);
+    private final NoteRepository noteRepository = mock(NoteRepository.class);
 
     @Test
     void stoppingAnAlreadyStoppedSessionReturnsTheOriginalResource() {
@@ -171,6 +173,19 @@ class TimeEntryServiceTest {
         assertEquals(20, result.entries().size());
         assertFalse(result.nextCursor().isBlank());
         verify(repository).findCompletedHistory(eq(userId), argThat(pageable -> pageable.getPageSize() == 21));
+    }
+
+    @Test
+    void historyUsesTheHistoryOnlyAttachedNoteCountProjection() {
+        UUID userId = UUID.randomUUID();
+        TimeEntry row = entry(userId, Instant.parse("2026-01-01T10:00:00Z"), Instant.parse("2026-01-01T11:00:00Z"));
+        when(repository.findCompletedHistory(eq(userId), any())).thenReturn(java.util.List.of(row));
+        when(noteRepository.countByUserIdAndTimeEntryId(userId, row.getId())).thenReturn(2L);
+
+        HistoryPageDTO result = new TimeEntryService(repository, noteRepository, java.time.Clock.systemUTC())
+                .listHistory(userId, null);
+
+        assertEquals(2L, result.entries().getFirst().attachedNoteCount());
     }
 
     @Test

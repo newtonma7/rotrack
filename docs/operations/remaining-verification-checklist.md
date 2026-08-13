@@ -136,6 +136,14 @@ GRANT SELECT, INSERT, UPDATE
   ON TABLE public.user_preferences
   TO rotrack_runtime;
 
+-- Run after migration 006: Notes are Spring-only; replay metadata is content-free but API-only.
+GRANT SELECT, INSERT, UPDATE, DELETE
+  ON TABLE public.notes
+  TO rotrack_runtime;
+GRANT SELECT, INSERT, UPDATE
+  ON TABLE public.note_creation_replays
+  TO rotrack_runtime;
+
 GRANT USAGE
   ON TYPE public.activity_type
   TO rotrack_runtime;
@@ -181,6 +189,13 @@ SELECT
   has_table_privilege(current_user, 'public.user_preferences', 'SELECT') AS can_read_preferences,
   has_table_privilege(current_user, 'public.user_preferences', 'INSERT') AS can_create_preferences,
   has_table_privilege(current_user, 'public.user_preferences', 'UPDATE') AS can_update_preferences,
+  has_table_privilege(current_user, 'public.notes', 'SELECT') AS can_read_notes,
+  has_table_privilege(current_user, 'public.notes', 'INSERT') AS can_create_notes,
+  has_table_privilege(current_user, 'public.notes', 'UPDATE') AS can_update_notes,
+  has_table_privilege(current_user, 'public.notes', 'DELETE') AS can_delete_notes,
+  has_table_privilege(current_user, 'public.note_creation_replays', 'SELECT') AS can_read_note_replays,
+  has_table_privilege(current_user, 'public.note_creation_replays', 'INSERT') AS can_create_note_replays,
+  has_table_privilege(current_user, 'public.note_creation_replays', 'UPDATE') AS can_update_note_replays,
   NOT has_table_privilege(current_user, 'public.user_preferences', 'DELETE') AS cannot_delete_preferences,
   NOT has_table_privilege(current_user, 'public.time_entries', 'TRUNCATE') AS cannot_truncate,
   NOT has_schema_privilege(current_user, 'public', 'CREATE') AS cannot_create_schema_objects;

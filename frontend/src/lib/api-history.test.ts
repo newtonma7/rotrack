@@ -26,6 +26,7 @@ const entry: HistoryEntry = {
   endTime: "2026-08-12T11:00:00Z",
   durationSeconds: 3601,
   notes: "deep work",
+  attachedNoteCount: 2,
 };
 const input: HistoryEntryInput = {
   activityType: entry.activityType,

@@ -135,7 +135,7 @@ export async function openDashboard(page: Page): Promise<DashboardStats> {
   return stats;
 }
 
-async function readSupabaseAuth(page: Page): Promise<{ accessToken: string; userId: string }> {
+export async function currentSupabaseAuth(page: Page): Promise<{ accessToken: string; userId: string }> {
   return page.evaluate(() => {
     const findValue = (value: unknown, key: "access_token" | "id"): string | null => {
       if (!value || typeof value !== "object") return null;
@@ -164,7 +164,7 @@ async function readSupabaseAuth(page: Page): Promise<{ accessToken: string; user
 }
 
 export async function authenticatedUserId(page: Page): Promise<string> {
-  return (await readSupabaseAuth(page)).userId;
+  return (await currentSupabaseAuth(page)).userId;
 }
 
 /**
@@ -176,7 +176,7 @@ export async function tryStopEntryAsCurrentUser(
   apiOrigin: string,
   entryId: string,
 ): Promise<{ status: number; code: string | null }> {
-  const auth = await readSupabaseAuth(page);
+  const auth = await currentSupabaseAuth(page);
   return page.evaluate(
     async ({ accessToken, apiUrl, id }) => {
       const response = await fetch(

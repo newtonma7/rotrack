@@ -33,7 +33,8 @@ import org.springframework.transaction.annotation.Transactional;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {
         "SUPABASE_JWKS_URI=https://example.test/jwks",
         "SUPABASE_ISSUER_URI=https://example.test/issuer",
-        "SUPABASE_JWT_AUDIENCE=authenticated"
+        "SUPABASE_JWT_AUDIENCE=authenticated",
+        "rotrack.notes.hmac-secret=test-only-notes-hmac-secret-32-bytes"
 })
 @EnabledIfSystemProperty(named = "rotrack.postgres.integration", matches = "true")
 @Transactional

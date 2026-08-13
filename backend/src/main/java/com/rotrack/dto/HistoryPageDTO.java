@@ -3,7 +3,7 @@ package com.rotrack.dto;
 import java.util.List;
 
 public record HistoryPageDTO(
-        List<TimeEntryDTO> entries,
+        List<HistoryTimeEntryDTO> entries,
         String nextCursor
 ) {
 }

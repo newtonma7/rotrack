@@ -49,7 +49,8 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             ObjectMapper objectMapper,
-            ObjectProvider<MutationRateLimitFilter> mutationRateLimitFilter
+            ObjectProvider<MutationRateLimitFilter> mutationRateLimitFilter,
+            ObjectProvider<com.rotrack.security.NoteRateLimitFilter> noteRateLimitFilter
     ) throws Exception {
         var authenticationEntryPoint = (org.springframework.security.web.AuthenticationEntryPoint)
                 (request, response, exception) -> {
@@ -92,6 +93,7 @@ public class SecurityConfig {
                 );
 
         mutationRateLimitFilter.ifAvailable(filter -> http.addFilterAfter(filter, BearerTokenAuthenticationFilter.class));
+        noteRateLimitFilter.ifAvailable(filter -> http.addFilterAfter(filter, BearerTokenAuthenticationFilter.class));
         return http.build();
     }
 
@@ -133,9 +135,9 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(properties.allowedOrigins());
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Idempotency-Key"));
         config.setAllowCredentials(true);
-        config.setExposedHeaders(List.of("X-Request-ID"));
+        config.setExposedHeaders(List.of("X-Request-ID", "Retry-After"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
@@ -167,7 +169,7 @@ public class SecurityConfig {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         objectMapper.writeValue(
                 response.getOutputStream(),
-                ApiErrorResponse.of(code, message, java.util.Map.of(), request.getRequestURI())
+                ApiErrorResponse.of(code, message, java.util.Map.of(), com.rotrack.web.RouteTemplates.resolve(request))
         );
     }
 }

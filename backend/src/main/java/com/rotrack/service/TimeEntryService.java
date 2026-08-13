@@ -2,12 +2,14 @@ package com.rotrack.service;
 
 import com.rotrack.dto.CompletedTimeEntryRequest;
 import com.rotrack.dto.HistoryPageDTO;
+import com.rotrack.dto.HistoryTimeEntryDTO;
 import com.rotrack.dto.TimeEntryDTO;
 import com.rotrack.exception.ConflictException;
 import com.rotrack.exception.InvalidCursorException;
 import com.rotrack.exception.ResourceNotFoundException;
 import com.rotrack.model.ActivityType;
 import com.rotrack.model.TimeEntry;
+import com.rotrack.repository.NoteRepository;
 import com.rotrack.repository.TimeEntryRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
@@ -29,15 +31,21 @@ public class TimeEntryService {
     private static final String OVERLAP_CONSTRAINT = "time_entries_no_overlap_per_user";
 
     private final TimeEntryRepository timeEntryRepository;
+    private final NoteRepository noteRepository;
     private final Clock clock;
 
     public TimeEntryService(TimeEntryRepository timeEntryRepository) {
-        this(timeEntryRepository, Clock.systemUTC());
+        this(timeEntryRepository, null, Clock.systemUTC());
+    }
+
+    public TimeEntryService(TimeEntryRepository timeEntryRepository, Clock clock) {
+        this(timeEntryRepository, null, clock);
     }
 
     @Autowired
-    public TimeEntryService(TimeEntryRepository timeEntryRepository, Clock clock) {
+    public TimeEntryService(TimeEntryRepository timeEntryRepository, NoteRepository noteRepository, Clock clock) {
         this.timeEntryRepository = timeEntryRepository;
+        this.noteRepository = noteRepository;
         this.clock = clock;
     }
 
@@ -103,7 +111,7 @@ public class TimeEntryService {
         boolean hasNext = rows.size() > HISTORY_PAGE_SIZE;
         List<TimeEntry> pageRows = hasNext ? rows.subList(0, HISTORY_PAGE_SIZE) : rows;
         String nextCursor = hasNext ? encodeCursor(pageRows.getLast()) : null;
-        return new HistoryPageDTO(pageRows.stream().map(this::toDto).toList(), nextCursor);
+        return new HistoryPageDTO(pageRows.stream().map(this::toHistoryDto).toList(), nextCursor);
     }
 
     @Transactional
@@ -172,6 +180,8 @@ public class TimeEntryService {
 
     @Transactional
     public void deleteEntry(UUID userId, UUID entryId) {
+        // Lock the Time Entry before its ON DELETE SET NULL trigger locks attached Notes;
+        // attachment updates acquire these locks in the same order.
         TimeEntry entry = ownedCompletedEntry(userId, entryId);
         timeEntryRepository.delete(entry);
         timeEntryRepository.flush();
@@ -273,6 +283,21 @@ public class TimeEntryService {
             return null;
         }
         return Duration.between(entry.getStartTime(), entry.getEndTime()).getSeconds();
+    }
+
+    private HistoryTimeEntryDTO toHistoryDto(TimeEntry entry) {
+        long attachedNoteCount = noteRepository == null
+                ? 0
+                : noteRepository.countByUserIdAndTimeEntryId(entry.getUserId(), entry.getId());
+        return new HistoryTimeEntryDTO(
+                entry.getId(),
+                entry.getActivityType(),
+                entry.getStartTime(),
+                entry.getEndTime(),
+                durationSeconds(entry),
+                entry.getNotes(),
+                attachedNoteCount
+        );
     }
 
     private TimeEntryDTO toDto(TimeEntry entry) {

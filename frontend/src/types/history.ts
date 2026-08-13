@@ -8,6 +8,7 @@ export interface HistoryEntry {
   endTime: string;
   durationSeconds: number;
   notes: string | null;
+  attachedNoteCount: number;
 }
 
 export interface HistoryEntryInput {

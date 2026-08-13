@@ -1,6 +1,6 @@
 # M5 contracts
 
-**Status:** Accepted subordinate implementation detail; implementation not started. The governing contract source is [`arch.plan.md`](../../arch.plan.md), the domain glossary is [`CONTEXT.md`](../../CONTEXT.md), and M4 conventions are in [`m4-contracts.md`](m4-contracts.md). If this document conflicts with the architecture, update the architecture decision before implementation.
+**Status:** M5.1 Verified locally; M5.2 and M5.3 not started. The governing contract source is [`arch.plan.md`](../../arch.plan.md), the domain glossary is [`CONTEXT.md`](../../CONTEXT.md), and M4 conventions are in [`m4-contracts.md`](m4-contracts.md). If this document conflicts with the architecture, update the architecture decision before implementation.
 
 M5 is defined as one domain model delivered sequentially: M5.1 Notes data/API, M5.2 rich-text editors and Notes workspace, then M5.3 Daily Logs and Reflections. Source/local work is authorized; M5 hosted migration or rollout is not.
 

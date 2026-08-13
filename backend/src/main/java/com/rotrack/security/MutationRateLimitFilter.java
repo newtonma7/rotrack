@@ -39,7 +39,7 @@ public final class MutationRateLimitFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         var route = RouteTemplates.mutation(request);
         UUID subject = authenticatedSubject();
-        if (route.isEmpty() || subject == null) {
+        if (route.isEmpty() || RouteTemplates.isNoteMutation(request) || subject == null) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -63,7 +63,7 @@ public final class MutationRateLimitFilter extends OncePerRequestFilter {
                         "RATE_LIMITED",
                         "Too many mutation requests",
                         Map.of(),
-                        request.getRequestURI()
+                        RouteTemplates.resolve(request)
                 )
         );
     }

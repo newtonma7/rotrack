@@ -45,7 +45,8 @@ class PostgresMigrationIntegrationTest {
             "002_harden_time_entries.sql",
             "003_require_usernames.sql",
             "004_user_preferences.sql",
-            "005_time_entry_history.sql"
+            "005_time_entry_history.sql",
+            "006_notes.sql"
     );
 
     @Test
@@ -244,6 +245,8 @@ class PostgresMigrationIntegrationTest {
                 proveTimeEntryInvariants(connection);
                 provePreferencesInvariants(connection);
                 proveTwoUserPreferencesRls(connection);
+                proveNotesInvariants(connection);
+                proveTwoUserNotesRls(connection);
             } finally {
                 connection.rollback();
             }
@@ -415,14 +418,15 @@ class PostgresMigrationIntegrationTest {
         assertNotNull(reportingIndex, "the reporting index must exist on public.time_entries");
         assertTrue(normalize(reportingIndex).contains("(user_id, start_time)"));
 
-        assertEquals(3, querySingleInt(connection, """
+        assertEquals(5, querySingleInt(connection, """
                 SELECT count(*)
                 FROM pg_class
                 WHERE oid IN ('public.users'::regclass, 'public.time_entries'::regclass,
-                              'public.user_preferences'::regclass)
+                              'public.user_preferences'::regclass, 'public.notes'::regclass,
+                              'public.note_creation_replays'::regclass)
                   AND relrowsecurity
                 """), "RLS must remain enabled on all application tables");
-        assertEquals(10, querySingleInt(connection, """
+        assertEquals(14, querySingleInt(connection, """
                 SELECT count(*)
                 FROM pg_policies
                 WHERE schemaname = 'public'
@@ -440,8 +444,52 @@ class PostgresMigrationIntegrationTest {
                       'user_preferences_select_own', 'user_preferences_insert_own',
                       'user_preferences_update_own'
                     ))
+                    OR
+                    (tablename = 'notes' AND policyname IN (
+                      'notes_select_own', 'notes_insert_own', 'notes_update_own', 'notes_delete_own'
+                    ))
                   )
                 """), "all ownership policies must exist");
+        assertEquals(1, querySingleInt(connection, """
+                SELECT count(*) FROM pg_constraint
+                WHERE conrelid = 'public.notes'::regclass
+                  AND conname = 'notes_time_entry_owner_fk'
+                  AND pg_get_constraintdef(oid) ILIKE '%ON DELETE SET NULL%'
+                """), "notes must use an owner-compatible SET NULL attachment FK");
+        assertEquals(1, querySingleInt(connection, """
+                SELECT count(*) FROM pg_constraint
+                WHERE conrelid = 'public.notes'::regclass
+                  AND conname = 'notes_content_json_size'
+                """), "notes must enforce the compact JSON byte ceiling");
+        assertEquals(1, querySingleInt(connection, """
+                SELECT count(*) FROM pg_constraint
+                WHERE conrelid = 'public.notes'::regclass
+                  AND conname = 'notes_content_json_schema_version_match'
+                """), "JSON schemaVersion must match content_schema_version");
+        assertEquals(4, querySingleInt(connection, """
+                SELECT count(*) FROM aclexplode((SELECT relacl FROM pg_class WHERE oid = 'public.notes'::regclass))
+                WHERE grantee = 'rotrack_runtime'::regrole
+                  AND privilege_type IN ('SELECT', 'INSERT', 'UPDATE', 'DELETE')
+                """), "runtime role must have only required Notes DML grants");
+        assertEquals(3, querySingleInt(connection, """
+                SELECT count(*)
+                FROM aclexplode((SELECT relacl FROM pg_class WHERE oid = 'public.note_creation_replays'::regclass)) privileges
+                WHERE grantee = 'rotrack_runtime'::regrole
+                  AND privilege_type IN ('SELECT', 'INSERT', 'UPDATE')
+                """), "runtime role must have exactly replay SELECT/INSERT/UPDATE grants");
+        assertEquals(0, querySingleInt(connection, """
+                SELECT count(*)
+                FROM aclexplode((SELECT relacl FROM pg_class WHERE oid = 'public.note_creation_replays'::regclass)) privileges
+                WHERE grantee = 'rotrack_runtime'::regrole
+                  AND privilege_type NOT IN ('SELECT', 'INSERT', 'UPDATE')
+                """), "runtime role must not delete replay metadata");
+        assertEquals(0, querySingleInt(connection, """
+                SELECT count(*)
+                FROM aclexplode((SELECT relacl FROM pg_class WHERE oid = 'public.note_creation_replays'::regclass)) privileges
+                JOIN pg_roles role ON role.oid = privileges.grantee
+                WHERE role.rolname IN ('anon', 'authenticated')
+                  AND privilege_type IS NOT NULL
+                """), "browser roles must not receive replay table privileges");
         assertEquals(1, querySingleInt(connection, """
                 SELECT count(*)
                 FROM pg_policies
@@ -676,6 +724,120 @@ class PostgresMigrationIntegrationTest {
         expectSqlState(connection, "23514", () -> insertPreference(connection, UUID.randomUUID(), "UTC", 0));
         expectSqlState(connection, "22023", () -> insertPreference(connection, UUID.randomUUID(), "Not/A_Zone", 60));
         expectSqlState(connection, "22023", () -> insertPreference(connection, UUID.randomUUID(), "CST", 60));
+    }
+
+    private void proveNotesInvariants(Connection connection) throws SQLException {
+        UUID owner = UUID.randomUUID();
+        UUID other = UUID.randomUUID();
+        insertAuthUser(connection, owner, "notes_owner");
+        insertAuthUser(connection, other, "notes_other");
+        UUID entry = UUID.randomUUID();
+        insertTimeEntry(connection, entry, owner, OffsetDateTime.parse("2026-08-07T10:00:00Z"),
+                OffsetDateTime.parse("2026-08-07T11:00:00Z"), null);
+        UUID otherEntry = UUID.randomUUID();
+        insertTimeEntry(connection, otherEntry, other, OffsetDateTime.parse("2026-08-07T10:00:00Z"),
+                OffsetDateTime.parse("2026-08-07T11:00:00Z"), null);
+        UUID note = UUID.randomUUID();
+        insertNote(connection, note, owner, owner, entry, "Title", 1, "{\"schemaVersion\":1,\"document\":{\"type\":\"doc\",\"content\":[]}}");
+        expectSqlState(connection, "23503", () -> insertNote(connection, UUID.randomUUID(), owner, owner, otherEntry,
+                "Wrong owner", 1, "{\"schemaVersion\":1}"));
+        UUID replayKey = UUID.randomUUID();
+        insertReplay(connection, owner, replayKey, note, false);
+        assertEquals(1, queryCount(connection, "SELECT count(*) FROM public.note_creation_replays WHERE owner_id = ?", owner));
+        expectSqlState(connection, "23514", () -> updateNoteVersion(connection, note, 0));
+        expectSqlState(connection, "23514", () -> insertNote(connection, UUID.randomUUID(), owner, null, null,
+                "x".repeat(121), 1, "{\"schemaVersion\":1}"));
+        expectSqlState(connection, "23514", () -> insertNote(connection, UUID.randomUUID(), owner, null, null,
+                "valid", 0, "{\"schemaVersion\":1}"));
+        expectSqlState(connection, "23514", () -> insertNote(connection, UUID.randomUUID(), owner, null, null,
+                "valid", 1, "null"));
+        expectSqlState(connection, "23514", () -> insertNoteWithSchemaVersion(
+                connection, UUID.randomUUID(), owner, 1, 2));
+        expectSqlState(connection, "23514", () -> insertNoteWithSchemaVersion(
+                connection, UUID.randomUUID(), owner, 2, 1));
+        try (PreparedStatement statement = connection.prepareStatement("DELETE FROM public.time_entries WHERE id = ?")) {
+            statement.setObject(1, entry);
+            statement.executeUpdate();
+        }
+        assertEquals(1, querySingleInt(connection, "SELECT count(*) FROM public.notes WHERE id = ? AND time_entry_id IS NULL", note));
+        assertEquals(1, querySingleInt(connection, "SELECT count(*) FROM public.notes WHERE id = ?", note));
+        try (PreparedStatement statement = connection.prepareStatement("DELETE FROM public.notes WHERE id = ?")) {
+            statement.setObject(1, note);
+            statement.executeUpdate();
+        }
+        assertEquals(1, querySingleInt(connection, "SELECT count(*) FROM public.note_creation_replays WHERE note_id = ?", note));
+        try (PreparedStatement statement = connection.prepareStatement("DELETE FROM public.users WHERE id = ?")) {
+            statement.setObject(1, owner);
+            statement.executeUpdate();
+        }
+        assertEquals(0, queryCount(connection, "SELECT count(*) FROM public.note_creation_replays WHERE owner_id = ?", owner));
+    }
+
+    private void proveTwoUserNotesRls(Connection connection) throws SQLException {
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+        insertAuthUser(connection, first, "notes_rls_first");
+        insertAuthUser(connection, second, "notes_rls_second");
+        insertNote(connection, UUID.randomUUID(), first, null, null, "private", 1,
+                "{\"schemaVersion\":1,\"document\":{\"type\":\"doc\",\"content\":[]}}");
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'rotrack_notes_rls_probe') THEN CREATE ROLE rotrack_notes_rls_probe NOLOGIN NOSUPERUSER NOBYPASSRLS; END IF; END $$");
+            statement.execute("GRANT USAGE ON SCHEMA public TO rotrack_notes_rls_probe");
+            statement.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON public.notes, public.note_creation_replays TO rotrack_notes_rls_probe");
+            statement.execute("SET LOCAL ROLE rotrack_notes_rls_probe");
+        }
+        setJwtSubject(connection, first);
+        assertEquals(1, queryCount(connection, "SELECT count(*) FROM public.notes WHERE user_id IN (?, ?)", first, second));
+        setJwtSubject(connection, second);
+        assertEquals(0, queryCount(connection, "SELECT count(*) FROM public.notes WHERE user_id = ?", first));
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("RESET ROLE");
+            statement.execute("RESET request.jwt.claim.sub");
+        }
+    }
+
+    private void insertNote(Connection connection, UUID id, UUID owner, UUID attachmentOwner, UUID entry,
+                            String title, long version, String json) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                INSERT INTO public.notes(id, user_id, attachment_owner_id, time_entry_id, title, content_json, content_text, version)
+                VALUES (?, ?, ?, ?, ?, ?::json, '', ?)
+                """)) {
+            statement.setObject(1, id); statement.setObject(2, owner); statement.setObject(3, attachmentOwner);
+            statement.setObject(4, entry); statement.setString(5, title); statement.setString(6, json); statement.setLong(7, version);
+            statement.executeUpdate();
+        }
+    }
+
+    private void insertNoteWithSchemaVersion(
+            Connection connection, UUID id, UUID owner, int jsonSchemaVersion, int contentSchemaVersion)
+            throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                INSERT INTO public.notes(id, user_id, title, content_json, content_text, content_schema_version, version)
+                VALUES (?, ?, 'valid', ?::json, '', ?, 1)
+                """)) {
+            statement.setObject(1, id);
+            statement.setObject(2, owner);
+            statement.setString(3, "{\"schemaVersion\":" + jsonSchemaVersion + "}");
+            statement.setInt(4, contentSchemaVersion);
+            statement.executeUpdate();
+        }
+    }
+
+    private void insertReplay(Connection connection, UUID owner, UUID key, UUID note, boolean deleted) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                INSERT INTO public.note_creation_replays(owner_id, idempotency_key, fingerprint, note_id, deleted_version)
+                VALUES (?, ?, decode('00', 'hex'), ?, ?)
+                """)) {
+            statement.setObject(1, owner); statement.setObject(2, key); statement.setObject(3, note);
+            if (deleted) statement.setLong(4, 1); else statement.setNull(4, java.sql.Types.BIGINT);
+            statement.executeUpdate();
+        }
+    }
+
+    private void updateNoteVersion(Connection connection, UUID note, long version) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("UPDATE public.notes SET version = ? WHERE id = ?")) {
+            statement.setLong(1, version); statement.setObject(2, note); statement.executeUpdate();
+        }
     }
 
     private void proveTwoUserPreferencesRls(Connection connection) throws SQLException {

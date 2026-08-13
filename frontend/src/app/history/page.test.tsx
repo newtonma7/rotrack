@@ -31,6 +31,7 @@ const entries: HistoryEntry[] = [{
   endTime: "2026-08-12T11:00:00Z",
   durationSeconds: 61,
   notes: "deep work",
+  attachedNoteCount: 2,
 }];
 
 const secondEntry: HistoryEntry = {
@@ -40,6 +41,7 @@ const secondEntry: HistoryEntry = {
   endTime: "2026-08-11T10:15:00Z",
   durationSeconds: 901,
   notes: null,
+  attachedNoteCount: 0,
 };
 
 describe("HistoryPage", () => {
@@ -124,7 +126,7 @@ describe("HistoryPage", () => {
     await waitFor(() => expect(getHistory).toHaveBeenCalledTimes(2));
 
     fireEvent.click(screen.getByRole("button", { name: /delete deep work/i }));
-    expect(confirm).toHaveBeenCalled();
+    expect(confirm).toHaveBeenCalledWith("Delete this completed entry? 2 attached Notes survive and detach.");
     await waitFor(() => expect(deleteHistoryEntry).toHaveBeenCalledWith("entry-1"));
     await waitFor(() => expect(getHistory).toHaveBeenCalledTimes(3));
   });

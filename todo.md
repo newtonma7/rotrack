@@ -672,7 +672,7 @@ The gate requires all of the following:
 
 ### M5.1 — Notes data and API
 
-**Status:** Not started
+**Status:** Verified
 
 - Add ordered additive Notes plus content-free idempotency/tombstone storage. Keep M4's existing 280-character Session Label contract unchanged.
 - Add owned summary-list/full-read/create/update/hard-delete APIs with optional movable active/completed Time Entry attachment and `ON DELETE SET NULL`.
@@ -680,6 +680,13 @@ The gate requires all of the following:
 - Implement the shared version-1 validator/normalizer/derived-text value model once: executable tree grammar, deterministic canonical serialization, fixed node/mark/link allowlist, 256 KiB, depth 32, 10,000 nodes, Unicode title/preview limits, and no arbitrary HTML.
 - Add `attachedNoteCount` to entries returned by `GET /time-entries/history` so deletion confirmation warns that Notes survive and detach; leave other Time Entry DTOs unchanged.
 - Test migration/catalog/runtime grants, two-user ownership, attachment races/lifecycle, empty-create rejection, cleared existing Notes, canonical replay/mismatch/deleted replay/tombstones, repeated delete, every validation/grammar ceiling, CORS headers, safe errors, and private-log omission.
+
+**Verification evidence — isolated local targets:**
+
+- Fresh disposable PostgreSQL 17.10 migration apply passed 5 tests with 1 expected mode skip. Verify passed 20 tests with 0 failures/errors and 3 mode skips. The deterministic attachment-update versus Time Entry-delete race now uses a consistent database lock order, proves bounded lock contention, and completes without deadlock or data-integrity leakage; the reproduced SQLSTATE `40P01` failure was fixed at the Note/Time Entry service seam.
+- Java 21 clean test/package passed 190 tests with 20 expected opt-in skips. Frontend lint, typecheck, 74 Vitest tests, and production build passed. Guards, secret scan, and diff checks passed.
+- Fresh external auth states for distinct users were mode `600`. Authenticated local browser acceptance against the local frontend/API and fresh disposable database passed 1/1 in 6.3 seconds, including browser acceptance, ownership/privacy checks, and cleanup.
+- Note cursor pagination/invalid-cursor cases, rich-text canonicalization and ceilings, replay/deleted-replay response and completion-log privacy, and safe error-body omission are covered at the accepted service/controller seams. M5 hosted migration or rollout remains unauthorized.
 
 ### M5.2 — Rich-text editors and Notes workspace
 
