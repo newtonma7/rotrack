@@ -14,6 +14,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { NoteEditor } from "@/components/notes/NoteEditor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTimeTracking } from "@/hooks/useTimeTracking";
 export function ActiveTracker() {
@@ -23,7 +24,7 @@ export function ActiveTracker() {
   const activeType = activeEntry?.activityType;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
+    <div className="mx-auto grid max-w-[1200px] items-start gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
       <Card className="border-[var(--rt-line)] bg-[var(--rt-paper)] shadow-[0_20px_50px_-20px_rgba(10,10,10,0.15)]">
         <CardHeader>
           <CardTitle className="font-heading text-3xl">Active session</CardTitle>
@@ -80,12 +81,15 @@ export function ActiveTracker() {
         </CardContent>
       </Card>
 
-      <p className="text-center text-sm text-[var(--rt-ink-muted)]">
-        Sessions keep running across tabs, navigation, reloads, and browser closure until you stop them explicitly.{" "}
-        <Link href="/dashboard" className="text-[var(--rt-orange)] hover:underline">
-          View dashboard
-        </Link>
-      </p>
+      <div className="space-y-4 lg:sticky lg:top-8">
+        <NoteEditor activeEntryId={activeEntry?.id ?? null} />
+        <p className="text-center text-sm text-[var(--rt-ink-muted)]">
+          Sessions keep running across tabs, navigation, reloads, and browser closure until you stop them explicitly.{" "}
+          <Link href="/dashboard" className="text-[var(--rt-orange)] hover:underline">
+            View dashboard
+          </Link>
+        </p>
+      </div>
     </div>
   );
 }

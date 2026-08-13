@@ -85,7 +85,13 @@ async function apiFetch<T>(
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    throw parseApiErrorResponse(body, response.status);
+    const error = parseApiErrorResponse(body, response.status);
+    const retryAfter = response.headers.get("Retry-After");
+    if (retryAfter) {
+      const seconds = Number(retryAfter);
+      error.retryAfterMs = Number.isFinite(seconds) ? Math.max(0, seconds * 1000) : null;
+    }
+    throw error;
   }
 
   if (response.status === 204) return undefined as T;

@@ -4,18 +4,21 @@ export class ApiRequestError extends Error {
   readonly code: string;
   readonly status: number;
   readonly fieldErrors: ApiFieldErrors;
+  retryAfterMs: number | null;
 
   constructor(
     message: string,
     status: number,
     code: string,
-    fieldErrors: ApiFieldErrors = {}
+    fieldErrors: ApiFieldErrors = {},
+    retryAfterMs: number | null = null
   ) {
     super(message);
     this.name = "ApiRequestError";
     this.code = code;
     this.status = status;
     this.fieldErrors = fieldErrors;
+    this.retryAfterMs = retryAfterMs;
   }
 }
 

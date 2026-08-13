@@ -63,6 +63,15 @@ describe("notes API", () => {
     );
   });
 
+  it("exposes Retry-After on rate-limit errors through the typed API seam", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ error: { code: "RATE_LIMITED", message: "try later" } }), {
+      status: 429,
+      headers: { "Retry-After": "2" },
+    }));
+
+    await expect(getNotes()).rejects.toMatchObject({ code: "RATE_LIMITED", status: 429, retryAfterMs: 2000 });
+  });
+
   it("uses the Note DTO for create, read, update, and 204 delete", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(response(note, 201))

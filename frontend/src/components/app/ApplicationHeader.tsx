@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { History, Settings2, Timer, type LucideIcon } from "lucide-react";
+import { FileText, History, Settings2, Timer, type LucideIcon } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { Button } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
@@ -10,6 +10,7 @@ const links: Array<{ href: string; label: string; icon?: LucideIcon }> = [
   { href: "/dashboard", label: "dashboard" },
   { href: "/tracker", label: "tracker", icon: Timer },
   { href: "/history", label: "history", icon: History },
+  { href: "/notes", label: "notes", icon: FileText },
   { href: "/settings", label: "settings", icon: Settings2 },
 ] as const;
 
