@@ -1,5 +1,6 @@
 /* @vitest-environment jsdom */
 
+import { StrictMode } from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiRequestError } from "@/lib/api-errors";
@@ -40,6 +41,12 @@ describe("NoteEditor", () => {
     expect(createNote.mock.calls[0][0]).toMatchObject({ title: "first title", timeEntryId: "entry-1" });
     expect(createNote.mock.calls[0][1]).toBeTruthy();
     expect(screen.getByRole("status").textContent).toBe("Saved");
+  });
+
+  it("finishes autosave under React development Strict Mode", async () => {
+    render(<StrictMode><NoteEditor /></StrictMode>);
+    fireEvent.change(screen.getByLabelText("Note title"), { target: { value: "strict save" } });
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Saved"), { timeout: 1200 });
   });
 
   it("coalesces rapid title edits into one create and keeps a stable key", async () => {
