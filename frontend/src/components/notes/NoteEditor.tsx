@@ -28,8 +28,9 @@ export const NoteEditor = forwardRef<NoteEditorHandle, {
   const autosave = useNoteAutosave({ initialNote, activeEntryId, onSaved });
   const { dirty, flush } = autosave;
   useEffect(() => {
-    const leave = (proceed: () => void) => void flush().then((saved) => {
+    const leave = (proceed: () => void, stay = () => undefined) => void flush().then((saved) => {
       if (saved || window.confirm("Your edits could not be saved. Leave and lose these edits?")) proceed();
+      else stay();
     });
     const handleAnchorClick = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -53,6 +54,32 @@ export const NoteEditor = forwardRef<NoteEditorHandle, {
       window.removeEventListener(BEFORE_APP_NAVIGATION, handleGuardedNavigation);
     };
   }, [dirty, flush, router]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const markerUrl = window.location.href;
+    const marker = { ...window.history.state, rotrackUnsavedNote: true };
+    window.history.pushState(marker, "", markerUrl);
+    let proceeding = false;
+    const handleBack = () => {
+      if (proceeding) return;
+      void flush().then((saved) => {
+        if (saved || window.confirm("Your edits could not be saved. Leave and lose these edits?")) {
+          proceeding = true;
+          window.history.back();
+        } else {
+          window.history.pushState(marker, "", window.location.href);
+        }
+      });
+    };
+    window.addEventListener("popstate", handleBack);
+    return () => {
+      window.removeEventListener("popstate", handleBack);
+      // The marker remains harmless after unmount; popping it during route replacement can
+      // race Next navigation and return to the old Note URL.
+    };
+  }, [dirty, flush]);
+
   useImperativeHandle(ref, () => ({ flush: autosave.flush, saveAsNew: autosave.saveAsNew }), [autosave.flush, autosave.saveAsNew]);
 
   const copy = async () => {
@@ -84,7 +111,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <label htmlFor="note-title" className="sr-only">Note title</label>
-          <input id="note-title" value={autosave.title} onChange={(event) => autosave.setTitle(event.target.value)} placeholder="untitled note" maxLength={120} className="w-full bg-transparent font-display text-3xl tracking-[-0.02em] outline-none placeholder:text-[var(--rt-ink-muted)] focus-visible:ring-2 focus-visible:ring-[var(--rt-orange)] md:text-4xl" />
+          <input id="note-title" value={autosave.title} onChange={(event) => autosave.setTitle(event.target.value)} placeholder={initialNote?.preview || "untitled note"} maxLength={120} className="w-full bg-transparent font-display text-3xl tracking-[-0.02em] outline-none placeholder:text-[var(--rt-ink-muted)] focus-visible:ring-2 focus-visible:ring-[var(--rt-orange)] md:text-4xl" />
           <p className="mt-2 text-sm text-[var(--rt-ink-muted)]">{autosave.note?.timeEntryId ? "attached to a time entry" : "standalone note"}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -110,7 +137,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, {
         <Button type="button" variant="outline" onClick={() => void copy()} className="rounded-full">Copy</Button>
         {autosave.status === "Conflict" && <>
           <Button type="button" variant="outline" onClick={() => void reload()} className="rounded-full">Reload server version</Button>
-          <Button type="button" onClick={() => void autosave.saveAsNew()} className="rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] hover:bg-[var(--rt-orange-deep)]">Save as new Note</Button>
+          <Button type="button" onClick={() => void autosave.saveAsNew()} className="rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] shadow-[0_10px_30px_-10px_rgba(236,107,14,0.6)] hover:bg-[var(--rt-orange-deep)]">Save as new Note</Button>
         </>}
         {(autosave.status === "Offline" || autosave.status === "Waiting") && <Button type="button" variant="outline" onClick={autosave.retry} className="rounded-full">Retry</Button>}
       </div>

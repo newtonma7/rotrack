@@ -102,7 +102,6 @@ export function NotesWorkspace({ selectedNoteId = null }: { selectedNoteId?: str
     // starts from an existing URL and may switch to the new stable URL safely.
     if (selectedNoteId === saved.id) setSelectedNote(saved);
     if (selectedNoteId && selectedNoteId !== saved.id) {
-      setSelectedNote(saved);
       router.replace(`/notes/${saved.id}`);
     }
     setNotes((current) => dedupeSummaries([saved, ...current]));
@@ -138,7 +137,7 @@ export function NotesWorkspace({ selectedNoteId = null }: { selectedNoteId?: str
 
   const attachmentOptions = entries.map((entry) => ({
     id: entry.id,
-    label: `${entry.activityType} · ${new Date(entry.startTime).toLocaleDateString()}`,
+    label: `${entry.activityType.toLowerCase()} · ${new Date(entry.startTime).toLocaleDateString()}`,
   }));
 
   return (
@@ -147,7 +146,7 @@ export function NotesWorkspace({ selectedNoteId = null }: { selectedNoteId?: str
       <main className="mx-auto max-w-[1400px] px-6 py-10 md:px-10 md:py-14">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-5">
           <div><p className="mb-2 text-[0.8rem] font-semibold uppercase tracking-[0.2em] text-[var(--rt-orange)]">private study context</p><h1 className="font-display text-[clamp(2.8rem,7vw,5.5rem)] leading-[0.92]">notes<span className="text-[var(--rt-orange)]">.</span></h1></div>
-          <Button onClick={() => void startNewNote()} className="rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] hover:bg-[var(--rt-orange-deep)]">New note</Button>
+          <Button onClick={() => void startNewNote()} className="rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] shadow-[0_10px_30px_-10px_rgba(236,107,14,0.6)] hover:bg-[var(--rt-orange-deep)]">New note</Button>
         </div>
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(260px,0.75fr)_minmax(0,1.5fr)]">
           <aside aria-label="Notes library" className={`${selectedNoteId || mobileDraft ? "hidden lg:block" : ""} rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-5 md:p-6`}>
