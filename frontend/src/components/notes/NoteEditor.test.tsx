@@ -103,6 +103,11 @@ describe("NoteEditor", () => {
     confirm.mockRestore();
   });
 
+  it("uses the saved preview as the display fallback for a null title", () => {
+    render(<NoteEditor initialNote={{ ...savedNote, title: null, preview: "preview fallback" }} />);
+    expect(screen.getByLabelText("Note title")).toHaveProperty("placeholder", "preview fallback");
+  });
+
   it("guards button-driven app navigation such as sign out", async () => {
     updateNote.mockRejectedValue(new Error("offline"));
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
@@ -115,6 +120,17 @@ describe("NoteEditor", () => {
     await waitFor(() => expect(confirm).toHaveBeenCalled());
     expect(proceed).not.toHaveBeenCalled();
     confirm.mockRestore();
+  });
+
+  it("guards browser history navigation while offline edits remain", async () => {
+    updateNote.mockRejectedValue(new Error("offline"));
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<NoteEditor initialNote={savedNote} />);
+    fireEvent.change(screen.getByLabelText("Note title"), { target: { value: "unsaved" } });
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Offline"), { timeout: 1200 });
+
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await waitFor(() => expect(confirm).toHaveBeenCalled());
   });
 
   it("flushes before destructive deletion and uses the saved version", async () => {
