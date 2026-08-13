@@ -33,13 +33,10 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ||
 /**
  * Reads a valid Supabase access token for Spring Boot Bearer auth.
  *
- * getUser() hits Supabase to confirm the session is still valid (not just cached in localStorage).
- * refreshSession() issues a new access token when near expiry so the backend always gets a fresh JWT.
+ * The Spring API validates every JWT; reading the local Supabase session avoids a remote Auth
+ * round-trip on each autosave. refreshSession() obtains a new token only near expiry.
  */
 async function getAuthToken(): Promise<string | null> {
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) return null;
-
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return null;
 
