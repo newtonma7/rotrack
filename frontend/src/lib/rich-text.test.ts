@@ -13,4 +13,20 @@ describe("rich-text canonicalization", () => {
       document: { schemaVersion: 1, document: { type: "doc", content: [{ type: "paragraph" }] } },
     });
   });
+
+  it("rejects unknown ordered-list attributes", () => {
+    const result = validateRichTextDocument({
+      schemaVersion: 1,
+      document: {
+        type: "doc",
+        content: [{
+          type: "orderedList",
+          attrs: { start: 1, type: null },
+          content: [{ type: "listItem", content: [{ type: "paragraph" }] }],
+        }],
+      },
+    });
+
+    expect(result).toEqual({ ok: false, error: "Ordered list attributes are invalid." });
+  });
 });

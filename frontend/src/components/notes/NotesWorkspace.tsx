@@ -26,6 +26,7 @@ export function NotesWorkspace({ selectedNoteId = null }: { selectedNoteId?: str
   const [detailError, setDetailError] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(Boolean(selectedNoteId));
   const [draftNonce, setDraftNonce] = useState(0);
+  const [mobileDraft, setMobileDraft] = useState(false);
 
   const loadList = useCallback(async (cursor?: string) => {
     const requestId = ++requestSequence.current;
@@ -110,6 +111,7 @@ export function NotesWorkspace({ selectedNoteId = null }: { selectedNoteId?: str
   const startNewNote = async () => {
     const flushed = await editorRef.current?.flush() ?? true;
     if (!flushed && !window.confirm("Your edits could not be saved. Leave and lose these edits?")) return;
+    setMobileDraft(true);
     if (selectedNoteId) {
       router.push("/notes");
     } else {
@@ -117,8 +119,14 @@ export function NotesWorkspace({ selectedNoteId = null }: { selectedNoteId?: str
     }
   };
 
+  const showLibrary = async () => {
+    const flushed = await editorRef.current?.flush() ?? true;
+    if (!flushed && !window.confirm("Your edits could not be saved. Leave and lose these edits?")) return;
+    if (selectedNoteId) router.push("/notes");
+    else setMobileDraft(false);
+  };
+
   const handleDelete = async (note: Note) => {
-    if (!window.confirm("Delete this Note permanently?")) return;
     try {
       await deleteNote(note.id, note.version);
       await loadList();
@@ -142,7 +150,7 @@ export function NotesWorkspace({ selectedNoteId = null }: { selectedNoteId?: str
           <Button onClick={() => void startNewNote()} className="rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] hover:bg-[var(--rt-orange-deep)]">New note</Button>
         </div>
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(260px,0.75fr)_minmax(0,1.5fr)]">
-          <aside aria-label="Notes library" className="rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-5 md:p-6">
+          <aside aria-label="Notes library" className={`${selectedNoteId || mobileDraft ? "hidden lg:block" : ""} rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-5 md:p-6`}>
             <div className="flex flex-wrap gap-2">
               {(["ALL", "ATTACHED", "STANDALONE"] as const).map((value) => <button key={value} type="button" aria-pressed={attachment === value} onClick={() => setAttachment(value)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${attachment === value ? "border-[var(--rt-ink)] bg-[var(--rt-ink)] text-[var(--rt-cream)]" : "border-[var(--rt-line)]"}`}>{value === "ALL" ? "All" : value === "ATTACHED" ? "Attached" : "Standalone"}</button>)}
             </div>
@@ -153,7 +161,8 @@ export function NotesWorkspace({ selectedNoteId = null }: { selectedNoteId?: str
               {nextCursor && <Button variant="outline" onClick={() => void loadList(nextCursor)} disabled={loadingMore} className="mt-4 w-full rounded-full">{loadingMore ? "Loading…" : "Load more"}</Button>}
             </div>
           </aside>
-          <div className="min-w-0">
+          <div className={`${!selectedNoteId && !mobileDraft ? "hidden lg:block" : ""} min-w-0`}>
+            {(selectedNoteId || mobileDraft) && <Button type="button" variant="ghost" onClick={() => void showLibrary()} className="mb-3 rounded-full lg:hidden">Back to notes</Button>}
             {detailError ? <div role="alert" className="rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-8"><p>{detailError}</p><Button variant="outline" onClick={() => router.push("/notes")} className="mt-4 rounded-full">Back to notes</Button></div> : detailLoading ? <div role="status" className="rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-8">Loading note…</div> : <NoteEditor key={selectedNote?.id ?? `draft-${draftNonce}`} ref={editorRef} initialNote={selectedNote} attachments={attachmentOptions} onSaved={handleSaved} onDelete={handleDelete} onReload={selectedNote ? async () => {
               const fresh = await getNote(selectedNote.id);
               setSelectedNote(fresh);

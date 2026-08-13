@@ -56,6 +56,15 @@ describe("NotesWorkspace", () => {
     expect(screen.getByRole("status").textContent).toBe("Draft");
   });
 
+  it("uses list-to-detail mobile navigation while retaining the desktop split", async () => {
+    api.getNote.mockResolvedValue({ ...first, contentJson: { schemaVersion: 1, document: { type: "doc", content: [] } }, contentText: "", contentSchemaVersion: 1 });
+    render(<NotesWorkspace selectedNoteId="note-1" />);
+    await screen.findByDisplayValue("one");
+
+    expect(screen.getByRole("complementary", { name: "Notes library" }).className).toContain("hidden lg:block");
+    expect(screen.getByRole("button", { name: "Back to notes" }).className).toContain("lg:hidden");
+  });
+
   it("loads every available history cursor page for attachment options", async () => {
     const firstEntry = { id: "entry-1", activityType: "WORK" as const, startTime: "2026-08-10T10:00:00Z", endTime: "2026-08-10T11:00:00Z", durationSeconds: 3600, notes: null, attachedNoteCount: 0 };
     const secondEntry = { ...firstEntry, id: "entry-2", startTime: "2026-08-09T10:00:00Z" };

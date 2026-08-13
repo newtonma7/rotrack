@@ -6,11 +6,11 @@ import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RichTextEditor } from "@/components/notes/RichTextEditor";
 import { useNoteAutosave } from "@/hooks/useNoteAutosave";
+import { BEFORE_APP_NAVIGATION, guardedNavigationProceed } from "@/lib/navigation-guard";
 import type { Note, RichTextDocument } from "@/types/notes";
 
 export interface NoteEditorHandle {
   flush: () => Promise<boolean>;
-  hasUnsaved: () => boolean;
   saveAsNew: () => Promise<boolean>;
 }
 
@@ -28,6 +28,9 @@ export const NoteEditor = forwardRef<NoteEditorHandle, {
   const autosave = useNoteAutosave({ initialNote, activeEntryId, onSaved });
   const { dirty, flush } = autosave;
   useEffect(() => {
+    const leave = (proceed: () => void) => void flush().then((saved) => {
+      if (saved || window.confirm("Your edits could not be saved. Leave and lose these edits?")) proceed();
+    });
     const handleAnchorClick = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const anchor = (event.target as Element | null)?.closest("a");
@@ -35,14 +38,22 @@ export const NoteEditor = forwardRef<NoteEditorHandle, {
       if (!anchor || anchor.target === "_blank" || !href?.startsWith("/") || !dirty) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      void flush().then((saved) => {
-        if (saved || window.confirm("Your edits could not be saved. Leave and lose these edits?")) router.push(href);
-      });
+      leave(() => router.push(href));
+    };
+    const handleGuardedNavigation = (event: Event) => {
+      const proceed = guardedNavigationProceed(event);
+      if (!dirty || !proceed) return;
+      event.preventDefault();
+      leave(proceed);
     };
     document.addEventListener("click", handleAnchorClick, true);
-    return () => document.removeEventListener("click", handleAnchorClick, true);
+    window.addEventListener(BEFORE_APP_NAVIGATION, handleGuardedNavigation);
+    return () => {
+      document.removeEventListener("click", handleAnchorClick, true);
+      window.removeEventListener(BEFORE_APP_NAVIGATION, handleGuardedNavigation);
+    };
   }, [dirty, flush, router]);
-  useImperativeHandle(ref, () => ({ flush: autosave.flush, hasUnsaved: () => autosave.dirty, saveAsNew: autosave.saveAsNew }), [autosave.dirty, autosave.flush, autosave.saveAsNew]);
+  useImperativeHandle(ref, () => ({ flush: autosave.flush, saveAsNew: autosave.saveAsNew }), [autosave.flush, autosave.saveAsNew]);
 
   const copy = async () => {
     try {
@@ -78,7 +89,13 @@ export const NoteEditor = forwardRef<NoteEditorHandle, {
         </div>
         <div className="flex items-center gap-2">
           <span role="status" aria-live="polite" className="rounded-full bg-[var(--rt-cream-soft)] px-3 py-1 text-xs font-semibold">{autosave.status}</span>
-          {autosave.note && <Button type="button" variant="ghost" aria-label="Delete note" onClick={() => onDelete?.(autosave.note!)} className="rounded-full text-[var(--rt-ink-muted)] hover:text-[var(--rt-orange-deep)]"><Trash2 aria-hidden="true" /> Delete</Button>}
+          {autosave.note && <Button type="button" variant="ghost" aria-label="Delete note" onClick={() => void (async () => {
+            if (!window.confirm("Delete this Note permanently?")) return;
+            const saved = await autosave.flush();
+            if (!saved && !window.confirm("Your edits could not be saved. Delete this Note and lose those edits?")) return;
+            const current = autosave.getCurrentNote();
+            if (current) onDelete?.(current);
+          })()} className="rounded-full text-[var(--rt-ink-muted)] hover:text-[var(--rt-orange-deep)]"><Trash2 aria-hidden="true" /> Delete</Button>}
         </div>
       </div>
 

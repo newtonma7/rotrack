@@ -3,6 +3,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiRequestError } from "@/lib/api-errors";
+import { requestAppNavigation } from "@/lib/navigation-guard";
 import type { Note } from "@/types/notes";
 
 const { router } = vi.hoisted(() => ({ router: { push: vi.fn() } }));
@@ -27,7 +28,10 @@ describe("NoteEditor", () => {
     updateNote.mockReset().mockResolvedValue({ ...savedNote, version: 2 });
     router.push.mockReset();
   });
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
 
   it("captures a draft and creates once after the 750ms quiet period", async () => {
     render(<NoteEditor activeEntryId="entry-1" />);
@@ -90,6 +94,29 @@ describe("NoteEditor", () => {
     fireEvent.click(screen.getByRole("link", { name: "Tracker" }));
     await waitFor(() => expect(router.push).toHaveBeenCalledWith("/tracker"));
     confirm.mockRestore();
+  });
+
+  it("guards button-driven app navigation such as sign out", async () => {
+    updateNote.mockRejectedValue(new Error("offline"));
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const proceed = vi.fn();
+    render(<NoteEditor initialNote={savedNote} />);
+    fireEvent.change(screen.getByLabelText("Note title"), { target: { value: "unsaved" } });
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Offline"), { timeout: 1200 });
+
+    requestAppNavigation(proceed);
+    await waitFor(() => expect(confirm).toHaveBeenCalled());
+    expect(proceed).not.toHaveBeenCalled();
+    confirm.mockRestore();
+  });
+
+  it("flushes before destructive deletion and uses the saved version", async () => {
+    const onDelete = vi.fn();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<NoteEditor initialNote={savedNote} onDelete={onDelete} />);
+    fireEvent.change(screen.getByLabelText("Note title"), { target: { value: "changed" } });
+    fireEvent.click(screen.getByRole("button", { name: "Delete note" }));
+    await waitFor(() => expect(onDelete).toHaveBeenCalledWith(expect.objectContaining({ version: 2 })), { timeout: 1200 });
   });
 
   it("turns a version conflict into an explicit Save as new action", async () => {
