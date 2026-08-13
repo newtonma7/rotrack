@@ -42,12 +42,16 @@ describe("NotesWorkspace", () => {
     expect(within(screen.getByRole("complementary", { name: "Notes library" })).getAllByRole("button", { name: /^one/ })).toHaveLength(1);
   });
 
-  it("resets /notes to a fresh draft after the first create", async () => {
+  it("continues the created Note until New note starts a fresh draft", async () => {
     api.createNote.mockResolvedValueOnce({ id: "created", title: "saved", preview: "", timeEntryId: null, version: 1, createdAt: "2026-08-12T10:00:00Z", updatedAt: "2026-08-12T10:00:00Z", contentJson: { schemaVersion: 1, document: { type: "doc", content: [] } }, contentText: "", contentSchemaVersion: 1 });
     render(<NotesWorkspace />);
     const title = await screen.findByLabelText("Note title");
     fireEvent.change(title, { target: { value: "saved" } });
     await waitFor(() => expect(api.createNote).toHaveBeenCalledTimes(1), { timeout: 1200 });
+    await waitFor(() => expect(screen.getByLabelText("Note title")).toHaveProperty("value", "saved"));
+    expect(screen.getByRole("status").textContent).toBe("Saved");
+
+    fireEvent.click(screen.getByRole("button", { name: "New note" }));
     await waitFor(() => expect(screen.getByLabelText("Note title")).toHaveProperty("value", ""));
     expect(screen.getByRole("status").textContent).toBe("Draft");
   });
