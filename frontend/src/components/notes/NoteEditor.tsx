@@ -1,6 +1,7 @@
 "use client";
 
-import { forwardRef, useImperativeHandle, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RichTextEditor } from "@/components/notes/RichTextEditor";
@@ -23,7 +24,24 @@ export const NoteEditor = forwardRef<NoteEditorHandle, {
   onDelete?: (note: Note) => void;
   onReload?: () => Promise<Note | null>;
 }>(({ initialNote, activeEntryId = null, attachments = [], onSaved, onDelete, onReload }, ref) => {
+  const router = useRouter();
   const autosave = useNoteAutosave({ initialNote, activeEntryId, onSaved });
+  const { dirty, flush } = autosave;
+  useEffect(() => {
+    const handleAnchorClick = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const anchor = (event.target as Element | null)?.closest("a");
+      const href = anchor?.getAttribute("href");
+      if (!anchor || anchor.target === "_blank" || !href?.startsWith("/") || !dirty) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      void flush().then((saved) => {
+        if (saved || window.confirm("Your edits could not be saved. Leave and lose these edits?")) router.push(href);
+      });
+    };
+    document.addEventListener("click", handleAnchorClick, true);
+    return () => document.removeEventListener("click", handleAnchorClick, true);
+  }, [dirty, flush, router]);
   useImperativeHandle(ref, () => ({ flush: autosave.flush, hasUnsaved: () => autosave.dirty, saveAsNew: autosave.saveAsNew }), [autosave.dirty, autosave.flush, autosave.saveAsNew]);
 
   const copy = async () => {

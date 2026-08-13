@@ -10,6 +10,7 @@ const api = vi.hoisted(() => ({
   getHistory: vi.fn(),
   getActiveSession: vi.fn(),
   deleteNote: vi.fn(),
+  createNote: vi.fn(),
 }));
 vi.mock("@/lib/api", () => api);
 vi.mock("@/components/app/ApplicationHeader", () => ({ ApplicationHeader: () => <header>navigation</header> }));
@@ -26,6 +27,7 @@ describe("NotesWorkspace", () => {
     api.getNote.mockReset();
     api.getHistory.mockReset().mockResolvedValue({ entries: [], nextCursor: null });
     api.getActiveSession.mockReset().mockResolvedValue(null);
+    api.createNote.mockReset();
   });
   afterEach(() => cleanup());
 
@@ -38,6 +40,25 @@ describe("NotesWorkspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Load more" }));
     await waitFor(() => expect(screen.getByText("two")).toBeTruthy());
     expect(within(screen.getByRole("complementary", { name: "Notes library" })).getAllByRole("button", { name: /^one/ })).toHaveLength(1);
+  });
+
+  it("resets /notes to a fresh draft after the first create", async () => {
+    api.createNote.mockResolvedValueOnce({ id: "created", title: "saved", preview: "", timeEntryId: null, version: 1, createdAt: "2026-08-12T10:00:00Z", updatedAt: "2026-08-12T10:00:00Z", contentJson: { schemaVersion: 1, document: { type: "doc", content: [] } }, contentText: "", contentSchemaVersion: 1 });
+    render(<NotesWorkspace />);
+    const title = await screen.findByLabelText("Note title");
+    fireEvent.change(title, { target: { value: "saved" } });
+    await waitFor(() => expect(api.createNote).toHaveBeenCalledTimes(1), { timeout: 1200 });
+    await waitFor(() => expect(screen.getByLabelText("Note title")).toHaveProperty("value", ""));
+    expect(screen.getByRole("status").textContent).toBe("Draft");
+  });
+
+  it("loads every available history cursor page for attachment options", async () => {
+    const firstEntry = { id: "entry-1", activityType: "WORK" as const, startTime: "2026-08-10T10:00:00Z", endTime: "2026-08-10T11:00:00Z", durationSeconds: 3600, notes: null, attachedNoteCount: 0 };
+    const secondEntry = { ...firstEntry, id: "entry-2", startTime: "2026-08-09T10:00:00Z" };
+    api.getHistory.mockReset().mockResolvedValueOnce({ entries: [firstEntry], nextCursor: "cursor-2" }).mockResolvedValueOnce({ entries: [secondEntry], nextCursor: null });
+    render(<NotesWorkspace />);
+    await waitFor(() => expect(api.getHistory).toHaveBeenCalledWith("cursor-2"));
+    expect(document.querySelector('option[value="entry-2"]')).toBeTruthy();
   });
 
   it("passes attachment filters to the typed list API", async () => {

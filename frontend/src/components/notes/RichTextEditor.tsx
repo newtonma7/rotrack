@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
+import { validateRichTextDocument } from "@/lib/rich-text";
 import type { RichTextDocument } from "@/types/notes";
 
 const EMPTY_DOCUMENT: RichTextDocument = { schemaVersion: 1, document: { type: "doc", content: [] } };
@@ -22,15 +23,18 @@ export function isSafeRichTextLink(value: string): boolean {
 export function RichTextEditor({
   initialContent = EMPTY_DOCUMENT,
   onChange,
+  onSelectedLinkChange,
   ariaLabel = "Note content",
 }: {
   initialContent?: RichTextDocument;
   onChange?: (document: RichTextDocument, text: string) => void;
+  onSelectedLinkChange?: (href: string | null) => void;
   ariaLabel?: string;
 }) {
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkValue, setLinkValue] = useState("");
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [selectedLink, setSelectedLink] = useState<string | null>(null);
   const editor = useEditor({
     immediatelyRender: false,
     content: initialContent.document,
@@ -53,12 +57,33 @@ export function RichTextEditor({
       },
     },
     onUpdate: ({ editor: current }) => {
-      const json = current.getJSON() as unknown as { content?: RichTextDocument["document"]["content"] };
-      onChange?.({ schemaVersion: 1, document: { type: "doc", content: json.content ?? [] } }, current.getText());
+      const draft = { schemaVersion: 1 as const, document: { type: "doc" as const, content: (current.getJSON() as unknown as { content?: RichTextDocument["document"]["content"] }).content ?? [] } };
+      const validation = validateRichTextDocument(draft);
+      onChange?.(validation.ok ? validation.document : draft, current.getText());
+    },
+    onSelectionUpdate: ({ editor: current }) => {
+      const href = current.getAttributes("link").href ?? null;
+      setSelectedLink(href);
+      onSelectedLinkChange?.(href);
     },
   });
 
   useEffect(() => () => editor?.destroy(), [editor]);
+
+  useEffect(() => {
+    if (!editor) return;
+    const handleLinkClick = (event: MouseEvent) => {
+      const anchor = (event.target as Element | null)?.closest("a");
+      const href = anchor?.getAttribute("href");
+      if (!href) return;
+      event.preventDefault();
+      setSelectedLink(href);
+      onSelectedLinkChange?.(href);
+    };
+    const editorDom = editor.view.dom;
+    editorDom.addEventListener("click", handleLinkClick);
+    return () => editorDom.removeEventListener("click", handleLinkClick);
+  }, [editor, onSelectedLinkChange]);
 
   useEffect(() => {
     if (!editor) return;
@@ -74,6 +99,12 @@ export function RichTextEditor({
     setLinkValue(editor.getAttributes("link").href ?? "");
     setLinkError(null);
     setLinkOpen(true);
+  };
+
+  const openSelectedLink = () => {
+    if (!selectedLink) return;
+    const opened = window.open(selectedLink, "_blank", "noopener,noreferrer");
+    if (opened) opened.opener = null;
   };
 
   const applyLink = () => {
@@ -103,6 +134,7 @@ export function RichTextEditor({
         <ToolbarButton label="Ordered list" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>1. list</ToolbarButton>
         <ToolbarButton label="Blockquote" active={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()}>“</ToolbarButton>
         <ToolbarButton label="Link" active={editor.isActive("link")} onClick={openLinkDialog}>↗</ToolbarButton>
+        <ToolbarButton label="Open selected link" onClick={openSelectedLink} disabled={!selectedLink}>open</ToolbarButton>
         <span className="mx-1 h-6 w-px bg-[var(--rt-line)]" aria-hidden="true" />
         <ToolbarButton label="Undo" onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()}>↶</ToolbarButton>
         <ToolbarButton label="Redo" onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()}>↷</ToolbarButton>

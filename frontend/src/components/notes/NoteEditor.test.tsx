@@ -5,6 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiRequestError } from "@/lib/api-errors";
 import type { Note } from "@/types/notes";
 
+const { router } = vi.hoisted(() => ({ router: { push: vi.fn() } }));
+vi.mock("next/navigation", () => ({ useRouter: () => router }));
+
 const { createNote, updateNote } = vi.hoisted(() => ({ createNote: vi.fn(), updateNote: vi.fn() }));
 vi.mock("@/lib/api", () => ({ createNote, updateNote }));
 
@@ -22,6 +25,7 @@ describe("NoteEditor", () => {
     vi.useRealTimers();
     createNote.mockReset().mockResolvedValue(savedNote);
     updateNote.mockReset().mockResolvedValue({ ...savedNote, version: 2 });
+    router.push.mockReset();
   });
   afterEach(() => cleanup());
 
@@ -44,6 +48,14 @@ describe("NoteEditor", () => {
     expect(createNote.mock.calls[0][0].title).toBe("abc");
   });
 
+  it("keeps an explicit attachment selected before the first meaningful edit", async () => {
+    render(<NoteEditor activeEntryId="active-entry" attachments={[{ id: "chosen-entry", label: "chosen" }]} />);
+    fireEvent.change(screen.getByLabelText("Attachment"), { target: { value: "chosen-entry" } });
+    fireEvent.change(screen.getByLabelText("Note title"), { target: { value: "attached deliberately" } });
+    await waitFor(() => expect(createNote).toHaveBeenCalledTimes(1), { timeout: 1200 });
+    expect(createNote.mock.calls[0][0].timeEntryId).toBe("chosen-entry");
+  });
+
   it("keeps newer edits made while a save is in flight", async () => {
     let resolveCreate: (note: Note) => void = () => undefined;
     createNote.mockImplementationOnce(() => new Promise<Note>((resolve) => { resolveCreate = resolve; }));
@@ -63,6 +75,31 @@ describe("NoteEditor", () => {
     fireEvent.change(screen.getByLabelText("Note title"), { target: { value: "still local" } });
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("too large"), { timeout: 1200 });
     expect(updateNote).not.toHaveBeenCalled();
+  });
+
+  it("stays on navigation when save fails, then confirms leave-with-loss", async () => {
+    updateNote.mockRejectedValue(new Error("offline"));
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<><NoteEditor initialNote={savedNote} /><a href="/tracker">Tracker</a></>);
+    fireEvent.change(screen.getByLabelText("Note title"), { target: { value: "unsaved" } });
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Offline"), { timeout: 1200 });
+    fireEvent.click(screen.getByRole("link", { name: "Tracker" }));
+    await waitFor(() => expect(confirm).toHaveBeenCalled());
+    expect(router.push).not.toHaveBeenCalled();
+    confirm.mockReturnValue(true);
+    fireEvent.click(screen.getByRole("link", { name: "Tracker" }));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/tracker"));
+    confirm.mockRestore();
+  });
+
+  it("turns a version conflict into an explicit Save as new action", async () => {
+    updateNote.mockRejectedValueOnce(new ApiRequestError("changed", 409, "RICH_TEXT_VERSION_CONFLICT"));
+    createNote.mockResolvedValueOnce({ ...savedNote, id: "note-2", title: "copy" });
+    render(<NoteEditor initialNote={savedNote} />);
+    fireEvent.change(screen.getByLabelText("Note title"), { target: { value: "local copy" } });
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Conflict"), { timeout: 1200 });
+    fireEvent.click(screen.getByRole("button", { name: "Save as new Note" }));
+    await waitFor(() => expect(createNote).toHaveBeenCalledWith(expect.objectContaining({ title: "local copy" }), expect.any(String)));
   });
 
   it("preserves edits and exposes Waiting after a rate limit", async () => {

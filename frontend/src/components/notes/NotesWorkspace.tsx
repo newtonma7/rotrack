@@ -25,6 +25,7 @@ export function NotesWorkspace({ selectedNoteId = null }: { selectedNoteId?: str
   const [error, setError] = useState<string | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(Boolean(selectedNoteId));
+  const [draftNonce, setDraftNonce] = useState(0);
 
   const loadList = useCallback(async (cursor?: string) => {
     const requestId = ++requestSequence.current;
@@ -50,9 +51,21 @@ export function NotesWorkspace({ selectedNoteId = null }: { selectedNoteId?: str
 
   useEffect(() => {
     let active = true;
-    void Promise.all([getHistory(), getActiveSession()]).then(([history, current]) => {
-      if (active) setEntries([...history.entries, ...(current ? [current] : [])]);
-    }).catch(() => { /* Attachments are optional; the editor remains usable standalone. */ });
+    const loadAttachments = async () => {
+      const allEntries: HistoryEntry[] = [];
+      const seenCursors = new Set<string>();
+      let cursor: string | undefined;
+      do {
+        const page = await getHistory(cursor);
+        allEntries.push(...page.entries);
+        if (!page.nextCursor || seenCursors.has(page.nextCursor)) break;
+        seenCursors.add(page.nextCursor);
+        cursor = page.nextCursor;
+      } while (active);
+      const current = await getActiveSession();
+      if (active) setEntries([...allEntries, ...(current ? [current] : [])]);
+    };
+    void loadAttachments().catch(() => { /* Attachments are optional; the editor remains usable standalone. */ });
     return () => { active = false; };
   }, []);
 
@@ -82,20 +95,6 @@ export function NotesWorkspace({ selectedNoteId = null }: { selectedNoteId?: str
     router.push(destination);
   };
 
-  useEffect(() => {
-    const interceptNavigation = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      const anchor = (event.target as Element | null)?.closest("a");
-      if (!anchor || anchor.target === "_blank") return;
-      const href = anchor.getAttribute("href");
-      if (!href?.startsWith("/") || !editorRef.current?.hasUnsaved()) return;
-      event.preventDefault();
-      void leaveEditor(href);
-    };
-    document.addEventListener("click", interceptNavigation, true);
-    return () => document.removeEventListener("click", interceptNavigation, true);
-  });
-
   const handleSaved = (saved: Note) => {
     // Keep the draft editor mounted during its first create so keystrokes that landed
     // during the request cannot be lost to a route/key change. Explicit Save-as-new
@@ -106,6 +105,7 @@ export function NotesWorkspace({ selectedNoteId = null }: { selectedNoteId?: str
       router.replace(`/notes/${saved.id}`);
     }
     setNotes((current) => dedupeSummaries([saved, ...current]));
+    if (!selectedNoteId) setDraftNonce((current) => current + 1);
   };
 
   const handleDelete = async (note: Note) => {
@@ -145,7 +145,7 @@ export function NotesWorkspace({ selectedNoteId = null }: { selectedNoteId?: str
             </div>
           </aside>
           <div className="min-w-0">
-            {detailError ? <div role="alert" className="rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-8"><p>{detailError}</p><Button variant="outline" onClick={() => router.push("/notes")} className="mt-4 rounded-full">Back to notes</Button></div> : detailLoading ? <div role="status" className="rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-8">Loading note…</div> : <NoteEditor key={selectedNote?.id ?? "draft"} ref={editorRef} initialNote={selectedNote} attachments={attachmentOptions} onSaved={handleSaved} onDelete={handleDelete} onReload={selectedNote ? async () => {
+            {detailError ? <div role="alert" className="rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-8"><p>{detailError}</p><Button variant="outline" onClick={() => router.push("/notes")} className="mt-4 rounded-full">Back to notes</Button></div> : detailLoading ? <div role="status" className="rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-8">Loading note…</div> : <NoteEditor key={selectedNote?.id ?? `draft-${draftNonce}`} ref={editorRef} initialNote={selectedNote} attachments={attachmentOptions} onSaved={handleSaved} onDelete={handleDelete} onReload={selectedNote ? async () => {
               const fresh = await getNote(selectedNote.id);
               setSelectedNote(fresh);
               return fresh;
