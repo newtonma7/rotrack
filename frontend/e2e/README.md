@@ -105,3 +105,29 @@ sets `ROTRACK_E2E_REQUIRE_SIGNUP=1`; the full confirmation/sign-in acceptance ad
 `ROTRACK_E2E_REQUIRE_SIGNUP_CONFIRMATION=1` and expects both signup tests to pass.
 HTML and failure artifacts are ignored by Git; treat them as sensitive
 operational output and remove them according to the CI retention policy.
+
+## M5.1 local Notes acceptance
+
+`m51-notes-api.spec.ts` is an authenticated API/browser-boundary acceptance
+matrix. It uses the real Supabase access token from each approved storage state,
+but every application mutation is sent to the disposable local Spring API. The
+spec refuses non-loopback frontend/API URLs, installs the API-target guard, and
+covers Note CRUD, opaque pagination, attachment filters, active/completed entry
+attachments, move/detach, two-user ownership, foreign attachments, Time Entry
+delete detachment/counts, idempotent replay/tombstones, and optimistic conflicts.
+
+Run it only after seeding the two storage-state subjects into a disposable local
+PostgreSQL database and starting the local stack:
+
+```bash
+ROTRACK_E2E_BASE_URL=http://localhost:<FRONTEND_PORT> \
+ROTRACK_E2E_EXPECTED_API_URL=http://localhost:<API_PORT>/api/v1 \
+ROTRACK_E2E_USER_A_STORAGE_STATE=/home/newton/.local/state/rotrack-e2e/shared-hosted-production/user-a.json \
+ROTRACK_E2E_USER_B_STORAGE_STATE=/home/newton/.local/state/rotrack-e2e/shared-hosted-production/user-b.json \
+ROTRACK_E2E_REQUIRE_AUTH=1 \
+npm run e2e -- m51-notes-api.spec.ts --project=chromium
+```
+
+Keep the storage states, local environment values, browser reports, screenshots,
+traces, and server logs outside source control; remove them after the run. Do
+not run this spec against hosted application APIs or a non-disposable database.

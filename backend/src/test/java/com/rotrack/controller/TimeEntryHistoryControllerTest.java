@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.rotrack.config.SecurityConfig;
 import com.rotrack.dto.HistoryPageDTO;
+import com.rotrack.dto.HistoryTimeEntryDTO;
 import com.rotrack.dto.TimeEntryDTO;
 import com.rotrack.exception.GlobalExceptionHandler;
 import com.rotrack.exception.InvalidCursorException;
@@ -56,9 +57,8 @@ class TimeEntryHistoryControllerTest {
 
     @Test
     void listsOwnedCompletedEntriesWithOpaqueCursor() throws Exception {
-        TimeEntryDTO entry = completed();
         when(timeEntryService.listHistory(USER_ID, "opaque-next"))
-                .thenReturn(new HistoryPageDTO(List.of(entry), "opaque-next"));
+                .thenReturn(new HistoryPageDTO(List.of(historyEntry()), "opaque-next"));
 
         mockMvc.perform(get("/api/v1/time-entries/history")
                         .queryParam("cursor", "opaque-next")
@@ -66,6 +66,7 @@ class TimeEntryHistoryControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.entries[0].id").value(ENTRY_ID.toString()))
                 .andExpect(jsonPath("$.data.entries[0].durationSeconds").value(3600))
+                .andExpect(jsonPath("$.data.entries[0].attachedNoteCount").value(0))
                 .andExpect(jsonPath("$.data.nextCursor").value("opaque-next"));
 
         verify(timeEntryService).listHistory(USER_ID, "opaque-next");
@@ -152,6 +153,18 @@ class TimeEntryHistoryControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(timeEntryService).deleteEntry(USER_ID, ENTRY_ID);
+    }
+
+    private HistoryTimeEntryDTO historyEntry() {
+        return new HistoryTimeEntryDTO(
+                ENTRY_ID,
+                ActivityType.WORK,
+                Instant.parse("2026-01-01T10:00:00Z"),
+                Instant.parse("2026-01-01T11:00:00Z"),
+                3600L,
+                "focus",
+                0
+        );
     }
 
     private TimeEntryDTO completed() {

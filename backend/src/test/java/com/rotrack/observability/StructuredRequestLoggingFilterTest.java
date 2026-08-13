@@ -65,6 +65,20 @@ class StructuredRequestLoggingFilterTest {
     }
 
     @Test
+    void includesStableM5ErrorCategoriesButNeverRawResourcePath() throws Exception {
+        for (String code : new String[]{"INVALID_CURSOR", "TIME_ENTRY_OVERLAP", "RICH_TEXT_VERSION_CONFLICT", "IDEMPOTENCY_CONFLICT", "NOTE_DELETED"}) {
+            List<String> events = new ArrayList<>();
+            StructuredRequestLoggingFilter filter = new StructuredRequestLoggingFilter(objectMapper, Clock.systemUTC(), "staging", "release-test", events::add);
+            MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/notes/11111111-1111-1111-1111-111111111111");
+            request.setAttribute(RequestLogAttributes.ERROR_CODE, code);
+            filter.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
+            JsonNode event = objectMapper.readTree(events.getFirst());
+            assertThat(event.get("error.code").asText()).isEqualTo(code);
+            assertThat(events.getFirst()).doesNotContain("11111111-1111-1111-1111-111111111111");
+        }
+    }
+
+    @Test
     void omitsUnknownUppercaseErrorCode() throws Exception {
         List<String> events = new ArrayList<>();
         StructuredRequestLoggingFilter filter = new StructuredRequestLoggingFilter(

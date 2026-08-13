@@ -174,7 +174,7 @@ class TimeEntryControllerSecurityTest {
                         .with(jwt().jwt(jwt -> jwt.subject(userId.toString()).audience(List.of("authenticated")))))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("NOT_FOUND"))
-                .andExpect(jsonPath("$.path").value("/api/v1/time-entries/" + entryId + "/stop"));
+                .andExpect(jsonPath("$.path").value("/api/v1/time-entries/{id}/stop"));
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.rotrack.exception;
 
 import com.rotrack.dto.ApiErrorResponse;
 import com.rotrack.observability.RequestLogAttributes;
+import com.rotrack.web.RouteTemplates;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -10,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -17,6 +19,22 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(NoteDeletedException.class)
+    public ResponseEntity<ApiErrorResponse> handleNoteDeleted(
+            NoteDeletedException ex,
+            HttpServletRequest request
+    ) {
+        return error(HttpStatus.GONE, "NOTE_DELETED", ex.getMessage(), Map.of(), request);
+    }
+
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<ApiErrorResponse> handleDomainValidation(
+            ValidationException ex,
+            HttpServletRequest request
+    ) {
+        return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage(), ex.getFieldErrors(), request);
+    }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleNotFound(
@@ -39,7 +57,10 @@ public class GlobalExceptionHandler {
             ConflictException ex,
             HttpServletRequest request
     ) {
-        return error(HttpStatus.CONFLICT, ex.getCode(), ex.getMessage(), Map.of(), request);
+        String message = "IDEMPOTENCY_CONFLICT".equals(ex.getCode())
+                ? "The creation key was already used"
+                : ex.getMessage();
+        return error(HttpStatus.CONFLICT, ex.getCode(), message, Map.of(), request);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
@@ -83,13 +104,22 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ApiErrorResponse> handleMissingHeader(HttpServletRequest request) {
+        return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "A required request header is missing", Map.of(), request);
+    }
+
     @ExceptionHandler(MissingServletRequestParameterException.class)
-    public ResponseEntity<ApiErrorResponse> handleMissingParameter(HttpServletRequest request) {
+    public ResponseEntity<ApiErrorResponse> handleMissingParameter(
+            MissingServletRequestParameterException ex,
+            HttpServletRequest request
+    ) {
+        boolean expectedVersion = "expectedVersion".equals(ex.getParameterName());
         return error(
                 HttpStatus.BAD_REQUEST,
-                "INVALID_PARAMETER",
-                "A required request parameter is missing",
-                Map.of(),
+                expectedVersion ? "VALIDATION_ERROR" : "INVALID_PARAMETER",
+                expectedVersion ? "expectedVersion is required" : "A required request parameter is missing",
+                expectedVersion ? Map.of("expectedVersion", "expectedVersion is required") : Map.of(),
                 request
         );
     }
@@ -154,7 +184,7 @@ public class GlobalExceptionHandler {
     ) {
         request.setAttribute(RequestLogAttributes.ERROR_CODE, code);
         return ResponseEntity.status(status).body(
-                ApiErrorResponse.of(code, message, fieldErrors, request.getRequestURI())
+                ApiErrorResponse.of(code, message, fieldErrors, RouteTemplates.resolve(request))
         );
     }
 }

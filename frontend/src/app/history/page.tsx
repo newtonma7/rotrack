@@ -94,7 +94,10 @@ export default function HistoryPage() {
   };
 
   const removeEntry = async (entry: HistoryEntry) => {
-    if (!window.confirm("Delete this completed entry?")) return;
+    const noteWarning = entry.attachedNoteCount > 0
+      ? ` ${entry.attachedNoteCount} attached Note${entry.attachedNoteCount === 1 ? "" : "s"} survive and detach.`
+      : "";
+    if (!window.confirm(`Delete this completed entry?${noteWarning}`)) return;
     setDeletingId(entry.id);
     setDeleteError(null);
     try {

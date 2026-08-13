@@ -15,6 +15,7 @@ import com.rotrack.config.TimeConfig;
 import com.rotrack.exception.GlobalExceptionHandler;
 import com.rotrack.model.ActivityType;
 import com.rotrack.model.TimeEntry;
+import com.rotrack.repository.NoteRepository;
 import com.rotrack.repository.TimeEntryRepository;
 import com.rotrack.service.DashboardService;
 import com.rotrack.service.TimeEntryService;
@@ -61,6 +62,9 @@ class TimeEntryControllerOwnershipTest {
 
     @MockitoBean
     private TimeEntryRepository timeEntryRepository;
+
+    @MockitoBean
+    private NoteRepository noteRepository;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
@@ -139,8 +143,7 @@ class TimeEntryControllerOwnershipTest {
                 .andExpect(jsonPath("$.error.message").value("Time entry not found"))
                 .andExpect(jsonPath("$.error.fieldErrors").isMap())
                 .andExpect(jsonPath("$.timestamp").isString())
-                .andExpect(jsonPath("$.path")
-                        .value("/api/v1/time-entries/" + ACTIVE_ENTRY_ID + "/stop"));
+                .andExpect(jsonPath("$.path").value("/api/v1/time-entries/{id}/stop"));
 
         verify(timeEntryRepository).findByIdAndUserId(ACTIVE_ENTRY_ID, USER_B);
         verify(timeEntryRepository, never()).save(any(TimeEntry.class));

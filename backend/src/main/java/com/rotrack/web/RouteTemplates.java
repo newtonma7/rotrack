@@ -21,9 +21,11 @@ public final class RouteTemplates {
     public static final String STOP = "/api/v1/time-entries/{id}/stop";
     public static final String DASHBOARD_STATS = "/api/v1/dashboard/stats";
     public static final String PREFERENCES = "/api/v1/preferences";
+    public static final String NOTES = "/api/v1/notes";
+    public static final String NOTE = "/api/v1/notes/{id}";
     private static final String UNMATCHED = "/unmatched";
     private static final Set<String> ALLOWED_TEMPLATES = Set.of(
-            HEALTH, READINESS, START, COLLECTION, HISTORY, ACTIVE, ENTRY, STOP, DASHBOARD_STATS, PREFERENCES
+            HEALTH, READINESS, START, COLLECTION, HISTORY, ACTIVE, ENTRY, STOP, DASHBOARD_STATS, PREFERENCES, NOTES, NOTE
     );
 
     private RouteTemplates() {
@@ -46,8 +48,11 @@ public final class RouteTemplates {
                 path = path.substring(0, suffixStart);
             }
         }
-        if (Set.of(HEALTH, READINESS, START, COLLECTION, HISTORY, ACTIVE, DASHBOARD_STATS, PREFERENCES).contains(path)) {
+        if (Set.of(HEALTH, READINESS, START, COLLECTION, HISTORY, ACTIVE, DASHBOARD_STATS, PREFERENCES, NOTES).contains(path)) {
             return path;
+        }
+        if (path != null && path.matches("/api/v1/notes/[0-9a-fA-F-]{36}")) {
+            return NOTE;
         }
         if (path != null && path.matches("/api/v1/time-entries/[0-9a-fA-F-]{36}/stop")) {
             return STOP;
@@ -60,19 +65,25 @@ public final class RouteTemplates {
 
     public static Optional<MutationRoute> mutation(HttpServletRequest request) {
         String route = resolve(request);
-        if ("POST".equals(request.getMethod()) && (START.equals(route) || COLLECTION.equals(route))) {
+        if ("POST".equals(request.getMethod()) && (START.equals(route) || COLLECTION.equals(route) || NOTES.equals(route))) {
             return Optional.of(new MutationRoute("POST", route));
         }
-        if ("PUT".equals(request.getMethod()) && (STOP.equals(route) || ENTRY.equals(route))) {
+        if ("PUT".equals(request.getMethod()) && (STOP.equals(route) || ENTRY.equals(route) || NOTE.equals(route))) {
             return Optional.of(new MutationRoute("PUT", route));
         }
-        if ("DELETE".equals(request.getMethod()) && ENTRY.equals(route)) {
-            return Optional.of(new MutationRoute("DELETE", ENTRY));
+        if ("DELETE".equals(request.getMethod()) && (ENTRY.equals(route) || NOTE.equals(route))) {
+            return Optional.of(new MutationRoute("DELETE", route));
         }
         if ("PUT".equals(request.getMethod()) && PREFERENCES.equals(route)) {
             return Optional.of(new MutationRoute("PUT", PREFERENCES));
         }
         return Optional.empty();
+    }
+
+    public static boolean isNoteMutation(HttpServletRequest request) {
+        String route = resolve(request);
+        return (NOTES.equals(route) && "POST".equals(request.getMethod()))
+                || (NOTE.equals(route) && ("PUT".equals(request.getMethod()) || "DELETE".equals(request.getMethod())));
     }
 
     public record MutationRoute(String method, String template) {

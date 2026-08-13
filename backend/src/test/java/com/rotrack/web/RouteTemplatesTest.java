@@ -29,6 +29,13 @@ class RouteTemplatesTest {
     }
 
     @Test
+    void namesNoteDeleteWithTheNoteRouteTemplate() {
+        MockHttpServletRequest request = request("DELETE", "/api/v1/notes/22222222-2222-2222-2222-222222222222");
+        assertThat(RouteTemplates.mutation(request))
+                .contains(new RouteTemplates.MutationRoute("DELETE", RouteTemplates.NOTE));
+    }
+
+    @Test
     void includesHistoryCreateEditAndDeleteInStableMutationRoutes() {
         MockHttpServletRequest create = request("POST", "/api/v1/time-entries");
         MockHttpServletRequest history = request("GET", "/api/v1/time-entries/history");
