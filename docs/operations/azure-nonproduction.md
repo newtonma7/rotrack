@@ -8,11 +8,17 @@
 - Target preflight and postflight passed: zero overlong notes/overlaps, `btree_gist`, preference backfill/RLS, completed-history constraints, exact runtime grants, and no runtime schema-create privilege.
 - The reviewed M4 backend was published as an immutable Linux/amd64 image and deployed to the canonical ACA boundary. Digest/service-version equality, 100% traffic, scale `1..1`, readiness, health, and exact Production-alias CORS passed. Full provider identifiers remain in private evidence.
 - Vercel Production rebuilt the reviewed tree and the canonical alias returned `200`. Authenticated tracker smoke passed `4/4` with API-target binding; focused settings/history acceptance passed persistence, two-user isolation, create/list/delete, and overlap behavior.
-- M4 is **Verified**. Full M3 production readiness remains open; M5.2 rollout is authorized but hosted evidence is not yet recorded, and M5.3 remains unauthorized.
+- M4 is **Verified**. Full M3 production readiness remains open; the separate 2026-08-16 checkpoint below records M5.2, and M5.3 remains unauthorized.
 
-## Planned M5.2 shared-hosted checkpoint — authorized 2026-08-16
+## M5.2 shared-hosted checkpoint — 2026-08-16
 
-Migration `006_notes.sql`, reviewed M5.2 artifacts, stable hosted-only HMAC secret injection, Notes writes, and disposable-user acceptance may proceed only after protected CI and merge. Record results here only after migration, immutable artifact readback, health/readiness/CORS, privacy-safe acceptance/cleanup, and application rollback evidence pass.
+- PR #36 passed all protected required checks and merged through the rebase path as source commit `5327b6f`.
+- The shared PostgreSQL project already contained the directly applied migration 006 schema. Read-only preflight confirmed Notes/replay tables, RLS, constraints, and runtime DML grants before deploying the dependent application.
+- The merged backend image published as Linux/amd64 and deployed by immutable digest. ACA readback passed digest/service-version equality, 100% selected traffic, scale `1..1`, `notes-hmac-secret` secretRef without value disclosure, Notes writes enabled, exact Production CORS, and healthy liveness/readiness.
+- Vercel Production built the merged commit, reported READY, and the canonical alias returned `200`.
+- Hosted disposable-user acceptance passed 6/6: Work/Rot lifecycle, close/reopen restoration, two-user isolation, Note autosave/reload, conflict recovery, checklist persistence, desktop/mobile journal behavior, and cleanup. The local-only M5.1 API harness correctly refused the hosted target and was not counted. Independent follow-up found no disposable users remaining, and sampled ACA logs omitted private content/header sentinels.
+- Application-only rollback selected the prior ACA revision and prior Vercel deployment while retaining migration 006. Public smoke passed; the matching prior-commit Playwright harness passed authenticated 4/4. The M5.2 ACA/Vercel candidate was restored and finished healthy. An initial rehearsal with the new selector harness against the old UI failed only on expected markup differences, restored safely, and was superseded by the passing prior-commit run.
+- M5.2 is **Verified**. This does not close unresolved M3 production-readiness risks or authorize M5.3.
 
 ## Previous candidate checkpoint — 2026-08-11
 
@@ -22,7 +28,7 @@ Migration `006_notes.sql`, reviewed M5.2 artifacts, stable hosted-only HMAC secr
 - Public smoke passed: frontend `200`, exact API liveness/readiness `200` contracts, HTTP redirect to HTTPS, allowed CORS, and denied unrelated CORS.
 - Hosted authenticated smoke passed `4/4` with zero skipped, unexpected, or flaky results; API-target binding passed. Operator-owned synthetic accounts and stopped rows remain by product-owner decision, so cleanup is not claimed.
 - The corrected exact no-schema-change backend/frontend rollback rehearsal passed prior backend health, prior frontend promotion, rollback public smoke, rollback authenticated `4/4`, candidate restoration, and final candidate health/CORS/auth; final state is the candidate.
-- Rate limiting remains explicitly deferred/accepted. Cloudflare Free is future exploration only. Ten genuine zero-replica trials completed on 2026-08-11 with readiness 10/10, p50 34.586 seconds, and p95/max 39.425 seconds; the 30-second p95 criterion was not met. The product owner subsequently chose `minReplicas=1` for the canonical shared-hosted app and accepted the resulting idle cost pending actual billing. Collector redaction, alert delivery/receipt, and alert routing evidence remain open. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. Backup limitation is accepted as already documented.
+- Rate limiting remains explicitly deferred/accepted. Cloudflare Free is future exploration only. Ten genuine zero-replica trials completed on 2026-08-11 with readiness 10/10, p50 34.586 seconds, and p95/max 39.425 seconds; the 30-second p95 criterion was not met. The product owner subsequently chose `minReplicas=1` for the canonical shared-hosted app and accepted the resulting idle cost pending actual billing. Collector redaction, alert delivery/receipt, and alert routing evidence remain open. The provider test-notification command failed, so provider-synthetic delivery is **NOT VERIFIED**; one alternate temporary metric-alert path has a confirmed receipt. Backup limitation is accepted as already documented.
 
 The M3/production-readiness STOP remains. Keep full identifiers only in private evidence.
 
