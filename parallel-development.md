@@ -4,13 +4,13 @@
 
 **Source of truth:** Read [`AGENTS.md`](AGENTS.md), [`arch.plan.md`](arch.plan.md), [`todo.md`](todo.md), and [`frontend/DESIGN.md`](frontend/DESIGN.md). This guide defines execution order and file ownership only.
 
-## Current checkpoint — 2026-08-12
+## Current checkpoint — 2026-08-16
 
 - M3-P is **Verified** for the 0–20-user pre-user scope. Full M3 production readiness remains open; see `todo.md` for the accepted and unresolved operational risks.
 - M4 preferences, completed history/manual corrections, and handwritten typed contracts are integrated and locally accepted.
 - The shared hosted database was explicitly remediated for legacy usernames, then migrations 003–005 applied in order; schema, RLS, runtime grants, and overlap constraints passed verification.
 - Authenticated local and hosted acceptance passed settings defaults/persistence/isolation and history create/list/delete/overlap/two-user checks; the broader local run also covers pagination/edit/active-exclusion/mobile behavior.
-- M4 is **Verified**. M5.1 is Verified locally and M5.2 is Implemented—unverified. The dated M5.2 shared-hosted rollout is authorized and evidence-gated; unresolved M3 risks and broad production-readiness claims remain open.
+- M4, M5.1, and M5.2 are **Verified**. The dated M5.2 shared-hosted rollout passed; unresolved M3 risks and broad production-readiness claims remain open.
 
 ## Coordination rules
 
@@ -49,7 +49,9 @@
 
 ### Lane C — M5.2 shared-hosted rollout (authorized 2026-08-16)
 
-**Owns:** migration `006_notes.sql`, reviewed immutable backend/frontend artifacts, stable hosted-only HMAC secret injection, Notes writes, hosted disposable-user acceptance/cleanup, rollback, and redacted evidence.
+**Status:** Verified on 2026-08-16; lane closed.
+
+**Owned:** migration `006_notes.sql`, reviewed immutable backend/frontend artifacts, stable hosted-only HMAC secret injection, Notes writes, hosted disposable-user acceptance/cleanup, rollback, and redacted evidence.
 
 - Start only after final local verification, independent review, protected CI, and merge.
 - Apply migration 006 before the dependent application and retain the additive schema during application rollback.

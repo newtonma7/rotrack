@@ -1,6 +1,6 @@
 # Tracker page redesign implementation spec
 
-**Status:** Implemented—unverified
+**Status:** Verified
 **Design provenance:** the approved throwaway prototype was removed before publication; this specification preserves the accepted production design.
 **Route:** `/tracker`
 **Primary design:** `journal + notes`

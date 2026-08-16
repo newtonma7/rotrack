@@ -25,7 +25,15 @@ For the zero-user/pre-user boundary only, the product owner authorized applying 
 
 ## M5.2 rollout authorization — 2026-08-16
 
-For the zero-user/pre-user boundary only, the product owner authorizes migration `006_notes.sql`, deployment of protected-PR-reviewed M5.2 backend/frontend artifacts, stable hosted-only Notes HMAC secret injection, Notes writes, and disposable-user acceptance on this canonical shared path. Apply the additive migration before the dependent application and retain it during application rollback. M5.2 remains **Implemented—unverified** until hosted evidence passes. This authorization excludes M5.3 and broad production-readiness claims.
+For the zero-user/pre-user boundary only, the product owner authorizes migration `006_notes.sql`, deployment of protected-PR-reviewed M5.2 backend/frontend artifacts, stable hosted-only Notes HMAC secret injection, Notes writes, and disposable-user acceptance on this canonical shared path. Apply the additive migration before the dependent application and retain it during application rollback. The rollout passed on 2026-08-16 and M5.2 is **Verified**. This authorization excludes M5.3 and broad production-readiness claims.
+
+## M5.2 rollout outcome — 2026-08-16
+
+- PR #36 passed every protected required context and merged as reviewed source commit `5327b6f`.
+- The canonical shared PostgreSQL boundary already contained migration 006; read-only preflight confirmed Notes/replay tables, RLS, constraints, and runtime grants before application deployment.
+- The merged Linux/amd64 backend digest and same-commit Vercel Production build deployed successfully. ACA readback passed digest/service-version equality, stable Notes secretRef, writes enabled, scale `1..1`, exact CORS, liveness, and readiness.
+- Hosted disposable-user acceptance passed 6/6 for timer ownership/restoration and M5.2 Notes autosave/conflict/checklist/responsive behavior. Cleanup removed the disposable Auth users and sampled logs omitted private sentinels.
+- Application-only rollback to the prior ACA/Vercel artifacts passed public smoke and prior-commit authenticated 4/4 with migration 006 retained; the M5.2 candidate was restored healthy.
 
 ## Accepted risks
 
@@ -54,7 +62,7 @@ For the zero-user/pre-user boundary only, the product owner authorizes migration
 - Hosted authenticated smoke passed `4/4` with zero skipped, unexpected, or flaky results; API-target binding passed.
 - The corrected exact no-schema-change backend/frontend rollback rehearsal passed prior backend health, prior frontend promotion, rollback public smoke, rollback authenticated `4/4`, candidate restoration, and final candidate health/CORS/auth. Final state is the candidate.
 - Operator-owned synthetic accounts and stopped rows remain by product-owner decision; cleanup is not claimed.
-- Rate limiting remains explicitly deferred/accepted. Cloudflare Free is future exploration only. Ten genuine zero-replica trials completed on 2026-08-11 with readiness 10/10, p50 34.586 seconds, and p95/max 39.425 seconds; the 30-second p95 criterion was not met. The product owner subsequently chose `minReplicas=1` for the canonical shared-hosted app and accepted the resulting idle cost pending actual billing. Collector redaction, alert delivery/receipt, and alert routing evidence remain open. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. The backup limitation is accepted as already documented.
+- Rate limiting remains explicitly deferred/accepted. Cloudflare Free is future exploration only. Ten genuine zero-replica trials completed on 2026-08-11 with readiness 10/10, p50 34.586 seconds, and p95/max 39.425 seconds; the 30-second p95 criterion was not met. The product owner subsequently chose `minReplicas=1` for the canonical shared-hosted app and accepted the resulting idle cost pending actual billing. Collector redaction, alert delivery/receipt, and alert routing evidence remain open. The provider test-notification command failed, so provider-synthetic delivery is **NOT VERIFIED**; one alternate temporary metric-alert path has a confirmed receipt. The backup limitation is accepted as already documented.
 
 ## Product-owner pre-user posture — 2026-08-11
 
