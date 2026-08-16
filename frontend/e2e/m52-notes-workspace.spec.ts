@@ -7,6 +7,11 @@ const configured = Boolean(
   e2eEnvironment.userBStorageState &&
   e2eEnvironment.expectedApiUrl,
 );
+const userAConfigured = Boolean(
+  e2eEnvironment.userAStorageState && e2eEnvironment.expectedApiUrl,
+);
+
+test.use({ screenshot: "off", trace: "off", video: "off" });
 
 test.describe("M5.2 Notes workspace", () => {
   test.skip(!configured, "External disposable auth state and the approved local API are required.");
@@ -67,6 +72,90 @@ test.describe("M5.2 Notes workspace", () => {
     }
   });
 });
+
+test.describe("M5.2 User A tracker journal", () => {
+  test.skip(!userAConfigured, "User A external disposable auth state and the approved local API are required.");
+
+  test("accepts the desktop/mobile journal flow and cleans up its disposable Note", async ({ page }) => {
+    const title = `m52-journal-${Date.now()}`;
+
+    try {
+      await installApiTargetGuard(page, e2eEnvironment.expectedApiUrl!);
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await page.goto("/tracker");
+
+      await expect(page.getByRole("region", { name: "Timer" })).toBeVisible();
+      await expect(page.getByRole("complementary", { name: "Mindspace notes" })).toBeVisible();
+      await expect(page.getByRole("region", { name: "Note editor" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "mindspace" })).toBeVisible();
+
+      await stopIfActive(page);
+      await page.getByRole("button", { name: "Work", exact: true }).click();
+      await expect(page.getByText("work · running", { exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Stop", exact: true })).toBeVisible();
+
+      await page.getByLabel("Note title").fill(title);
+      await page.getByLabel("Note content").click();
+      await page.getByRole("button", { name: "Checklist", exact: true }).click();
+      await page.getByLabel("Note content").pressSequentially("m52 acceptance checklist");
+      const checkbox = page.getByRole("checkbox", { name: "Checklist item" });
+      await expect(checkbox).toBeVisible();
+      await checkbox.check();
+      await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByLabel("Attachment")).not.toHaveValue("standalone");
+
+      await page.reload();
+      await expect(page.getByText("work · running", { exact: true })).toBeVisible();
+      const summary = page.getByRole("button", { name: new RegExp(escapeRegExp(title)) });
+      await expect(summary).toBeVisible();
+      await summary.click();
+      await expect(page.getByLabel("Note title")).toHaveValue(title);
+      await expect(page.getByRole("checkbox", { name: "Checklist item" })).toBeChecked();
+      await page.getByRole("button", { name: "Stop", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Stop", exact: true })).toBeHidden();
+
+      await page.setViewportSize({ width: 390, height: 844 });
+      await expect(page.getByRole("complementary", { name: "Mindspace notes" })).toBeVisible();
+      await expect(page.getByRole("region", { name: "Note editor" })).toBeVisible();
+      const stacked = await page.evaluate(() => {
+        const picker = document.querySelector('aside[aria-label="Mindspace notes"]');
+        const editor = document.querySelector('section[aria-label="Note editor"]');
+        return Boolean(picker && editor && picker.getBoundingClientRect().top < editor.getBoundingClientRect().top);
+      });
+      expect(stacked).toBe(true);
+
+      await deleteNoteByTitle(page, title);
+      await expect(page.getByRole("button", { name: new RegExp(escapeRegExp(title)) })).toHaveCount(0);
+    } finally {
+      await stopIfActive(page);
+      await deleteNoteByTitle(page, title);
+      await stopIfActive(page);
+    }
+  });
+});
+
+async function stopIfActive(page: Page): Promise<void> {
+  const stop = page.getByRole("button", { name: "Stop", exact: true });
+  if (await stop.isVisible().catch(() => false)) {
+    await stop.click();
+    await expect(stop).toBeHidden();
+  }
+}
+
+async function deleteNoteByTitle(page: Page, title: string): Promise<void> {
+  const summary = page.getByRole("button", { name: new RegExp(escapeRegExp(title)) });
+  if (!(await summary.isVisible().catch(() => false))) return;
+  await summary.click();
+  const deleteButton = page.getByRole("button", { name: "Delete note" });
+  if (!(await deleteButton.isVisible().catch(() => false))) return;
+  page.once("dialog", (dialog) => dialog.accept());
+  await deleteButton.click();
+  await expect(summary).toHaveCount(0);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 async function deleteThroughUi(page: Page, url: string): Promise<void> {
   try {

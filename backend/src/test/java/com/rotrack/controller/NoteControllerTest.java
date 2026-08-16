@@ -69,6 +69,35 @@ class NoteControllerTest {
     }
 
     @Test
+    void taskDocumentUsesCreateReadUpdateApiSeamsWithoutChangingTheEnvelope() throws Exception {
+        NoteDTO note = new NoteDTO(UUID.fromString("33333333-3333-4333-8333-333333333333"),
+                "Task", "before", null, 1,
+                Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z"),
+                taskDocument(false, "before"), "before", 1);
+        when(noteService.create(any(), any(), any())).thenReturn(new NoteService.CreateResult(note, false));
+        when(noteService.get(USER, note.id())).thenReturn(note);
+        when(noteService.update(eq(USER), eq(note.id()), any())).thenReturn(note);
+        String body = taskNoteBody();
+        String updateBody = body.substring(0, body.length() - 1) + ",\"expectedVersion\":1}";
+
+        mockMvc.perform(post("/api/v1/notes")
+                        .with(jwt().jwt(token -> token.subject(USER.toString()).audience(List.of("authenticated"))))
+                        .header("Idempotency-Key", KEY.toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.contentJson.document.content[0].content[0].attrs.checked").value(false));
+        mockMvc.perform(get("/api/v1/notes/{id}", note.id())
+                        .with(jwt().jwt(token -> token.subject(USER.toString()).audience(List.of("authenticated")))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.contentText").value("before"));
+        mockMvc.perform(put("/api/v1/notes/{id}", note.id())
+                        .with(jwt().jwt(token -> token.subject(USER.toString()).audience(List.of("authenticated"))))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateBody))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void publicGetListUpdateAndDeleteUseAuthenticatedOwnerAndStableErrors() throws Exception {
         NoteDTO note = note();
         when(noteService.list(USER, null, null, null)).thenReturn(new NotePageDTO(List.of(
@@ -176,6 +205,25 @@ class NoteControllerTest {
                         .with(jwt().jwt(token -> token.subject(USER.toString()).audience(List.of("authenticated")))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+    }
+
+    private String taskNoteBody() throws Exception {
+        com.fasterxml.jackson.databind.node.ObjectNode body = (com.fasterxml.jackson.databind.node.ObjectNode) taskDocument(false, "before");
+        body.put("title", "Task");
+        body.putNull("timeEntryId");
+        return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(body);
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode taskDocument(boolean checked, String text) throws Exception {
+        return new com.fasterxml.jackson.databind.ObjectMapper().readTree("""
+                {"schemaVersion":1,"document":{"type":"doc","content":[
+                  {"type":"taskList","content":[
+                    {"type":"taskItem","attrs":{"checked":%s},"content":[
+                      {"type":"paragraph","content":[{"type":"text","text":"%s"}]}
+                    ]}
+                  ]}
+                ]}}
+                """.formatted(checked, text));
     }
 
     private NoteDTO note() {

@@ -50,6 +50,7 @@ public final class StructuredRequestLoggingFilter extends OncePerRequestFilter {
             "RICH_TEXT_VERSION_CONFLICT",
             "IDEMPOTENCY_CONFLICT",
             "NOTE_DELETED",
+            "PAYLOAD_TOO_LARGE",
             "TIME_ENTRY_OVERLAP",
             "TIME_ENTRY_NOT_FOUND",
             "VALIDATION_ERROR"

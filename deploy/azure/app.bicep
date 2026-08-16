@@ -35,7 +35,11 @@ param supabaseJwksUri string
 @secure()
 param supabaseIssuerUri string
 
-@description('Exact HTTPS Vercel Preview origin(s), comma-separated.')
+@secure()
+@description('Stable HMAC secret for hosted Notes writes; provide at least 32 UTF-8 bytes outside source control.')
+param notesHmacSecret string
+
+@description('Exact approved HTTPS Vercel origin(s), comma-separated.')
 @minLength(1)
 param corsAllowedOrigins string
 
@@ -112,6 +116,10 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'supabase-issuer-uri'
           value: supabaseIssuerUri
         }
+        {
+          name: 'notes-hmac-secret'
+          value: notesHmacSecret
+        }
       ]
     }
     template: {
@@ -152,6 +160,14 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'SUPABASE_ISSUER_URI'
               secretRef: 'supabase-issuer-uri'
+            }
+            {
+              name: 'ROTRACK_NOTES_HMAC_SECRET'
+              secretRef: 'notes-hmac-secret'
+            }
+            {
+              name: 'ROTRACK_NOTES_WRITES_ENABLED'
+              value: 'true'
             }
             {
               name: 'PORT'

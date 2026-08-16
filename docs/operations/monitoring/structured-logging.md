@@ -1,6 +1,6 @@
 # Structured logging, correlation, and redaction contract
 
-**Status — 2026-08-11:** application boundary implemented and the candidate's production runtime label was read back at the canonical ACA boundary. Public/authenticated smoke and the corrected exact no-schema-change rollback rehearsal passed. Aggregate Log Analytics ingestion is now observed in the checked window, but collector redaction, telemetry, alert delivery/receipt, and routing remain unproven. Do not claim those controls are active until the deployed redaction tests and observation window pass. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed.
+**Status — 2026-08-11:** application boundary implemented and the candidate's production runtime label was read back at the canonical ACA boundary. Public/authenticated smoke and the corrected exact no-schema-change rollback rehearsal passed. Aggregate Log Analytics ingestion is observed in the checked window, and one alternate temporary metric-alert path produced a product-owner-confirmed receipt. Collector redaction, broader telemetry coverage, per-signal routing, and the provider's synthetic test path remain unproven. The Azure action-group provider test-notification command returned failure, so provider-synthetic delivery is **NOT VERIFIED**; do not generalize the one alternate receipt into broad alert verification.
 
 ## Alert delivery evidence
 

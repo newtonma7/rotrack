@@ -75,6 +75,8 @@ public final class RichTextDocumentValidator {
             case BULLET_LIST -> parseList(source, depth, state, false);
             case ORDERED_LIST -> parseList(source, depth, state, true);
             case LIST_ITEM -> parseListItem(source, depth, state);
+            case TASK_LIST -> parseTaskList(source, depth, state);
+            case TASK_ITEM -> parseTaskItem(source, depth, state);
             case BLOCKQUOTE -> parseBlockquote(source, depth, state);
             case TEXT -> parseText(source, state);
         };
@@ -96,6 +98,7 @@ public final class RichTextDocumentValidator {
                 case "heading" -> NodeKind.HEADING;
                 case "bulletList" -> NodeKind.BULLET_LIST;
                 case "orderedList" -> NodeKind.ORDERED_LIST;
+                case "taskList" -> NodeKind.TASK_LIST;
                 case "blockquote" -> NodeKind.BLOCKQUOTE;
                 default -> throw invalid("contentJson contains an invalid node");
             };
@@ -194,8 +197,67 @@ public final class RichTextDocumentValidator {
                 case "paragraph" -> NodeKind.PARAGRAPH;
                 case "bulletList" -> NodeKind.BULLET_LIST;
                 case "orderedList" -> NodeKind.ORDERED_LIST;
+                case "taskList" -> NodeKind.TASK_LIST;
                 case "blockquote" -> NodeKind.BLOCKQUOTE;
                 default -> throw invalid("contentJson contains an invalid list item child");
+            };
+            canonical.add(parseNode((ObjectNode) child, childKind, depth + 1, state));
+        }
+        result.set("content", canonical);
+        return result;
+    }
+
+    private ObjectNode parseTaskList(ObjectNode source, int depth, State state) {
+        requireKeys(source, Set.of("type", "content"), "contentJson contains an invalid task list");
+        ArrayNode content = requiredChildren(source, "content");
+        if (content.isEmpty()) {
+            throw invalid("contentJson task lists cannot be empty");
+        }
+        ObjectNode result = mapper.createObjectNode();
+        result.put("type", "taskList");
+        ArrayNode canonical = mapper.createArrayNode();
+        for (JsonNode child : content) {
+            if (!child.isObject() || !"taskItem".equals(child.path("type").asText())) {
+                throw invalid("contentJson task lists may contain only task items");
+            }
+            canonical.add(parseNode((ObjectNode) child, NodeKind.TASK_ITEM, depth + 1, state));
+        }
+        result.set("content", canonical);
+        return result;
+    }
+
+    // Checkbox state is structural metadata; only paragraph text contributes to contentText.
+    private ObjectNode parseTaskItem(ObjectNode source, int depth, State state) {
+        requireKeys(source, Set.of("type", "attrs", "content"), "contentJson contains an invalid task item");
+        ObjectNode attrs = object(source, "attrs");
+        requireKeys(attrs, Set.of("checked"), "contentJson contains an invalid task item");
+        JsonNode checked = attrs.get("checked");
+        if (checked == null || !checked.isBoolean()) {
+            throw invalid("contentJson task item checked must be boolean");
+        }
+        ArrayNode content = requiredChildren(source, "content");
+        if (content.isEmpty() || !content.get(0).isObject()
+                || !"paragraph".equals(content.get(0).path("type").asText())) {
+            throw invalid("contentJson task items must start with a paragraph");
+        }
+        ObjectNode result = mapper.createObjectNode();
+        result.put("type", "taskItem");
+        ObjectNode canonicalAttrs = mapper.createObjectNode();
+        canonicalAttrs.put("checked", checked.booleanValue());
+        result.set("attrs", canonicalAttrs);
+        ArrayNode canonical = mapper.createArrayNode();
+        for (JsonNode child : content) {
+            if (!child.isObject()) {
+                throw invalid("contentJson contains an invalid task item child");
+            }
+            String type = child.path("type").asText();
+            NodeKind childKind = switch (type) {
+                case "paragraph" -> NodeKind.PARAGRAPH;
+                case "bulletList" -> NodeKind.BULLET_LIST;
+                case "orderedList" -> NodeKind.ORDERED_LIST;
+                case "taskList" -> NodeKind.TASK_LIST;
+                case "blockquote" -> NodeKind.BLOCKQUOTE;
+                default -> throw invalid("contentJson contains an invalid task item child");
             };
             canonical.add(parseNode((ObjectNode) child, childKind, depth + 1, state));
         }
@@ -221,6 +283,7 @@ public final class RichTextDocumentValidator {
                 case "paragraph" -> NodeKind.PARAGRAPH;
                 case "bulletList" -> NodeKind.BULLET_LIST;
                 case "orderedList" -> NodeKind.ORDERED_LIST;
+                case "taskList" -> NodeKind.TASK_LIST;
                 case "blockquote" -> NodeKind.BLOCKQUOTE;
                 default -> throw invalid("contentJson contains an invalid blockquote child");
             };
@@ -347,7 +410,8 @@ public final class RichTextDocumentValidator {
 
     private enum NodeKind {
         DOC("doc"), PARAGRAPH("paragraph"), HEADING("heading"), BULLET_LIST("bulletList"),
-        ORDERED_LIST("orderedList"), LIST_ITEM("listItem"), BLOCKQUOTE("blockquote"), TEXT("text");
+        ORDERED_LIST("orderedList"), LIST_ITEM("listItem"), TASK_LIST("taskList"),
+        TASK_ITEM("taskItem"), BLOCKQUOTE("blockquote"), TEXT("text");
 
         private final String type;
 

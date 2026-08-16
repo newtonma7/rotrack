@@ -65,31 +65,30 @@ async function responseData<T>(captured: CapturedResponse, expectedStatus: numbe
 export async function openTracker(page: Page): Promise<void> {
   await page.goto("/tracker");
   await expect(page).toHaveURL(/\/tracker$/);
-  await expect(page.getByText("Active session", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Timer" })).toBeVisible();
 
-  const stop = page.getByRole("button", { name: "Stop session" });
+  const stop = page.getByRole("button", { name: "Stop", exact: true });
   const work = page.getByRole("button", { name: "Work" });
   const rot = page.getByRole("button", { name: "Rot" });
   await expect.poll(async () => {
-    // The hook initially renders "no active session" while GET /active is pending.
     // Wait for either a restored stop control or an enabled activity control.
     return (await stop.isVisible()) || (await work.isEnabled()) || (await rot.isEnabled());
   }).toBe(true);
   await expect(
-    page.getByText("no active session", { exact: true }).or(stop),
+    page.getByText("choose a mode when you’re ready", { exact: true }).or(stop),
   ).toBeVisible();
 }
 
 /** Test accounts are disposable: clear only their own stale active entry before a scenario. */
 export async function stopActiveSessionIfPresent(page: Page): Promise<void> {
   await openTracker(page);
-  const stop = page.getByRole("button", { name: "Stop session" });
+  const stop = page.getByRole("button", { name: "Stop", exact: true });
   if (await stop.isVisible()) {
     const stopped = apiResponse(page, "PUT", /\/api\/v1\/time-entries\/[^/]+\/stop$/);
     await stop.click();
     await responseData<TimeEntry>(await stopped, 200);
   }
-  await expect(page.getByText("no active session", { exact: true })).toBeVisible();
+  await expect(page.getByText("choose a mode when you’re ready", { exact: true })).toBeVisible();
 }
 
 export async function startSession(page: Page, activityType: ActivityType): Promise<StartedTimeEntry> {
@@ -99,7 +98,7 @@ export async function startSession(page: Page, activityType: ActivityType): Prom
   const entry = await responseData<TimeEntry>(startedResponse, 201);
   expect(entry.activityType).toBe(activityType);
   expect(entry.endTime).toBeNull();
-  await expect(page.getByText(`tracking ${activityType.toLowerCase()}`, { exact: true })).toBeVisible();
+  await expect(page.getByText(`${activityType.toLowerCase()} · running`, { exact: true })).toBeVisible();
   return { ...entry, apiOrigin: new URL(startedResponse.response.url()).origin };
 }
 
@@ -111,17 +110,17 @@ export async function restoreActiveSession(page: Page): Promise<TimeEntry> {
   const active = apiResponse(page, "GET", `${API_PREFIX}/time-entries/active`);
   await page.reload();
   const entry = await responseData<TimeEntry>(await active, 200);
-  await expect(page.getByRole("button", { name: "Stop session" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Stop", exact: true })).toBeVisible();
   return entry;
 }
 
 export async function stopSession(page: Page): Promise<TimeEntry> {
   const stopped = apiResponse(page, "PUT", /\/api\/v1\/time-entries\/[^/]+\/stop$/);
-  await page.getByRole("button", { name: "Stop session" }).click();
+  await page.getByRole("button", { name: "Stop", exact: true }).click();
   const entry = await responseData<TimeEntry>(await stopped, 200);
   expect(entry.endTime).not.toBeNull();
   expect(entry.durationSeconds).not.toBeNull();
-  await expect(page.getByText("no active session", { exact: true })).toBeVisible();
+  await expect(page.getByText("choose a mode when you’re ready", { exact: true })).toBeVisible();
   return entry;
 }
 

@@ -66,7 +66,7 @@ class StructuredRequestLoggingFilterTest {
 
     @Test
     void includesStableM5ErrorCategoriesButNeverRawResourcePath() throws Exception {
-        for (String code : new String[]{"INVALID_CURSOR", "TIME_ENTRY_OVERLAP", "RICH_TEXT_VERSION_CONFLICT", "IDEMPOTENCY_CONFLICT", "NOTE_DELETED"}) {
+        for (String code : new String[]{"INVALID_CURSOR", "TIME_ENTRY_OVERLAP", "RICH_TEXT_VERSION_CONFLICT", "IDEMPOTENCY_CONFLICT", "NOTE_DELETED", "PAYLOAD_TOO_LARGE"}) {
             List<String> events = new ArrayList<>();
             StructuredRequestLoggingFilter filter = new StructuredRequestLoggingFilter(objectMapper, Clock.systemUTC(), "staging", "release-test", events::add);
             MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/notes/11111111-1111-1111-1111-111111111111");

@@ -266,10 +266,10 @@ Use these questions to review the completed baseline phases and understand the i
     - It executed migrations 001–005, catalog/RLS/grant checks, `btree_gist`, range exclusion, JPA ownership behavior, and runtime-role privileges against real PostgreSQL semantics.
 18. What did authenticated browser acceptance add beyond Vitest and MockMvc?
     - It exercised Supabase storage state, protected routes, actual browser timezone conversion, CORS/API binding, pagination, mutations, overlap errors, active exclusion, two-user isolation, and responsive layout end to end.
-19. Why does successful local browser acceptance not make M4 **Verified**?
-    - Migrations 004/005 and the application have not passed the release-gated hosted migration/deployment path. Local source and disposable-database evidence cannot be relabeled as hosted evidence.
-20. What must happen before applying migration 005 to hosted data?
-    - Satisfy the applicable M3/release gates, obtain explicit authorization, inspect the target for notes-length and overlap preflight failures, apply migrations database-first, then verify runtime-role grants and authenticated behavior without exposing private data.
+19. Why did successful local browser acceptance not by itself make M4 **Verified**?
+    - Local source and disposable-database evidence could not be relabeled as hosted evidence. M4 became Verified only after protected CI, migrations 003–005, immutable deployment, and hosted authenticated acceptance passed.
+20. What happened before migration 005 was applied to hosted data?
+    - The authorized rollout inspected the target for notes-length and overlap preflight failures, applied migrations database-first, then verified runtime-role grants and authenticated behavior without exposing private data.
 
 ## M2.4 — Canonical username registration
 

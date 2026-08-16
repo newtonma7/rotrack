@@ -10,7 +10,7 @@
 - M4 preferences, completed history/manual corrections, and handwritten typed contracts are integrated and locally accepted.
 - The shared hosted database was explicitly remediated for legacy usernames, then migrations 003–005 applied in order; schema, RLS, runtime grants, and overlap constraints passed verification.
 - Authenticated local and hosted acceptance passed settings defaults/persistence/isolation and history create/list/delete/overlap/two-user checks; the broader local run also covers pagination/edit/active-exclusion/mobile behavior.
-- M4 is **Verified**. M5 source work may begin from this prerequisite, but M5 hosted rollout, unresolved M3 risks, and broad production-readiness claims remain unauthorized.
+- M4 is **Verified**. M5.1 is Verified locally and M5.2 is Implemented—unverified. The dated M5.2 shared-hosted rollout is authorized and evidence-gated; unresolved M3 risks and broad production-readiness claims remain open.
 
 ## Coordination rules
 
@@ -47,9 +47,18 @@
 
 **Done:** Hosted evidence is recorded in `todo.md`; M4 is Verified. This lane is closed unless a rollback or regression requires reopening it.
 
+### Lane C — M5.2 shared-hosted rollout (authorized 2026-08-16)
+
+**Owns:** migration `006_notes.sql`, reviewed immutable backend/frontend artifacts, stable hosted-only HMAC secret injection, Notes writes, hosted disposable-user acceptance/cleanup, rollback, and redacted evidence.
+
+- Start only after final local verification, independent review, protected CI, and merge.
+- Apply migration 006 before the dependent application and retain the additive schema during application rollback.
+- Verify exact ACA secretRef/digest/service-version/CORS/readiness, then private Notes ownership, checklist persistence, timer restoration, cleanup, and log omission with disposable users.
+- Stop on migration drift, secretRef mismatch, writes disabled, health/readiness failure, ownership/privacy regression, or incomplete cleanup.
+
 ## Later feature lanes
 
-M5 notes/logs and M6 social work may be designed in parallel only after their own architecture/API/privacy contract seeds. No M5 hosted rollout is authorized by the M4 override, and implementations must not assume M4 is verified merely because its source is merged.
+M5.3 logs and M6 social work may be designed only after their own architecture/API/privacy gates. The M5.2 authorization does not cover M5.3 or M6.
 
 ### M5 notes/logs
 

@@ -36,12 +36,14 @@ Spring receives these through the process environment (shell, IDE, container, or
 | `ROTRACK_MUTATION_RATE_LIMIT_REQUESTS` | no | Per-user mutation budget per fixed window; defaults to 30 |
 | `ROTRACK_MUTATION_RATE_LIMIT_WINDOW` | no | Mutation window from 1 second through 1 hour; defaults to 1 minute |
 | `ROTRACK_MUTATION_RATE_LIMIT_MAX_KEYS` | no | Bounded process-local user-key capacity; defaults to 10,000 |
+| `ROTRACK_NOTES_WRITES_ENABLED` | no | Enables Notes mutations; defaults to `true`, and enabled deployments fail closed without the HMAC secret |
+| `ROTRACK_NOTES_HMAC_SECRET` | when Notes writes enabled | Stable runtime-only HMAC key of at least 32 UTF-8 bytes; inject through the runtime secret store and never log or rotate casually |
 | `ROTRACK_STRUCTURED_LOGGING_ENABLED` | no | Enables the reviewed request-completion logger; defaults to `false` locally |
 | `ROTRACK_LOGGING_ENVIRONMENT` | when logging enabled | Exactly `staging` or `production` |
 | `ROTRACK_SERVICE_VERSION` | when logging enabled | Non-placeholder immutable release identifier |
 | `PORT` | no | HTTP port; defaults to 8080 |
 
-The resource server accepts ES256 tokens only and validates issuer, audience, time claims, and UUID subject. CORS uses exact origins with credentials; do not configure `*` or include URL paths. Never place database credentials, bearer tokens, or service-role keys in frontend variables.
+The resource server accepts ES256 tokens only and validates issuer, audience, time claims, and UUID subject. CORS uses exact origins with credentials; do not configure `*` or include URL paths. Never place database credentials, bearer tokens, service-role keys, or the Notes HMAC secret in frontend variables. Keep the Notes HMAC key stable across ordinary revisions because rotation changes idempotency fingerprints; a future rotation requires an explicit compatibility plan.
 
 The process-local mutation limiter is defense in depth for authenticated start/stop requests; it does not replace the required trusted fleet-wide/authentication-adjacent edge control. Structured request logging is disabled for local development. Staging and production must enable it explicitly with validated environment/release metadata and must still prove collector-side redaction and routing.
 

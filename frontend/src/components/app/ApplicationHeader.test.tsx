@@ -18,8 +18,12 @@ describe("ApplicationHeader", () => {
     render(<ApplicationHeader />);
 
     expect(screen.getByText("history").getAttribute("aria-current")).toBe("page");
-    expect(screen.getByRole("link", { name: /dashboard/i }).getAttribute("href")).toBe("/dashboard");
-    expect(screen.getByRole("link", { name: /tracker/i }).getAttribute("href")).toBe("/tracker");
+    const dashboard = screen.getByRole("link", { name: /dashboard/i });
+    const tracker = screen.getByRole("link", { name: /tracker/i });
+    expect(dashboard.getAttribute("href")).toBe("/dashboard");
+    expect(tracker.getAttribute("href")).toBe("/tracker");
+    expect(dashboard.className).not.toContain("hidden");
+    expect(tracker.className).not.toContain("hidden");
     expect(screen.getByRole("link", { name: /settings/i }).getAttribute("href")).toBe("/settings");
   });
 });

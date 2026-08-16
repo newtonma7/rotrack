@@ -62,6 +62,82 @@ class RichTextDocumentValidatorTest {
     }
 
     @Test
+    void canonicalizesTaskListsAtRootAndNestedBlockPositions() throws Exception {
+        var input = mapper.readTree("""
+                {"schemaVersion":1,"document":{"type":"doc","content":[
+                  {"type":"taskList","content":[
+                    {"type":"taskItem","attrs":{"checked":false},"content":[
+                      {"type":"paragraph","content":[{"type":"text","text":"todo"}]},
+                      {"type":"blockquote","content":[{"type":"paragraph","content":[{"type":"text","text":"quote"}]}]},
+                      {"type":"taskList","content":[
+                        {"type":"taskItem","attrs":{"checked":true},"content":[{"type":"paragraph","content":[{"type":"text","text":"nested"}]}]}
+                      ]}
+                    ]}
+                  ]},
+                  {"type":"blockquote","content":[
+                    {"type":"taskList","content":[
+                      {"type":"taskItem","attrs":{"checked":true},"content":[{"type":"paragraph","content":[{"type":"text","text":"inside"}]}]}
+                    ]}
+                  ]}
+                ]}}
+                """);
+
+        RichTextValue value = validator.validate(input);
+
+        assertThat(value.contentText()).isEqualTo("todo\nquote\nnested\ninside");
+        assertThat(value.serialized()).contains(
+                "\"type\":\"taskList\"",
+                "\"type\":\"taskItem\"",
+                "\"attrs\":{\"checked\":true}");
+        assertThat(value.contentJson().at("/document/content/0/content/0/attrs/checked").booleanValue()).isFalse();
+        assertThat(value.contentJson().at("/document/content/0/content/0/content/2/content/0/attrs/checked").booleanValue()).isTrue();
+    }
+
+    @Test
+    void rejectsInvalidTaskListGrammarAndKeepsCheckboxStateOutOfContentText() throws Exception {
+        JsonNode[] invalidDocuments = {
+                mapper.readTree("""
+                        {"type":"taskList","content":[]}
+                        """),
+                mapper.readTree("""
+                        {"type":"taskList","content":[{"type":"listItem","content":[{"type":"paragraph"}]}]}
+                        """),
+                mapper.readTree("""
+                        {"type":"taskList","content":[{"type":"taskItem","attrs":{},"content":[{"type":"paragraph"}]}]}
+                        """),
+                mapper.readTree("""
+                        {"type":"taskList","content":[{"type":"taskItem","attrs":{"checked":"true"},"content":[{"type":"paragraph"}]}]}
+                        """),
+                mapper.readTree("""
+                        {"type":"taskList","content":[{"type":"taskItem","attrs":{"checked":true,"extra":false},"content":[{"type":"paragraph"}]}]}
+                        """),
+                mapper.readTree("""
+                        {"type":"taskList","content":[{"type":"taskItem","attrs":{"checked":true},"content":[{"type":"blockquote"}]}]}
+                        """)
+        };
+        for (JsonNode invalid : invalidDocuments) {
+            ObjectNode root = mapper.createObjectNode();
+            root.put("schemaVersion", 1);
+            ObjectNode document = root.putObject("document");
+            document.put("type", "doc");
+            document.putArray("content").add(invalid);
+            assertThatThrownBy(() -> validator.validate(root))
+                    .isInstanceOf(RichTextValidationException.class);
+        }
+
+        var checkboxOnly = mapper.readTree("""
+                {"schemaVersion":1,"document":{"type":"doc","content":[
+                  {"type":"taskList","content":[
+                    {"type":"taskItem","attrs":{"checked":true},"content":[{"type":"paragraph"}]}
+                  ]}
+                ]}}
+                """);
+        RichTextValue value = validator.validate(checkboxOnly);
+        assertThat(value.contentText()).isEmpty();
+        assertThat(value.meaningful()).isFalse();
+    }
+
+    @Test
     void rejectsUnknownGrammarAndUnsafeLinks() throws Exception {
         var input = mapper.readTree("""
                 {"schemaVersion":1,"document":{"type":"doc","content":[

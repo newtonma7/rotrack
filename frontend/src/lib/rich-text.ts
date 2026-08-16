@@ -5,6 +5,9 @@ import type {
   RichTextListItem,
   RichTextListItemChild,
   RichTextMark,
+  RichTextTaskItem,
+  RichTextTaskItemChild,
+  RichTextTaskList,
   RichTextParagraph,
   RichTextText,
 } from "@/types/notes";
@@ -76,6 +79,8 @@ export function validateRichTextDocument(value: unknown): RichTextValidation {
         const items = node.content.map((item) => validateListItem(item, depth + 1));
         return { type: "orderedList", attrs: { start: startValue as number }, content: [items[0], ...items.slice(1)] };
       }
+      case "taskList":
+        return validateTaskList(node, depth);
       case "blockquote": {
         requireAllowedKeys(node, ["type", "content"]);
         if (!Array.isArray(node.content) || node.content.length === 0) throw new Error("Blockquotes must contain content.");
@@ -106,10 +111,30 @@ export function validateRichTextDocument(value: unknown): RichTextValidation {
     }
     const first = validateParagraph(node.content[0], depth + 1);
     const rest = node.content.slice(1).map((child) => {
-      if (!isObject(child) || !["paragraph", "bulletList", "orderedList", "blockquote"].includes(String(child.type))) throw new Error("List items cannot contain headings or unsupported blocks.");
+      if (!isObject(child) || !["paragraph", "bulletList", "orderedList", "taskList", "blockquote"].includes(String(child.type))) throw new Error("List items cannot contain headings or unsupported blocks.");
       return validateBlock(child, depth + 1) as RichTextListItemChild;
     });
     return { type: "listItem", content: [first, ...rest] };
+  }
+
+  function validateTaskList(node: RichObject, depth: number): RichTextTaskList {
+    requireAllowedKeys(node, ["type", "content"]);
+    if (!Array.isArray(node.content) || node.content.length === 0) throw new Error("Task lists must contain an item.");
+    const items = node.content.map((item) => validateTaskItem(item, depth + 1));
+    return { type: "taskList", content: [items[0], ...items.slice(1)] };
+  }
+
+  function validateTaskItem(node: unknown, depth: number): RichTextTaskItem {
+    visit(depth);
+    if (!isObject(node) || node.type !== "taskItem" || !exactKeys(node, ["type", "attrs", "content"]) || !isObject(node.attrs) || !exactKeys(node.attrs, ["checked"]) || typeof node.attrs.checked !== "boolean" || !Array.isArray(node.content) || node.content.length === 0 || !isObject(node.content[0]) || node.content[0].type !== "paragraph") {
+      throw new Error("Task item attributes are invalid.");
+    }
+    const first = validateParagraph(node.content[0], depth + 1);
+    const rest = node.content.slice(1).map((child) => {
+      if (!isObject(child) || !["paragraph", "bulletList", "orderedList", "taskList", "blockquote"].includes(String(child.type))) throw new Error("Task items cannot contain headings or unsupported blocks after their first paragraph.");
+      return validateBlock(child, depth + 1) as RichTextTaskItemChild;
+    });
+    return { type: "taskItem", attrs: { checked: node.attrs.checked }, content: [first, ...rest] };
   }
 
   function validateParagraph(node: unknown, depth: number): RichTextParagraph {
@@ -120,7 +145,7 @@ export function validateRichTextDocument(value: unknown): RichTextValidation {
   }
 
   function validateQuoteChild(node: unknown, depth: number): RichTextBlockquoteChild {
-    if (!isObject(node) || !["paragraph", "bulletList", "orderedList", "blockquote"].includes(String(node.type))) throw new Error("Blockquotes cannot contain headings or unsupported blocks.");
+    if (!isObject(node) || !["paragraph", "bulletList", "orderedList", "taskList", "blockquote"].includes(String(node.type))) throw new Error("Blockquotes cannot contain headings or unsupported blocks.");
     return validateBlock(node, depth) as RichTextBlockquoteChild;
   }
 
@@ -167,8 +192,23 @@ export function isSafeRichTextLink(value: string): boolean {
   try {
     const url = new URL(value);
     if (url.protocol === "http:" || url.protocol === "https:") return Boolean(url.hostname);
-    return url.protocol === "mailto:" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(url.pathname);
+    return url.protocol === "mailto:" && !url.search && !url.hash && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(url.pathname);
   } catch {
     return false;
   }
+}
+
+/** Plain copy is derived from canonical JSON so checklist state is not lost. */
+export function richTextToPlainText(document: RichTextDocument): string {
+  type PlainNode = { type: string; text?: string; attrs?: { checked?: unknown }; content?: PlainNode[] };
+  const render = (node: PlainNode): string => {
+    if (node.type === "text") return node.text ?? "";
+    const content = (node.content ?? []).map(render);
+    if (node.type === "taskItem") {
+      const body = content.join("\n");
+      return `[${node.attrs?.checked === true ? "x" : " "}]${body ? ` ${body}` : ""}`;
+    }
+    return content.join("\n");
+  };
+  return (document.document.content as unknown as PlainNode[]).map(render).join("\n");
 }

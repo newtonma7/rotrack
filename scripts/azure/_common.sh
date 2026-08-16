@@ -137,7 +137,7 @@ required = {
     'location', 'acrName', 'imageRepository', 'imageDigest',
     'databaseUrl', 'databaseUsername', 'databasePassword',
     'databaseCaCertificatePem', 'supabaseJwksUri', 'supabaseIssuerUri',
-    'corsAllowedOrigins',
+    'notesHmacSecret', 'corsAllowedOrigins',
 }
 if set(params) != required:
     raise SystemExit('app parameter file has an unexpected parameter set')
@@ -164,6 +164,11 @@ if query_values.get('sslmode') != 'verify-full' or query_values.get('sslrootcert
     raise SystemExit('app databaseUrl must use the exact managed TLS contract')
 if not isinstance(values['databaseUsername'], str) or not values['databaseUsername'] or not isinstance(values['databasePassword'], str) or not values['databasePassword']:
     raise SystemExit('app database username/password must be nonempty')
+notes_hmac_secret = values['notesHmacSecret']
+if not isinstance(notes_hmac_secret, str) or len(notes_hmac_secret.encode('utf-8')) < 32:
+    raise SystemExit('app notesHmacSecret must contain at least 32 UTF-8 bytes')
+if notes_hmac_secret.startswith('replace-with-'):
+    raise SystemExit('app notesHmacSecret must not use the repository placeholder pattern')
 ca_pem = values['databaseCaCertificatePem']
 begin_marker = '-----BEGIN CERTIFICATE-----'
 end_marker = '-----END CERTIFICATE-----'
@@ -181,7 +186,7 @@ if not origins or any(origin != origin.strip() or not origin.startswith('https:/
 for origin in origins:
     parsed = urlparse(origin)
     if parsed.scheme != 'https' or not parsed.hostname or parsed.netloc != parsed.hostname or parsed.path or parsed.params or parsed.query or parsed.fragment or parsed.hostname in {'localhost', '127.0.0.1', '::1'} or not re.fullmatch(r'[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*\.vercel\.app', parsed.hostname):
-        raise SystemExit('app CORS origins must be non-bare HTTPS Vercel preview hosts without paths or local hosts')
+        raise SystemExit('app CORS origins must be non-bare HTTPS Vercel hosts without paths or local hosts')
 for name, value in values.items():
     if isinstance(value, str) and (value.startswith('<') or value.endswith('>')):
         raise SystemExit(f'app parameter contains an unfilled placeholder: {name}')

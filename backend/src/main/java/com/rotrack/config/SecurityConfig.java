@@ -3,11 +3,13 @@ package com.rotrack.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rotrack.dto.ApiErrorResponse;
 import com.rotrack.security.MutationRateLimitFilter;
+import com.rotrack.security.NoteBodySizeLimitFilter;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -49,6 +51,7 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             ObjectMapper objectMapper,
+            ObjectProvider<NoteBodySizeLimitFilter> noteBodySizeLimitFilter,
             ObjectProvider<MutationRateLimitFilter> mutationRateLimitFilter,
             ObjectProvider<com.rotrack.security.NoteRateLimitFilter> noteRateLimitFilter
     ) throws Exception {
@@ -93,8 +96,27 @@ public class SecurityConfig {
                 );
 
         mutationRateLimitFilter.ifAvailable(filter -> http.addFilterAfter(filter, BearerTokenAuthenticationFilter.class));
-        noteRateLimitFilter.ifAvailable(filter -> http.addFilterAfter(filter, BearerTokenAuthenticationFilter.class));
+        noteRateLimitFilter.ifAvailable(rateFilter -> {
+            // Count authenticated save attempts before buffering up to the wire limit, then stop oversized bodies before Jackson.
+            http.addFilterAfter(rateFilter, BearerTokenAuthenticationFilter.class);
+            noteBodySizeLimitFilter.ifAvailable(bodyFilter -> http.addFilterAfter(bodyFilter, com.rotrack.security.NoteRateLimitFilter.class));
+        });
         return http.build();
+    }
+
+    @Bean
+    NoteBodySizeLimitFilter noteBodySizeLimitFilter(ObjectMapper objectMapper) {
+        return new NoteBodySizeLimitFilter(objectMapper);
+    }
+
+    /** The body cap is installed inside Spring Security after JWT authentication, not twice by the servlet container. */
+    @Bean
+    FilterRegistrationBean<NoteBodySizeLimitFilter> noteBodySizeLimitFilterRegistration(
+            NoteBodySizeLimitFilter filter
+    ) {
+        var registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean

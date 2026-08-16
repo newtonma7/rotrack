@@ -1,8 +1,8 @@
 # rotrack Development Backlog
 
 **Architecture and contracts:** [`arch.plan.md`](arch.plan.md)
-**Backlog reviewed:** 2026-08-12
-**Current release target:** Pre-user/small-cohort personal timer, dashboard, and M4 source/local work; full production readiness remains a separate unmet gate
+**Backlog reviewed:** 2026-08-16
+**Current release target:** Authorized M5.2 shared-hosted Notes rollout for the pre-user/small-cohort boundary; full production readiness remains a separate unmet gate
 
 ## 1. Operating Rules
 
@@ -58,7 +58,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 
 | Area | State | Evidence / gap |
 |---|---|---|
-| Documentation currency | **Verified** | The startup/health runbook is canonical under `docs/operations/`, README links and limitations match current evidence, and a clean-candidate setup/build/startup walkthrough passes. |
+| Documentation currency | **In progress** | M5.2 implementation and rollout authorization are being reconciled across architecture, backlog, setup, and operations documents; hosted evidence remains pending. |
 | Frontend routes and auth UI | **Implemented—unverified** | Static build and real sign-in/signup browser checks pass, and M2.3 is verified by the combined technical matrix and operator-attested fresh first sign-in. The 2026-08-11 hosted authenticated smoke passed `4/4` with API-target binding; the overall M3 gate remains open for the operational blockers below. |
 | Tracker start/restore/stop UI | **Verified** | M1.3 source, unit tests, and recorded authenticated browser/API evidence cover explicit start, restore, and stop behavior. |
 | Automatic unload stopping | **Verified** | M1.3 removed production unload/keepalive handling; source search finds only the negative unit test. |
@@ -66,13 +66,13 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 | Spring Boot API core | **Verified** | Recorded live Supabase JWT sign-in, Spring ownership isolation, timer lifecycle, dashboard flow, health, readiness, TLS, and CORS evidence pass. |
 | Initial schema hardening | **Verified** | Empty-database apply and migrated-database rollback/repository verification pass against isolated PostgreSQL targets. |
 | Supabase development integration | **Verified** | Migration, runtime role, Data API RLS, signup trigger, Spring ownership, and two-user technical evidence pass. The fresh confirmed-user first-sign-in acceptance step is operator-attested as complete; the 2026-08-11 hosted authenticated smoke passed `4/4` with API-target binding, while the overall M3 gate remains open. |
-| Automated test suites | **Verified** | The integrated M4 tree passes frontend lint/typecheck/build and 65/65 Vitest tests; Java 21 `mvn clean test package` passes 137 tests with 13 expected opt-in PostgreSQL skips. Disposable PostgreSQL 17.10 apply/verify probes and authenticated local Playwright 4/4 pass. Hosted M4 migration/deployment remains a milestone gate, not a source-suite gap. |
+| Automated test suites | **Verified** | The current M5.2 candidate passes frontend lint/typecheck/build and 153/153 Vitest tests; Java 21 `mvn clean test package` passes 201 tests with 21 expected opt-in PostgreSQL skips. Disposable PostgreSQL 17.10 apply/verify passes; fresh authenticated browser state remains required for a new browser run. |
 | Pull-request CI source | **Verified** | Five credential-free jobs use isolated disposable PostgreSQL and do not touch hosted Supabase. Default CodeQL setup is the sole scanner, with required `Analyze (actions)`, `Analyze (java-kotlin)`, and `Analyze (javascript-typescript)` contexts. PR #18 passed all eight required contexts and merged through the protected rebase path; PR #19 deliberately failed the required `Frontend` context and reported `mergeStateStatus: BLOCKED` while open. The public repository's `main` protection, `nonproduction` branch policy, empty auth-secret inventories, absent `ROTRACK_AUTHENTICATED_E2E_ENABLED`, and security-feature readbacks are recorded; the checked-in advanced CodeQL workflow was removed after its conflicting PR jobs failed against default setup. Authenticated deployed E2E remains an M3.2/M3.3 boundary, not an M3.1 requirement.
 | Backend container artifact | **Verified** | The non-root Java 21 image passed local liveness/readiness/SIGTERM and sensitive-content inspection. The immutable Linux/amd64 OCI-compatible candidate passed canonical ACA digest/service-version readback; the reserved separate production lane has no claimed artifact. |
 | Canonical hosted deployment | **Implemented—unverified** | On 2026-08-11, source commit `744635c` passed focused Azure contract/readback, publish, preflight, RBAC, container, and release checks. The reviewed backend candidate passed canonical ACA readback, selected digest/service-version equality, production runtime label, scale `1..1`, 100% traffic, and readiness; the same reviewed commit passed canonical Vercel Production alias readback. Public smoke and hosted authenticated smoke passed (`4/4`, zero skipped/unexpected/flaky, with API-target binding). The corrected no-schema-change backend/frontend rollback rehearsal passed and ended on the candidate. Rate limiting remains an accepted blocker; collector redaction, alert delivery/receipt, and alert routing remain open. Ten genuine zero-replica trials completed on 2026-08-11 with readiness 10/10, p50 34.586 seconds, and p95/max 39.425 seconds; the 30-second p95 criterion was not met, so scale-to-zero remains an explicitly accepted risk rather than a verified pass. Retained operator-owned synthetic accounts and stopped rows are not claimed as cleaned up; the separate production Supabase/Azure lane remains reserved. |
 | Release safeguards and observability | **In progress** | Source commit `744635c` includes the Azure readback/rollback-selection hardening and focused release checks passed. Public and hosted authenticated smoke plus the corrected exact rollback rehearsal passed. Rate limiting remains explicitly deferred/accepted; collector redaction, alert delivery/receipt, and alert routing evidence remain incomplete. Ten genuine zero-replica trials completed on 2026-08-11, but p95 readiness was 39.425 seconds, above the 30-second criterion; scale-to-zero remains an explicitly accepted risk, not a verified pass. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. |
 | M4 preferences and completed history | **Verified** | PR #32 merged through the protected path. The shared hosted database was remediated with product-owner-supplied usernames, then migrations 003–005 applied; catalog/grants/readiness, immutable ACA/Vercel rollout, authenticated tracker smoke, and focused hosted settings/history acceptance passed. |
-| Notes, logs, friends, groups | **Not started** | Architecture defined; implementation follows the verified M3-P source/local unlock, while hosted work and full production readiness remain release-gated. |
+| Notes, logs, friends, groups | **In progress** | M5.1 Notes data/API is Verified locally and M5.2 editor/workspace is Implemented—unverified. The M5.2 shared-hosted rollout is authorized but still evidence-gated; M5.3 logs and later social work remain unstarted. |
 
 **Canonical hosted residual gate — 2026-08-11:** The shared ACA implementation boundary and canonical Vercel Production alias are deployed from the reviewed source commit, with candidate traffic, readiness/readback, digest/service-version equality, runtime label, scale, public smoke, API-target-bound authenticated smoke, and corrected no-schema-change rollback evidence passing. Retained operator-owned synthetic accounts and stopped rows remain by product-owner decision; cleanup is not claimed. Rate limiting remains explicitly deferred/accepted. Collector redaction, alert delivery/receipt, and alert routing evidence remain open. Ten genuine zero-replica trials completed on 2026-08-11, but p95 readiness was 39.425 seconds, above the 30-second criterion; scale-to-zero remains an explicitly accepted risk, not a verified pass. The Free-plan backup limitation is accepted as already documented. The M3/production-readiness STOP remains.
 
@@ -509,7 +509,9 @@ This is the launch gate for the current product goal, distinct from the full M3 
 
 **Product-owner decision — M4 source/local unlock (2026-08-12):** M3-P is **Verified**, so M4 source and local-environment work may begin for the 0–20-user scope without waiting for the full M3 production-readiness gate. This is a sequencing decision, not a full-readiness claim.
 
-**Product-owner decision — narrow shared-hosted M4 rollout override (2026-08-12):** For the zero-user/pre-user boundary only, migrations `004_user_preferences.sql` and `005_time_entry_history.sql`, the reviewed M4 application deployment, and hosted M4 acceptance could proceed despite the full M3 gate. The authorized rollout passed, so M4 is **Verified**. Unresolved M3 operational risks remain unverified. This does not authorize M5 hosted rollout or broad production-readiness claims.
+**Product-owner decision — narrow shared-hosted M4 rollout override (2026-08-12):** For the zero-user/pre-user boundary only, migrations `004_user_preferences.sql` and `005_time_entry_history.sql`, the reviewed M4 application deployment, and hosted M4 acceptance could proceed despite the full M3 gate. The authorized rollout passed, so M4 is **Verified**. Unresolved M3 operational risks remain unverified.
+
+**Product-owner decision — M5.2 shared-hosted rollout authorization (2026-08-16):** For the zero-user/pre-user boundary only, migration `006_notes.sql`, protected-PR-reviewed M5.2 backend/frontend artifacts, runtime Notes writes with a stable hosted-only HMAC secret, and disposable-user acceptance may proceed on the canonical shared Supabase/ACA/Vercel Production path. Database migration precedes the dependent application; rollback retains the additive schema. Authorization does not equal verification, authorize M5.3, waive unresolved M3 risks, or claim broad production readiness.
 
 **Status:** Verified — pre-user risk accepted; full M3 production-readiness remains not met.
 
@@ -596,7 +598,7 @@ The gate requires all of the following:
 
 **Goal:** Deliver the saved-timezone and daily-goal prerequisite, then the owned completed-entry history slice for the 0–20-user scope.
 **Source/local dependency:** M3-P **Verified**. This is intentionally narrower than the full M3 production-readiness dependency.
-**Hosted dependency:** The dated narrow zero-user/pre-user M4 rollout passed and M4 is **Verified**. M5 hosted rollout and broad production-readiness claims remain unauthorized.
+**Hosted dependency:** The dated narrow zero-user/pre-user M4 rollout passed and M4 is **Verified**. M5.2 shared-hosted rollout is authorized but evidence-gated; M5.3 hosted work and broad production-readiness claims remain unauthorized.
 
 ### M4.1 — Profile and preferences
 
@@ -661,12 +663,12 @@ The gate requires all of the following:
 - The immutable Linux/amd64 backend image was published and deployed to the canonical ACA boundary; digest/service-version readback, 100% latest traffic, scale `1..1`, health, readiness, and exact allowed/denied CORS passed. Vercel Production rebuilt the same reviewed tree and the canonical alias returned `200`.
 - Authenticated hosted Playwright passed the four required tracker/ownership scenarios with API-target binding. Focused hosted M4 acceptance passed private defaults, preference persistence and two-user isolation, completed-history create/list/delete and isolation, and stable `TIME_ENTRY_OVERLAP`; acceptance mutations were cleaned up or restored.
 
-**Milestone gate:** **Verified.** M4 is ready as the database/application prerequisite for M5 source work. This does not authorize M5 hosted rollout or claim full M3 production readiness.
+**Milestone gate:** **Verified.** M4 is ready as the database/application prerequisite for M5. The dated M5.2 shared-hosted rollout is authorized but unverified; full M3 production readiness remains unmet.
 
 ## 8. Milestone 5 — WYSIWYG Notes and Daily Study Logs
 
 **Goal:** Add private study context beside the timer and a trustworthy generated daily record.
-**Dependencies:** Milestone 4 **Verified** for source/local work. M5 hosted migration and rollout remain unauthorized.
+**Dependencies:** Milestone 4 **Verified**. M5.2 shared-hosted migration and rollout are authorized but remain evidence-gated; M5.3 hosted work is unauthorized.
 **Contract authority:** [`arch.plan.md`](arch.plan.md) governs; [`CONTEXT.md`](CONTEXT.md) defines domain language, and [`docs/specs/m5-contracts.md`](docs/specs/m5-contracts.md) supplies subordinate implementation detail.
 **Delivery order:** Define all M5 boundaries now, then implement M5.1 → M5.2 → M5.3. Each slice is independently tested and additive.
 
@@ -686,14 +688,14 @@ The gate requires all of the following:
 - Fresh disposable PostgreSQL 17.10 migration apply passed 5 tests with 1 expected mode skip. Verify passed 20 tests with 0 failures/errors and 3 mode skips. The deterministic attachment-update versus Time Entry-delete race now uses a consistent database lock order, proves bounded lock contention, and completes without deadlock or data-integrity leakage; the reproduced SQLSTATE `40P01` failure was fixed at the Note/Time Entry service seam.
 - Java 21 clean test/package passed 190 tests with 20 expected opt-in skips. Frontend lint, typecheck, 74 Vitest tests, and production build passed. Guards, secret scan, and diff checks passed.
 - Fresh external auth states for distinct users were mode `600`. Authenticated local browser acceptance against the local frontend/API and fresh disposable database passed 1/1 in 6.3 seconds, including browser acceptance, ownership/privacy checks, and cleanup.
-- Note cursor pagination/invalid-cursor cases, rich-text canonicalization and ceilings, replay/deleted-replay response and completion-log privacy, and safe error-body omission are covered at the accepted service/controller seams. M5 hosted migration or rollout remains unauthorized.
+- Note cursor pagination/invalid-cursor cases, rich-text canonicalization and ceilings, replay/deleted-replay response and completion-log privacy, and safe error-body omission are covered at the accepted service/controller seams. M5.2 hosted migration and rollout are authorized but not yet evidenced.
 
 ### M5.2 — Rich-text editors and Notes workspace
 
 **Status:** Implemented—unverified
 **Dependencies:** M5.1
 
-- Add only Tiptap core/React/StarterKit/Link and one client-only editor/toolbar primitive exposing paragraph, H2/H3, bold/italic, lists, blockquote, safe links, undo, and redo.
+- Use Tiptap core/React/StarterKit/Link plus the official Task List/Task Item extensions and one client-only editor/toolbar primitive exposing paragraph, H2/H3, bold/italic, lists, checklists, blockquote, safe links, undo, and redo.
 - Add the responsive tracker-side editor plus protected `/notes` and `/notes/{id}` library/editor routes; use summary pagination and attachment-status/exact-entry filtering, with search deferred.
 - Create a Note only on a first meaningful edit, capture the then-active entry or standalone status, serialize/coalesce 750 ms autosaves, and expose Draft/Saving/Saved/Waiting/Offline/Conflict.
 - Preserve current-tab edits across rate limits, network errors, and conflicts; flush before in-app leave, warn before discarding/closing, never unload-save, and provide explicit copy/reload or Save-as-new-Note conflict actions without silent merge/overwrite.
@@ -701,10 +703,28 @@ The gate requires all of the following:
 
 **Implementation and local verification evidence — 2026-08-13:**
 
-- Added the four approved Tiptap packages, one client-only version-1 editor/toolbar, server-compatible rich-text canonicalization and size preflight, serialized/coalesced autosave, stable creation keys, explicit rate-limit/offline/conflict handling, navigation and unload-loss safeguards, and copy/reload/Save-as-new conflict actions.
+- Added the original four approved Tiptap packages and one client-only version-1 editor/toolbar before the pre-rollout checklist amendment, with server-compatible rich-text canonicalization and size preflight, serialized/coalesced autosave, stable creation keys, explicit rate-limit/offline/conflict handling, navigation and unload-loss safeguards, and copy/reload/Save-as-new conflict actions.
 - Added protected `/notes` and `/notes/{id}` routes, summary pagination and attachment filters, a desktop split/mobile navigated workspace, tracker-side editor integration, attachment changes, deletion confirmation, and accessible save/error states without changing explicit timer lifecycle behavior.
 - Frontend lint, typecheck, 101/101 Vitest tests, and the placeholder-config production build passed. Authenticated local Playwright passed 1/1 against the local frontend/API and disposable PostgreSQL, covering autosave, persisted reload, two-tab optimistic conflict, Save as new Note, two-user isolation, mobile stable-route behavior, and cleanup.
-- Independent Standards/Spec review against baseline `7dff25c4` found no material contract issue after fixes; the final complexity review found no shipment-blocking simplification. Hosted M5 migration/rollout was not performed or authorized. Status remains **Implemented—unverified** until the protected pull-request checks and review path complete.
+- Independent Standards/Spec review against baseline `7dff25c4` found no material contract issue after fixes; the final complexity review found no shipment-blocking simplification. Hosted M5.2 migration/rollout was not performed in that local verification; it is now authorized but remains unverified. Status remains **Implemented—unverified** until the protected pull-request checks and review path complete.
+
+#### M5.2 RichTextDocument v1 pre-rollout checklist
+
+**Status:** Implemented—unverified
+**Dependencies:** M5.1
+
+- Keep `schemaVersion=1`; add `taskList`/`taskItem` to the Spring validator with one-or-more task items, exact boolean `checked` attrs, paragraph-first task items, and supported nested block positions.
+- Preserve canonical JSON and text-only `contentText` through API create/read/update and repository persistence; checkbox state alone is not meaningful content.
+- Reject invalid task grammar at the validator/API boundary. Keep PostgreSQL structural/ownership/size checks only; do not add a SQL tree validator.
+- Acceptance seams: validator, API create-read-update, and migration/repository round-trip. Record red/green focused Java evidence and opt-in database results separately.
+
+**Evidence — 2026-08-15 / local workspace:**
+
+- Focused backend red failed on the new task grammar before implementation; focused green passed 39 validator, service, controller, and migration-contract tests. Java 21 `mvn clean test package` passed 197 tests with 21 expected opt-in PostgreSQL skips.
+- Frontend checklist and tracker work proceeded through focused red/green slices. `npm run lint`, `npm run typecheck`, 152/152 Vitest tests, and the placeholder-config production build passed. Playwright lists nine tests, including the new cleanup-safe desktop/mobile tracker checklist scenario.
+- Independent Standards and Spec reviews against baseline `3e394b3` found no remaining material issue after fixes. The complexity-only review left one optional parser deduplication worth about ten lines; no shipment-blocking abstraction was found.
+- Historical limitation — 2026-08-15: the opt-in migration/repository classes skipped without an isolated target, and authenticated Playwright/native visual inspection were unavailable in that run. No hosted mutation was performed.
+- Candidate revalidation — 2026-08-16: fresh `npm ci`, zero-high audit, lint, typecheck, 153/153 Vitest tests, placeholder-config production build, nine-test Playwright listing, Java 21 clean test/package (201 tests, 21 expected opt-in skips), guards, Azure/release contracts, secret scan, and diff checks passed. The security review's client/server `mailto` mismatch and pre-deserialization request-size finding were reproduced test-first and fixed; authenticated Notes POST/PUT bodies now have a fixed 1 MiB wire cap before Jackson while the canonical document cap remains 256 KiB. Disposable PostgreSQL 17.10 apply passed 5 tests with 1 expected mode skip; ordered migrations 001–006 applied, and verify/repository/Note service passed 21 tests with 3 expected mode skips. A fresh authenticated rerun was attempted, but the recovered external browser sessions redirected to sign-in, so no new browser pass is claimed; the previously recorded authenticated local acceptance remains the latest passing browser evidence.
 
 ### M5.3 — Generated Daily Logs and Reflections
 
@@ -719,7 +739,7 @@ The gate requires all of the following:
 - Build protected `/daily-logs` calendar and `/daily-logs/{localDate}` detail routes with desktop combined and mobile navigated layouts.
 - Test empty/future days, 42-day boundaries, cross-midnight and DST clipping/counting, timezone override/change, Reflection creation/clear/replay/conflict, Note-reference privacy/deduplication/order, two-user isolation, responsive UI, and accessibility.
 
-**Milestone gate:** Focused source/database suites pass, and authenticated local browser acceptance with two users proves ownership, autosave/reload, attachment/detachment, idempotency, cross-tab conflicts, Daily Log/DST correctness, private payload/log omission, responsive layouts, keyboard operation, and accessible states. Hosted rollout requires a separate product-owner decision and release evidence.
+**Milestone gate:** Focused source/database suites pass, and authenticated local browser acceptance with two users proves ownership, autosave/reload, attachment/detachment, idempotency, cross-tab conflicts, Daily Log/DST correctness, private payload/log omission, responsive layouts, keyboard operation, and accessible states. M5.2 hosted rollout is authorized and still requires release evidence; M5.3 hosted rollout requires a separate product-owner decision.
 
 ## 9. Milestone 6 — Friends, Privacy, and Active Study Presence
 
@@ -821,4 +841,4 @@ Append evidence beneath the completed task; do not create unsupported global che
 
 ## 13. Next Action
 
-The M5 domain language, architecture, ADRs, and implementation contracts are accepted. Review and merge the planning changes, then begin M5.1 Notes data/API test-first from a clean `origin/main` worktree; do not start M5.2 before M5.1 is Verified or M5.3 before M5.2 is Verified. M5 hosted rollout and broad production-readiness claims remain unauthorized; unresolved M3 risks and accepted pre-user limitations remain recorded above.
+Complete final M5.2 candidate verification, protected PR review/merge, migration `006_notes.sql`, immutable shared-hosted deployment, and disposable-user hosted acceptance under the dated authorization. Keep M5.2 Implemented—unverified until that evidence is recorded. Do not begin M5.3 before M5.2 is Verified; M5.3 hosted work and broad production-readiness claims remain unauthorized, and unresolved M3 risks stay recorded above.

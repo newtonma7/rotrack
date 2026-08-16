@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { RichTextEditor } from "@/components/notes/RichTextEditor";
 import { useNoteAutosave } from "@/hooks/useNoteAutosave";
 import { BEFORE_APP_NAVIGATION, guardedNavigationProceed } from "@/lib/navigation-guard";
+import { richTextToPlainText } from "@/lib/rich-text";
 import type { Note, RichTextDocument } from "@/types/notes";
 
 export interface NoteEditorHandle {
@@ -23,10 +24,18 @@ export const NoteEditor = forwardRef<NoteEditorHandle, {
   onSaved?: (note: Note) => void;
   onDelete?: (note: Note) => void;
   onReload?: () => Promise<Note | null>;
-}>(({ initialNote, activeEntryId = null, attachments = [], onSaved, onDelete, onReload }, ref) => {
+  timeZone?: string;
+  variant?: "card" | "journal";
+}>(({ initialNote, activeEntryId = null, attachments = [], onSaved, onDelete, onReload, timeZone, variant = "card" }, ref) => {
   const router = useRouter();
   const autosave = useNoteAutosave({ initialNote, activeEntryId, onSaved });
   const { dirty, flush } = autosave;
+  const isJournal = variant === "journal";
+  const [effectiveLocalDate, setEffectiveLocalDate] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isJournal) setEffectiveLocalDate(formatJournalDate(new Date(initialNote?.updatedAt ?? Date.now()), timeZone));
+  }, [initialNote?.updatedAt, isJournal, timeZone]);
   useEffect(() => {
     const leave = (proceed: () => void, stay = () => undefined) => void flush().then((saved) => {
       if (saved || window.confirm("Your edits could not be saved. Leave and lose these edits?")) proceed();
@@ -84,7 +93,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, {
 
   const copy = async () => {
     try {
-      const plain = autosave.contentText;
+      const plain = richTextToPlainText(autosave.document);
       const html = richTextToHtml(autosave.document);
       if (navigator.clipboard?.write && typeof ClipboardItem !== "undefined") {
         await navigator.clipboard.write([new ClipboardItem({ "text/html": new Blob([html], { type: "text/html" }), "text/plain": new Blob([plain], { type: "text/plain" }) })]);
@@ -102,40 +111,47 @@ export const NoteEditor = forwardRef<NoteEditorHandle, {
 
   const reload = async () => {
     if (!initialNote || !window.confirm("Discard your local edits and reload the server version?")) return;
-    const freshNote = await onReload?.() ?? initialNote;
-    autosave.reloadServerVersion(freshNote);
+    const freshNote = onReload ? await onReload() : initialNote;
+    if (freshNote) autosave.reloadServerVersion(freshNote);
   };
 
   return (
-    <section aria-label="Note editor" className="group relative min-w-0 overflow-hidden rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-5 shadow-[0_20px_50px_-20px_rgba(10,10,10,0.12)] md:p-8">
-      <span aria-hidden="true" className="pointer-events-none absolute -right-20 -top-20 size-48 rounded-full bg-[var(--rt-orange)] opacity-[0.06] transition-transform duration-500 group-hover:scale-110" />
-      <div className="relative flex flex-wrap items-start justify-between gap-4">
+    <section aria-label="Note editor" data-variant={variant} className={isJournal ? "group relative min-w-0" : "group relative min-w-0 overflow-hidden rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-5 shadow-[0_20px_50px_-20px_rgba(10,10,10,0.12)] md:p-8"}>
+      {!isJournal && <span aria-hidden="true" className="pointer-events-none absolute -right-20 -top-20 size-48 rounded-full bg-[var(--rt-orange)] opacity-[0.06] transition-transform duration-500 group-hover:scale-110" />}
+      {isJournal ? <>
+        <div className="relative flex min-h-5 justify-end">
+          <span role="status" aria-live="polite" className="text-[0.68rem] text-[var(--rt-ink-muted)]">{autosave.status}</span>
+        </div>
+        <p aria-label="Effective local date" className="relative mt-6 text-2xl tracking-[-0.05em]">{effectiveLocalDate ?? "local date"}</p>
+        <div className="relative min-w-0">
+          <label htmlFor="note-title" className="sr-only">Note title</label>
+          <input id="note-title" value={autosave.title} onChange={(event) => autosave.setTitle(event.target.value)} placeholder={initialNote?.preview || "a place to put things down"} maxLength={120} className="w-full bg-transparent font-display text-[clamp(2.2rem,5vw,4rem)] leading-[0.94] tracking-[-0.07em] outline-none placeholder:text-[var(--rt-ink-muted)]/50 focus-visible:ring-2 focus-visible:ring-[var(--rt-orange)]" />
+        </div>
+      </> : <div className="relative flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <label htmlFor="note-title" className="sr-only">Note title</label>
           <input id="note-title" value={autosave.title} onChange={(event) => autosave.setTitle(event.target.value)} placeholder={initialNote?.preview || "untitled note"} maxLength={120} className="w-full bg-transparent font-display text-3xl tracking-[-0.02em] outline-none placeholder:text-[var(--rt-ink-muted)] focus-visible:ring-2 focus-visible:ring-[var(--rt-orange)] md:text-4xl" />
           <p className="mt-2 text-sm text-[var(--rt-ink-muted)]">{autosave.note?.timeEntryId ? "attached to a time entry" : "standalone note"}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <span role="status" aria-live="polite" className="rounded-full bg-[var(--rt-cream-soft)] px-3 py-1 text-xs font-semibold">{autosave.status}</span>
-          {autosave.note && <Button type="button" variant="ghost" aria-label="Delete note" onClick={() => void (async () => {
-            if (!window.confirm("Delete this Note permanently?")) return;
-            const saved = await autosave.flush();
-            if (!saved && !window.confirm("Your edits could not be saved. Delete this Note and lose those edits?")) return;
-            const current = autosave.getCurrentNote();
-            if (current) onDelete?.(current);
-          })()} className="rounded-full text-[var(--rt-ink-muted)] hover:text-[var(--rt-orange-deep)]"><Trash2 aria-hidden="true" /> Delete</Button>}
-        </div>
-      </div>
+        <span role="status" aria-live="polite" className="rounded-full bg-[var(--rt-cream-soft)] px-3 py-1 text-xs font-semibold">{autosave.status}</span>
+      </div>}
 
-      <div className="relative mt-6"><RichTextEditor initialContent={autosave.document} onChange={autosave.setContent} /></div>
+      <div className="relative mt-6"><RichTextEditor variant={variant} initialContent={autosave.document} onChange={autosave.setContent} placeholder={isJournal ? "Start with an agenda, a loose thought, a plan for later…" : undefined} /></div>
       <div className="relative mt-5 flex flex-wrap items-end gap-4">
         <label className="min-w-56 flex-1 text-sm font-semibold" htmlFor="note-attachment">Attachment
-          <select id="note-attachment" value={autosave.attachmentId ?? "standalone"} onChange={(event) => autosave.setAttachment(event.target.value === "standalone" ? null : event.target.value)} className="mt-2 block w-full rounded-full border border-[var(--rt-line)] bg-[var(--rt-paper)] px-4 py-2 font-normal outline-none focus-visible:ring-2 focus-visible:ring-[var(--rt-orange)]">
+          <select id="note-attachment" value={autosave.attachmentId ?? "standalone"} onChange={(event) => autosave.setAttachment(event.target.value === "standalone" ? null : event.target.value)} className={isJournal ? "mt-2 block w-full rounded-full border border-[var(--rt-line)] bg-transparent px-4 py-2 font-normal outline-none focus-visible:ring-2 focus-visible:ring-[var(--rt-orange)]" : "mt-2 block w-full rounded-full border border-[var(--rt-line)] bg-[var(--rt-paper)] px-4 py-2 font-normal outline-none focus-visible:ring-2 focus-visible:ring-[var(--rt-orange)]"}>
             <option value="standalone">Standalone</option>
             {attachments.map((attachment) => <option key={attachment.id} value={attachment.id}>{attachment.label}</option>)}
           </select>
         </label>
         <Button type="button" variant="outline" onClick={() => void copy()} className="rounded-full">Copy</Button>
+        {autosave.note && <Button type="button" variant="ghost" aria-label="Delete note" onClick={() => void (async () => {
+          if (!window.confirm("Delete this Note permanently?")) return;
+          const saved = await autosave.flush();
+          if (!saved && !window.confirm("Your edits could not be saved. Delete this Note and lose those edits?")) return;
+          const current = autosave.getCurrentNote();
+          if (current) onDelete?.(current);
+        })()} className="rounded-full text-[var(--rt-ink-muted)] hover:text-[var(--rt-orange-deep)]"><Trash2 aria-hidden="true" /> Delete</Button>}
         {autosave.status === "Conflict" && <>
           <Button type="button" variant="outline" onClick={() => void reload()} className="rounded-full">Reload server version</Button>
           <Button type="button" onClick={() => void autosave.saveAsNew()} className="rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] shadow-[0_10px_30px_-10px_rgba(236,107,14,0.6)] hover:bg-[var(--rt-orange-deep)]">Save as new Note</Button>
@@ -150,6 +166,13 @@ export const NoteEditor = forwardRef<NoteEditorHandle, {
 });
 NoteEditor.displayName = "NoteEditor";
 
+function formatJournalDate(date: Date, timeZone?: string): string {
+  const parts = new Intl.DateTimeFormat(undefined, { month: "2-digit", day: "2-digit", timeZone }).formatToParts(date);
+  const month = parts.find((part) => part.type === "month")?.value ?? "--";
+  const day = parts.find((part) => part.type === "day")?.value ?? "--";
+  return `${month} / ${day}`;
+}
+
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] ?? character);
 }
@@ -157,7 +180,7 @@ function escapeHtml(value: string): string {
 type ClipboardNode = {
   type: string;
   text?: string;
-  attrs?: { href?: string; level?: number; start?: number };
+  attrs?: { href?: string; level?: number; start?: number; checked?: boolean };
   marks?: Array<{ type: string; attrs?: { href?: string } }>;
   content?: ClipboardNode[];
 };
@@ -178,6 +201,8 @@ function richTextToHtml(document: RichTextDocument): string {
       case "heading": return `<h${node.attrs?.level ?? 2}>${content}</h${node.attrs?.level ?? 2}>`;
       case "bulletList": return `<ul>${content}</ul>`;
       case "orderedList": return `<ol>${content}</ol>`;
+      case "taskList": return `<ul data-type="taskList">${content}</ul>`;
+      case "taskItem": return `<li data-type="taskItem" data-checked="${node.attrs?.checked === true}"><label><input type="checkbox"${node.attrs?.checked === true ? " checked" : ""} disabled aria-label="Checklist item"><span></span></label><div>${content}</div></li>`;
       case "listItem": return `<li>${content}</li>`;
       case "blockquote": return `<blockquote>${content}</blockquote>`;
       default: return `<p>${content}</p>`;

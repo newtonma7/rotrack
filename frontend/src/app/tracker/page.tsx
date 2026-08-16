@@ -12,9 +12,9 @@ import { ActiveTracker } from "@/components/tracker/ActiveTracker";
 
 export default function TrackerPage() {
   return (
-    <div className="min-h-screen bg-[var(--rt-cream)] text-[var(--rt-ink)]">
+    <div className="min-h-screen bg-[var(--rt-cream-soft)] text-[var(--rt-ink)]">
       <ApplicationHeader />
-      <main className="px-6 py-16">
+      <main className="px-[clamp(14px,4vw,56px)] pb-20">
         <h1 className="sr-only">Track your time</h1>
         <ActiveTracker />
       </main>

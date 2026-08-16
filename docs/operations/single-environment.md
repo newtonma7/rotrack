@@ -2,7 +2,7 @@
 
 **Decision date:** 2026-08-11
 **Decision owner:** Product owner/operator
-**Status:** Authorized implementation boundary; full M3 and production-readiness gates remain stopped, with only the dated narrow M4 override below authorized
+**Status:** Authorized shared implementation boundary; full M3 and production-readiness gates remain stopped, with dated narrow M4 and M5.2 rollout decisions below
 
 ## Decision
 
@@ -17,11 +17,15 @@ The current path is:
 
 The reserved separate production Supabase/Azure lane is unused. Full aliases, project references, revision identifiers, digests, account details, and deployment identifiers remain in private evidence only.
 
-This is an operational boundary decision, not a release approval. The separate 2026-08-12 product-owner override below is the only exception: it permits the narrow zero-user/pre-user M4 rollout actions while full M3 remains unmet. It does not waive unresolved M3 operational risks, authorize M5 hosted rollout, or support broad production-readiness claims.
+This is an operational boundary decision, not a general release approval. The dated product-owner decisions below permit only narrow zero-user/pre-user M4 and M5.2 rollout actions while full M3 remains unmet. They do not waive unresolved M3 operational risks, authorize M5.3, or support broad production-readiness claims.
 
 ## Narrow M4 rollout override — 2026-08-12
 
-For the zero-user/pre-user boundary only, the product owner authorizes applying migrations `004_user_preferences.sql` and `005_time_entry_history.sql`, deploying the reviewed M4 application, and running hosted M4 acceptance despite the full M3 gate. M4 remains **Implemented—unverified** until rollout evidence passes. This override does not authorize M5 hosted rollout or broad production-readiness claims.
+For the zero-user/pre-user boundary only, the product owner authorized applying migrations `004_user_preferences.sql` and `005_time_entry_history.sql`, deploying the reviewed M4 application, and running hosted M4 acceptance despite the full M3 gate. That rollout passed and M4 is **Verified**.
+
+## M5.2 rollout authorization — 2026-08-16
+
+For the zero-user/pre-user boundary only, the product owner authorizes migration `006_notes.sql`, deployment of protected-PR-reviewed M5.2 backend/frontend artifacts, stable hosted-only Notes HMAC secret injection, Notes writes, and disposable-user acceptance on this canonical shared path. Apply the additive migration before the dependent application and retain it during application rollback. M5.2 remains **Implemented—unverified** until hosted evidence passes. This authorization excludes M5.3 and broad production-readiness claims.
 
 ## Accepted risks
 
