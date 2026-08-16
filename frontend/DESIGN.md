@@ -63,7 +63,7 @@ Two typefaces. Both already live in `/public/fonts/`.
 | -------- | ----------------- | ------------------------------------------------ |
 | Display  | **Figtree**       | Wordmark, all hero & section headlines, big numbers. Use bold weight with comfortable tracking. |
 | Body     | **Figtree**       | All paragraphs, nav, chips, buttons, meta text.  |
-| Mono     | **Digital-7**     | LED/clock readouts only. Never for body.         |
+| Mono     | **Digital-7**     | LED/clock readouts only. Never for body. The compact `/tracker` journal timer intentionally uses bold Figtree to keep the writing surface quiet. |
 
 Use the `font-display` utility (defined in `globals.css`) for display type.
 It uses Figtree with a bold weight so display text remains consistent with the

@@ -1,8 +1,8 @@
 # M5 contracts
 
-**Status:** M5.1 Verified locally; M5.2 and M5.3 not started. The governing contract source is [`arch.plan.md`](../../arch.plan.md), the domain glossary is [`CONTEXT.md`](../../CONTEXT.md), and M4 conventions are in [`m4-contracts.md`](m4-contracts.md). If this document conflicts with the architecture, update the architecture decision before implementation.
+**Status:** M5.1 Verified locally; M5.2 Implemented—unverified; M5.3 not started. The governing contract source is [`arch.plan.md`](../../arch.plan.md), the domain glossary is [`CONTEXT.md`](../../CONTEXT.md), and M4 conventions are in [`m4-contracts.md`](m4-contracts.md). If this document conflicts with the architecture, update the architecture decision before implementation.
 
-M5 is defined as one domain model delivered sequentially: M5.1 Notes data/API, M5.2 rich-text editors and Notes workspace, then M5.3 Daily Logs and Reflections. Source/local work is authorized; M5 hosted migration or rollout is not.
+M5 is defined as one domain model delivered sequentially: M5.1 Notes data/API, M5.2 rich-text editors and Notes workspace, then M5.3 Daily Logs and Reflections. M5.2 shared-hosted migration and rollout are authorized for the pre-user boundary but remain unverified; M5.3 hosted work is separately gated.
 
 Every API route is under `/api/v1`, derives ownership from the validated JWT `sub`, uses explicit handwritten DTOs through the existing native `fetch` client, and returns the existing error envelope. Request bodies never contain `userId`, generated totals, derived text, or server timestamps. Notes and Reflections are available only through Spring; Supabase browser roles receive no table privileges.
 
@@ -32,7 +32,7 @@ type RichTextDocument = {
 
 Version 1 accepts only:
 
-- nodes: `doc`, `paragraph`, `heading` (`level` 2 or 3), `bulletList`, `orderedList` (optional positive-integer `start`), `listItem`, `blockquote`, and `text`;
+- nodes: `doc`, `paragraph`, `heading` (`level` 2 or 3), `bulletList`, `orderedList` (optional positive-integer `start`), `listItem`, `taskList`, `taskItem`, `blockquote`, and `text`;
 - marks: `bold`, `italic`, and `link`;
 - link attribute: `href` only.
 
@@ -41,17 +41,27 @@ The executable tree grammar is:
 - `doc` has zero or more block children and no attributes or marks.
 - `paragraph` and `heading` have zero or more `text` children. `heading` has exactly `{ level: 2 | 3 }`; `paragraph` has no attributes.
 - `bulletList` and `orderedList` have one or more `listItem` children. `bulletList` has no attributes. `orderedList` accepts only positive-integer `start`, normalizes an omitted value to 1, and canonically emits `{ start }`.
-- `listItem` has a `paragraph` first, followed by zero or more paragraph, list, or blockquote children; it has no attributes or marks.
-- `blockquote` has one or more paragraph, list, or blockquote children and no attributes or marks.
+- `listItem` has a `paragraph` first, followed by zero or more paragraph, list, taskList, or blockquote children; it has no attributes or marks.
+- `taskList` has one or more `taskItem` children and no attributes or marks. It is valid at the document root and in supported nested block positions.
+- `taskItem` has exactly `{ checked: boolean }` attrs, a `paragraph` first, followed by zero or more paragraph, list, taskList, or blockquote children; it has no marks.
+- `blockquote` has one or more paragraph, list, taskList, or blockquote children and no attributes or marks.
 - `text` has a nonempty `text` string, no children or attributes, and zero or more distinct marks. Marks are permitted only on text and canonically ordered `bold`, `italic`, then `link`; `bold` and `italic` have no attributes and `link` has exactly `{ href }`.
 
-Unknown envelope keys, nodes, marks, attributes, duplicate marks, invalid child relationships, empty text nodes, H1, code, images, tables, mentions, embeds, and raw/executable HTML are invalid. Undo and redo are editor history, not persisted nodes. The document may contain at most 10,000 nodes and nesting depth 32, counting `doc` as depth 1 and including every node in the node count.
+Unknown envelope keys, nodes, marks, attributes, duplicate marks, invalid child relationships, empty text nodes, H1, code, images, tables, mentions, embeds, and raw/executable HTML are invalid. Undo and redo are editor history, not persisted nodes. The document may contain at most 10,000 nodes and nesting depth 32, counting `doc` as depth 1 and including every node in the node count. Authenticated Note POST/PUT requests are capped at 1 MiB on the wire before JSON deserialization; the canonical document remains capped at 256 KiB.
 
 Links accept only absolute `http` or `https` URLs with a host, or `mailto` URLs with a valid address form. Protocol-relative and fragment-only URLs plus `javascript:`, `data:`, `vbscript:`, and every other protocol are invalid. The UI adds/changes/removes links through an accessible dialog, does not auto-link text, and opens links only by deliberate action in a new tab with `noopener` and `noreferrer`.
 
 Validation produces one canonical value before hashing, storage, derivation, or sizing. Envelope keys serialize as `schemaVersion`, `document`; node keys as `type`, permitted `attrs`, permitted `marks`, permitted `content`, then `text`; mark keys as `type`, then permitted `attrs`. Empty optional arrays/objects are omitted, except root `document.content` is always emitted. Content order is preserved, marks use the fixed order above, ordered-list start is explicit, strings retain their decoded Unicode values, and no other normalization is performed.
 
-The compact server serialization of that canonical value must be at most 262,144 UTF-8 bytes. The server derives `contentText` by concatenating text nodes in document order with newlines between leaf text blocks. Meaningful-content checks trim this value. Previews collapse whitespace, trim, and take at most 160 Unicode code points without splitting a code point. Clients never submit `contentText`.
+The compact server serialization of that canonical value must be at most 262,144 UTF-8 bytes. The server derives `contentText` by concatenating text nodes in document order with newlines between leaf text blocks. Checkbox state is never included, so a task list containing only checked/unchecked empty paragraphs is not meaningful. Meaningful-content checks trim this value. Previews collapse whitespace, trim, and take at most 160 Unicode code points without splitting a code point. Clients never submit `contentText`.
+
+### Pre-rollout RichTextDocument v1 checklist
+
+- Keep `schemaVersion` at `1`; accept and canonically emit task lists with one or more task items.
+- Require task item attrs to be exactly `{ checked: boolean }`; reject unknown attrs, missing attrs, and non-boolean values.
+- Require a paragraph first in every task item, then allow only paragraph/list/taskList/blockquote children; allow taskList at the root, in list items, in task items, and in blockquotes.
+- Validate this grammar in Spring at the public validator/API boundary; PostgreSQL stores canonical `json` and must not become a second SQL tree validator.
+- Prove validator acceptance/rejection, API create-read-update preservation, and migration/repository round-trip before rollout. `contentText` remains text-only, and checkbox state alone cannot satisfy meaningful-content creation.
 
 `content_json` uses PostgreSQL `json` (not `jsonb`) because M5 does not query inside documents and must preserve Spring's compact canonical bytes. PostgreSQL checks object presence, `octet_length(content_json::text) <= 262144`, schema version, title limits, positive versions, and owner/link integrity. Spring owns full tree/link validation and derived-text generation; there is no second full JSON validator in PostgreSQL.
 
@@ -113,9 +123,9 @@ After Note deletion, a content-free tombstone retains owner, creation key, keyed
 
 ## Editors and Notes workspace — M5.2
 
-The protected routes are `/notes` and `/notes/{id}`. Desktop uses a Note Summary list beside the selected editor; mobile navigates from the list to the stable Note URL. A null title displays the preview, then `untitled note` only when both are empty. The tracker uses a two-column timer/editor layout on desktop and stacks timer first on mobile. Long documents grow with the page rather than creating a nested editor scroll region.
+The protected routes are `/notes` and `/notes/{id}`. In the standalone Notes workspace, desktop uses a Note Summary list beside the selected editor and mobile navigates from the library to the stable Note URL. A null title displays the preview, then `untitled note` only when both are empty. The tracker keeps its embedded journal inline: a compact timer band sits above a responsive Mindspace summary list and Note canvas; desktop keeps the list beside the editor and mobile stacks the picker first. Long documents grow with the page rather than creating a nested editor scroll region.
 
-The shared client-only Tiptap editor primitive uses only `@tiptap/core`, `@tiptap/react`, `@tiptap/starter-kit`, and `@tiptap/extension-link`. It exposes paragraph, H2, H3, bold, italic, bullet list, ordered list, blockquote, link, undo, and redo with keyboard operation, accessible labels, visible focus, and announced save states. Note and Reflection API/save orchestration remain separate.
+The shared client-only Tiptap editor primitive uses `@tiptap/core`, `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-link`, `@tiptap/extension-task-list`, and `@tiptap/extension-task-item`. It exposes paragraph, H2, H3, bold, italic, bullet list, ordered list, checklist, blockquote, link, undo, and redo with keyboard operation, accessible labels, visible focus, and announced save states. Note and Reflection API/save orchestration remain separate.
 
 A new editor remains a current-tab Note Draft until trimmed title or derived text is nonblank. On the first meaningful edit it captures the active Time Entry, or standalone status when none is active, and never silently retargets. The first successful save creates one Note; later typing continues that Note until the user explicitly chooses New Note or opens another Note.
 
@@ -223,6 +233,7 @@ Errors use `{ error: { code, message, fieldErrors }, timestamp, path }`. Authent
 - `IDEMPOTENCY_CONFLICT` — a creation key names a different canonical request; response contains neither payload.
 - `NOTE_DELETED` — an identical create replay names a Note that was explicitly deleted; response contains no private content.
 - `RATE_LIMITED` — the applicable authenticated mutation/save budget is exhausted.
+- `PAYLOAD_TOO_LARGE` — an authenticated Note POST/PUT wire body exceeds 1 MiB before JSON deserialization; no private body content is returned or logged.
 
 The client blocks autosave locally when the serialized document exceeds 256 KiB, preserves edits, and resumes after it fits; the server remains authoritative for every limit.
 
@@ -232,4 +243,4 @@ Never place bearer tokens, credentials, Note/Reflection JSON, titles, derived te
 
 M5.1 adds additive Notes and content-free idempotency/tombstone storage. M5.3 later adds additive Reflections and their creation replay metadata. Existing `time_entries.notes` Session Labels are never converted, truncated, or deleted. Migrations precede dependent application versions; application rollback leaves additive tables in place and does not imply database rollback. Future document schema versions require a new architecture decision and explicit reader/writer migration or dual-read plan.
 
-Source/local verification requires focused migration/repository/service/controller/client/component tests plus authenticated real-browser acceptance with two users covering ownership, creation replay, autosave/reload, attachment/move/detach, Time Entry deletion warning, cross-tab conflicts, Note conflict copy, Reflection identity, DST/cross-midnight segmentation, privacy payloads/logs, responsive layouts, keyboard operation, and accessible status/error announcements. M5 hosted rollout requires separate product-owner authorization and applicable immutable-build, migration, smoke, privacy, and rollback evidence.
+Source/local verification requires focused migration/repository/service/controller/client/component tests plus authenticated real-browser acceptance with two users covering ownership, creation replay, autosave/reload, attachment/move/detach, Time Entry deletion warning, cross-tab conflicts, Note conflict copy, Reflection identity, DST/cross-midnight segmentation, privacy payloads/logs, responsive layouts, keyboard operation, and accessible status/error announcements. The dated M5.2 shared-hosted authorization still requires protected CI/merge, immutable-build provenance, migration `006_notes.sql`, smoke, privacy, cleanup, and rollback evidence before verification; M5.3 hosted work requires a separate decision.

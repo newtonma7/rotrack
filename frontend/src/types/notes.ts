@@ -26,8 +26,15 @@ export interface RichTextListItem {
   content: [RichTextParagraph, ...RichTextListItemChild[]];
 }
 
+export interface RichTextTaskItem {
+  type: "taskItem";
+  attrs: { checked: boolean };
+  content: [RichTextParagraph, ...RichTextTaskItemChild[]];
+}
+
 export type RichTextList = RichTextBulletList | RichTextOrderedList;
-export type RichTextListItemChild = RichTextParagraph | RichTextList | RichTextBlockquote;
+export type RichTextListItemChild = RichTextParagraph | RichTextList | RichTextTaskList | RichTextBlockquote;
+export type RichTextTaskItemChild = RichTextParagraph | RichTextList | RichTextTaskList | RichTextBlockquote;
 
 export interface RichTextBulletList {
   type: "bulletList";
@@ -40,13 +47,18 @@ export interface RichTextOrderedList {
   content: [RichTextListItem, ...RichTextListItem[]];
 }
 
+export interface RichTextTaskList {
+  type: "taskList";
+  content: [RichTextTaskItem, ...RichTextTaskItem[]];
+}
+
 export interface RichTextBlockquote {
   type: "blockquote";
   content: [RichTextBlockquoteChild, ...RichTextBlockquoteChild[]];
 }
 
-export type RichTextBlockquoteChild = RichTextParagraph | RichTextList | RichTextBlockquote;
-export type RichTextBlock = RichTextParagraph | RichTextHeading | RichTextList | RichTextBlockquote;
+export type RichTextBlockquoteChild = RichTextParagraph | RichTextList | RichTextTaskList | RichTextBlockquote;
+export type RichTextBlock = RichTextParagraph | RichTextHeading | RichTextList | RichTextTaskList | RichTextBlockquote;
 
 export interface RichTextDocument {
   schemaVersion: 1;

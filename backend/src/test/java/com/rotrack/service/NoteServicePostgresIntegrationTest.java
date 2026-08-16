@@ -79,6 +79,22 @@ class NoteServicePostgresIntegrationTest {
     }
 
     @Test
+    void taskListDocumentRoundTripsThroughCreateReadUpdateRepository() throws Exception {
+        var created = service.create(OWNER, UUID.randomUUID(), taskRequest("before", false));
+
+        var read = service.get(OWNER, created.note().id());
+        assertThat(read.contentText()).isEqualTo("before");
+        assertThat(read.contentJson().at("/document/content/0/content/0/attrs/checked").booleanValue()).isFalse();
+
+        var updated = service.update(OWNER, created.note().id(), new UpdateNoteRequest(
+                null, taskRequest("after", true).contentJson(), null, created.note().version()));
+        var reread = service.get(OWNER, updated.id());
+        assertThat(reread.contentText()).isEqualTo("after");
+        assertThat(reread.contentJson().at("/document/content/0/content/0/attrs/checked").booleanValue()).isTrue();
+        assertThat(reread.version()).isEqualTo(2);
+    }
+
+    @Test
     void readsAndListsNotesWithoutAWriteTransaction() throws Exception {
         Note note = notes.saveAndFlush(note(null, "Read me", "readable", null));
 
@@ -332,6 +348,19 @@ class NoteServicePostgresIntegrationTest {
                 {"schemaVersion":1,"document":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"%s"}]}]}}
                 """.formatted(text));
         return new NoteRequest(title, document, null);
+    }
+
+    private NoteRequest taskRequest(String text, boolean checked) throws Exception {
+        JsonNode document = MAPPER.readTree("""
+                {"schemaVersion":1,"document":{"type":"doc","content":[
+                  {"type":"taskList","content":[
+                    {"type":"taskItem","attrs":{"checked":%s},"content":[
+                      {"type":"paragraph"%s}
+                    ]}
+                  ]}
+                ]}}
+                """.formatted(checked, text.isEmpty() ? "" : ",\"content\":[{\"type\":\"text\",\"text\":\"" + text + "\"}]"));
+        return new NoteRequest(null, document, null);
     }
 
     private Note note(UUID entryId, String title, String text, UUID userId) throws Exception {

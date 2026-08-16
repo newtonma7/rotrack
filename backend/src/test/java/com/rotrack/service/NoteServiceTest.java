@@ -119,6 +119,33 @@ class NoteServiceTest {
     }
 
     @Test
+    void taskDocumentCreateReadUpdatePreservesCheckedStateAndTextOnlyDerivation() throws Exception {
+        when(notes.saveAndFlush(any(Note.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var created = service.create(USER, KEY, taskRequest("before", false));
+        Note saved = captureNote();
+        assertThat(saved.getContentText()).isEqualTo("before");
+        assertThat(saved.getContentJson().at("/document/content/0/content/0/attrs/checked").booleanValue()).isFalse();
+
+        when(notes.findByIdAndUserId(saved.getId(), USER)).thenReturn(Optional.of(saved));
+        when(notes.findForUpdateByIdAndUserId(saved.getId(), USER)).thenReturn(Optional.of(saved));
+        var updated = service.update(USER, saved.getId(), new UpdateNoteRequest(
+                "Task", taskRequest("after", true).contentJson(), null, saved.getVersion()));
+
+        assertThat(updated.contentText()).isEqualTo("after");
+        assertThat(updated.contentJson().at("/document/content/0/content/0/attrs/checked").booleanValue()).isTrue();
+        assertThat(updated.version()).isEqualTo(2);
+    }
+
+    @Test
+    void checkedTaskWithoutTextIsNotMeaningfulForCreate() throws Exception {
+        assertThatThrownBy(() -> service.create(USER, KEY, taskRequest("", true)))
+                .isInstanceOf(com.rotrack.exception.ValidationException.class)
+                .hasMessage("title or contentJson must contain meaningful content");
+        verify(notes, never()).saveAndFlush(any(Note.class));
+    }
+
+    @Test
     void emptyCreateIsRejectedWithCrossFieldValidation() throws Exception {
         assertThatThrownBy(() -> service.create(USER, KEY, request("", "")))
                 .isInstanceOf(com.rotrack.exception.ValidationException.class)
@@ -288,6 +315,18 @@ class NoteServiceTest {
                 : "[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"" + text + "\"}]}]";
         return new NoteRequest(title, new ObjectMapper().readTree(
                 "{\"schemaVersion\":1,\"document\":{\"type\":\"doc\",\"content\":" + content + "}}"), null);
+    }
+
+    private NoteRequest taskRequest(String text, boolean checked) throws Exception {
+        return new NoteRequest(null, new ObjectMapper().readTree("""
+                {"schemaVersion":1,"document":{"type":"doc","content":[
+                  {"type":"taskList","content":[
+                    {"type":"taskItem","attrs":{"checked":%s},"content":[
+                      {"type":"paragraph"%s}
+                    ]}
+                  ]}
+                ]}}
+                """.formatted(checked, text.isEmpty() ? "" : ",\"content\":[{\"type\":\"text\",\"text\":\"" + text + "\"}]")), null);
     }
 
     private Note note() {

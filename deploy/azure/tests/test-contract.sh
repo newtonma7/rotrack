@@ -84,6 +84,7 @@ env = {entry['name']: entry for entry in container['env']}
 expected = {
     'DATABASE_URL', 'DATABASE_USERNAME', 'DATABASE_PASSWORD',
     'DATABASE_CA_CERTIFICATE_PEM', 'SUPABASE_JWKS_URI', 'SUPABASE_ISSUER_URI',
+    'ROTRACK_NOTES_HMAC_SECRET', 'ROTRACK_NOTES_WRITES_ENABLED',
     'PORT', 'DATABASE_CA_CERTIFICATE_PATH', 'DATABASE_CONNECTION_TIMEOUT_MS',
     'DATABASE_POOL_VALIDATION_TIMEOUT_MS', 'DATABASE_MAXIMUM_POOL_SIZE',
     'DATABASE_MINIMUM_IDLE', 'READINESS_CACHE_TTL', 'SUPABASE_JWT_AUDIENCE',
@@ -96,6 +97,10 @@ expected = {
     'LOGGING_LEVEL_ORG_HIBERNATE_ORM_JDBC_BIND', 'SPRING_JPA_SHOW_SQL',
 }
 assert set(env) == expected, sorted(set(env) ^ expected)
+assert any(secret['name'] == 'notes-hmac-secret' for secret in props['configuration']['secrets'])
+assert env['ROTRACK_NOTES_HMAC_SECRET']['secretRef'] == 'notes-hmac-secret'
+assert env['ROTRACK_NOTES_HMAC_SECRET'].get('value', '') == ''
+assert env['ROTRACK_NOTES_WRITES_ENABLED']['value'] == 'true'
 assert env['ROTRACK_MUTATION_RATE_LIMIT_REQUESTS']['value'] == '30'
 assert env['ROTRACK_MUTATION_RATE_LIMIT_WINDOW']['value'] == '1m'
 assert env['ROTRACK_MUTATION_RATE_LIMIT_MAX_KEYS']['value'] == '10000'
@@ -139,6 +144,7 @@ app = {
         'databaseUsername': {'value': 'rotrack_runtime'},
         'databasePassword': {'value': 'test-only-password'},
         'databaseCaCertificatePem': {'value': '-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----'},
+        'notesHmacSecret': {'value': 'é' * 16},
         'supabaseJwksUri': {'value': 'https://abcdefghijklmnopqrst.supabase.co/auth/v1/.well-known/jwks.json'},
         'supabaseIssuerUri': {'value': 'https://abcdefghijklmnopqrst.supabase.co/auth/v1'},
         'corsAllowedOrigins': {'value': 'https://preview.vercel.app'},
@@ -192,6 +198,10 @@ elif name == 'empty-username':
     values['databaseUsername']['value'] = ''
 elif name == 'empty-password':
     values['databasePassword']['value'] = ''
+elif name == 'short-notes-secret':
+    values['notesHmacSecret']['value'] = 'é' * 15 + 'a'
+elif name == 'notes-placeholder':
+    values['notesHmacSecret']['value'] = 'replace-with-a-secret-kept-outside-the-repository'
 elif name == 'bad-pem':
     values['databaseCaCertificatePem']['value'] = 'not-a-pem'
 elif name == 'bad-issuer':
@@ -214,7 +224,7 @@ PY
     fail "app invalid case accepted: $name"
   fi
 }
-for invalid_case in bad-jdbc empty-username empty-password bad-pem bad-issuer bad-jwks-host bad-cors bad-cors-host bare-vercel; do
+for invalid_case in bad-jdbc empty-username empty-password short-notes-secret notes-placeholder bad-pem bad-issuer bad-jwks-host bad-cors bad-cors-host bare-vercel; do
   expect_app_rejected "$invalid_case"
 done
 chmod 600 "$TMP/foundation.json"
@@ -276,6 +286,8 @@ grep -Fq -- 'secret values and subscription/resource IDs omitted' "$SCRIPTS_DIR/
 grep -Fq -- "'imageDigest': expected_digest" "$SCRIPTS_DIR/readback.sh" || fail 'readback image digest evidence label missing'
 grep -Fq -- "'DATABASE_URL': 'database-url'" "$SCRIPTS_DIR/readback.sh" || fail 'readback DATABASE_URL secretRef mapping missing'
 grep -Fq -- "'SUPABASE_ISSUER_URI': 'supabase-issuer-uri'" "$SCRIPTS_DIR/readback.sh" || fail 'readback issuer secretRef mapping missing'
+grep -Fq -- "'ROTRACK_NOTES_HMAC_SECRET': 'notes-hmac-secret'" "$SCRIPTS_DIR/readback.sh" || fail 'readback notes HMAC secretRef mapping missing'
+grep -Fq -- "'ROTRACK_NOTES_WRITES_ENABLED': 'true'" "$SCRIPTS_DIR/readback.sh" || fail 'readback notes writes flag missing'
 
 # A rejected production target must fail before any Azure CLI invocation.
 FAKE_AZ="$TMP/fake-bin"

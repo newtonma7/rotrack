@@ -83,6 +83,20 @@ class NoteBoundaryFullChainTest {
     private JwtDecoder jwtDecoder;
 
     @Test
+    void rejectsOversizedAuthenticatedNoteBodyThroughSecurityChain() throws Exception {
+        UUID user = UUID.fromString("55555555-5555-4555-8555-555555555555");
+
+        mockMvc.perform(post("/api/v1/notes")
+                        .with(jwt().jwt(token -> token.subject(user.toString()).audience(List.of("authenticated"))))
+                        .header("Idempotency-Key", "66666666-6666-4666-8666-666666666666")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"" + "x".repeat(1024 * 1024) + "\"}"))
+                .andExpect(status().isPayloadTooLarge())
+                .andExpect(jsonPath("$.error.code").value("PAYLOAD_TOO_LARGE"))
+                .andExpect(jsonPath("$.path").value("/api/v1/notes"));
+    }
+
+    @Test
     void provesCorsAndIndependentNoteAndTimerHistoryBudgetsThroughSecurityChain() throws Exception {
         when(noteService.create(eq(USER), any(), any())).thenReturn(new NoteService.CreateResult(note(), false));
         when(noteService.update(eq(USER), eq(NOTE_ID), any())).thenReturn(note());

@@ -1,7 +1,7 @@
 # rotrack Architecture
 
 **Status:** Living architecture and contract document
-**Last reviewed:** 2026-08-12
+**Last reviewed:** 2026-08-15
 **Delivery backlog:** [`todo.md`](todo.md)
 
 ## 1. Purpose and Product Boundaries
@@ -38,18 +38,18 @@ This section describes what exists in source control today. It is not a completi
 ### Frontend
 
 - Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4, shadcn/ui primitives, Recharts, and `@supabase/supabase-js`
-- Routes: `/`, `/signin`, `/signup`, `/signup/confirmation`, `/tracker`, `/dashboard`, `/history`, `/settings`
+- Routes: `/`, `/signin`, `/signup`, `/signup/confirmation`, `/tracker`, `/dashboard`, `/history`, `/settings`, `/notes`, and `/notes/{id}`
 - Client-side Supabase session context and protected-route layouts
 - API client using native `fetch` and Supabase bearer tokens
-- Tracker UI with start, active-session restore, elapsed display, and explicit stop; sessions remain active across reload, navigation, tab changes, minimization, and browser closure until explicitly stopped
+- Tracker UI with start, active-session restore, elapsed display, explicit stop, and an integrated private Notes journal; sessions remain active across reload, navigation, tab changes, minimization, and browser closure until explicitly stopped
 - Dashboard using the timestamp-derived daily contract from `GET /api/v1/dashboard/stats`, with the saved IANA timezone and browser timezone fallback
 - [`frontend/DESIGN.md`](frontend/DESIGN.md) is the visual UI source of truth; product/domain behavior remains governed by this architecture. The checked-in frontend uses local Figtree for display/body text and Digital-7 only for timer-style readouts
 
 ### Backend and database
 
 - Spring Boot 3.4, Java 21 target, Maven, Spring Web, JPA, OAuth2 Resource Server, validation, and PostgreSQL
-- Implemented endpoints: independent liveness/readiness, explicit session lifecycle, dashboard stats, owned preferences GET/PUT, and completed-only history/manual-entry routes
-- Supabase migrations defining `users`, `time_entries`, `user_preferences`, the `ROT|WORK` enum, ownership RLS policies, signup profile/default-preference creation, timestamp constraints, one-active-session uniqueness, completed-history non-overlap, and reporting indexes
+- Implemented endpoints: independent liveness/readiness, explicit session lifecycle, dashboard stats, owned preferences GET/PUT, completed-only history/manual-entry routes, and owned Notes CRUD with attachment and optimistic-locking contracts
+- Supabase migrations defining `users`, `time_entries`, `user_preferences`, private `notes` and creation-replay metadata, the `ROT|WORK` enum, ownership RLS policies, signup profile/default-preference creation, timestamp constraints, one-active-session uniqueness, completed-history non-overlap, and reporting indexes
 - Source-controlled suites include executable PostgreSQL migration/repository tests, generated signed-JWT filter tests, service/controller ownership tests, Vitest/RTL coverage, and a quarantined external-auth Playwright critical path that can bind observed browser API responses to an approved API base
 - Backend startup rejects PostgreSQL TLS override properties, requires managed JDBC hostname verification with an explicit CA path, validates exact CORS origins, binds bounded Hikari settings, and exposes cached/single-flight database readiness
 - A digest-pinned Java 21 multi-stage OCI-compatible image runs as UID/GID `10001:10001`; local validation covers read-only-root compatibility, probes, runtime CA injection, bounded shutdown, and a platform-neutral artifact boundary. Non-production registry media/digest/architecture and ACA digest/service-version readback are observed. ACA read-only-root enforcement and production artifact evidence remain target work. The checked-in ECS/Fargate templates are historical and unselected
@@ -79,11 +79,15 @@ The product owner accepts deferring a trusted fleet-wide edge rate limiter until
 
 ### Product-owner M4 source/local unlock — 2026-08-12
 
-For the 0–20-user pre-user scope, the product owner confirms that verified M3-P is sufficient to begin M4 source and local-environment work. This deliberately replaces a full-M3 production-readiness dependency for implementation sequencing; it does not claim full production readiness. The separate dated M4 shared-hosted rollout override below governs the narrow hosted exception; M4 Verified remains blocked until rollout evidence passes.
+For the 0–20-user pre-user scope, the product owner confirms that verified M3-P is sufficient to begin M4 source and local-environment work. This deliberately replaces a full-M3 production-readiness dependency for implementation sequencing; it does not claim full production readiness. The dated shared-hosted rollout override below governed the narrow hosted exception; its rollout evidence passed and M4 is Verified.
 
 ### Product-owner M4 shared-hosted rollout override — 2026-08-12
 
-For the zero-user/pre-user boundary, the product owner authorized a narrow shared-hosted M4 rollout override: migrations `004_user_preferences.sql` and `005_time_entry_history.sql`, deployment of the reviewed M4 application, and hosted M4 acceptance could proceed despite the full M3 production-readiness gate. The rollout passed on 2026-08-12 after ordered migration 003 remediation/application, so M4 is **Verified**. The unresolved M3 operational risks remain unverified. This does not authorize M5 hosted rollout or broad production-readiness claims.
+For the zero-user/pre-user boundary, the product owner authorized a narrow shared-hosted M4 rollout override: migrations `004_user_preferences.sql` and `005_time_entry_history.sql`, deployment of the reviewed M4 application, and hosted M4 acceptance could proceed despite the full M3 production-readiness gate. The rollout passed on 2026-08-12 after ordered migration 003 remediation/application, so M4 is **Verified**. The unresolved M3 operational risks remain unverified.
+
+### Product-owner M5.2 shared-hosted rollout authorization — 2026-08-16
+
+For the zero-user/pre-user boundary, the product owner authorizes migration `006_notes.sql`, deployment of the reviewed M5.2 backend and frontend artifacts to the canonical shared Supabase/ACA/Vercel Production path, runtime Notes writes with a stable hosted-only HMAC secret, and disposable-user hosted acceptance after protected CI and merge. Migration precedes the dependent application; rollback remains application-only with the additive schema retained. This authorization does not verify the rollout, authorize M5.3, waive unresolved M3 risks, or support broad production-readiness claims.
 
 ### Product-owner pre-user operations scope — 2026-08-11
 
@@ -104,7 +108,7 @@ Browser / Next.js
 
 ### Approved deployment architecture
 
-This table defines the long-term separated topology and reserved production lane; its production cells are not the current hosted boundary. The current product-owner override uses the shared Supabase project, Vercel Production, and the existing ACA implementation boundary with the `production` runtime label until a second Azure quota boundary exists. That decision is recorded in [`docs/operations/single-environment.md`](docs/operations/single-environment.md). The 2026-08-11 candidate evidence is recorded in Section 2 and [`docs/operations/azure-nonproduction.md`](docs/operations/azure-nonproduction.md). The separate 2026-08-12 M4 rollout override permits only the narrow zero-user/pre-user M4 actions authorized above; it does not waive unresolved M3 risks, authorize M5 hosted rollout, or support broad production-readiness claims.
+This table defines the long-term separated topology and reserved production lane; its production cells are not the current hosted boundary. The current product-owner override uses the shared Supabase project, Vercel Production, and the existing ACA implementation boundary with the `production` runtime label until a second Azure quota boundary exists. That decision is recorded in [`docs/operations/single-environment.md`](docs/operations/single-environment.md). The 2026-08-11 candidate evidence is recorded in Section 2 and [`docs/operations/azure-nonproduction.md`](docs/operations/azure-nonproduction.md). The dated M4 and M5.2 rollout decisions permit only their narrow zero-user/pre-user actions; neither waives unresolved M3 risks, authorizes M5.3, or supports broad production-readiness claims.
 
 | Boundary | Shared hosted environment |
 |---|---|
@@ -113,7 +117,7 @@ This table defines the long-term separated topology and reserved production lane
 | GitHub | Pull-request CI remains credential-free; no hosted authentication secrets are introduced |
 | Azure managed environment | `rotrack-nonproduction-env` |
 | Azure resource group / app | `rotrack-nonproduction` / `rotrack-api-nonproduction` |
-| Scaling | Azure Container Apps Consumption, currently scale `0..1`; cold-start behavior remains an explicit launch risk |
+| Scaling | Azure Container Apps Consumption, currently scale `1..1`; idle cost is accepted for the shared-hosted path |
 
 In the long-term separated topology, the shared non-production Supabase project is an accepted development/approved environment-scoped E2E tradeoff, while `rotrack-prod` is reserved for the separate production lane. Under the current shared-hosted-production override, the existing shared Supabase project is also the current canonical production data boundary; approved authenticated E2E uses disposable users/data and never uses the reserved `rotrack-prod` project. Credential-free pull-request CI uses isolated disposable PostgreSQL and never connects to the hosted project. The single Vercel project uses Vercel's built-in Preview and Production environments rather than a dedicated staging Vercel project. The separated Azure managed environments are the long-term security boundaries; the current canonical path uses the existing ACA implementation boundary with the `production` runtime/telemetry label. The `staging` label applies only to the reserved separated non-production topology.
 
@@ -296,9 +300,9 @@ Framework authentication, JSON parsing, validation, domain conflicts, missing re
 - Interactive application controls use shadcn primitives. Third-party chart/editor internals may use their required APIs while honoring rotrack design tokens and accessibility.
 - Loading, empty, error, and retry states are explicit on every data-driven route.
 
-## 8. Future Product Systems
+## 8. Current and Future Product Systems
 
-Future systems are separate vertical slices. Their migrations, API contracts, UI, authorization, and tests ship together.
+These systems ship as separate vertical slices with their migrations, API contracts, UI, authorization, and tests; Notes is implemented while later slices remain future work.
 
 ### 8.1 Preferences prerequisite
 
@@ -342,13 +346,19 @@ Persist this exact version-1 envelope, never arbitrary HTML:
 ```
 
 The only nodes are `doc`, `paragraph`, `heading` levels 2–3, `text`, `bulletList`,
-`orderedList`, `listItem`, and `blockquote`; the only marks are `bold`, `italic`, and `link`
-with `href`. Unknown fields and all other content are rejected. Links allow absolute
-`http`/`https` URLs with a host and valid `mailto` URLs only. Documents are capped at
+`orderedList`, `listItem`, `taskList`, `taskItem`, and `blockquote`; the only marks are
+`bold`, `italic`, and `link` with `href`. A `taskList` has one or more `taskItem` children;
+each `taskItem` has exactly `{checked: boolean}` attrs, a `paragraph` first, then zero or
+more `paragraph`, list, `taskList`, or `blockquote` children. Task lists are valid at the
+document root and in the supported nested block positions (`listItem` and `blockquote`, as
+well as inside a `taskItem`). Unknown fields and all other content are rejected. Links allow
+absolute `http`/`https` URLs with a host and valid `mailto` URLs only. Authenticated Note POST/PUT bodies are capped at 1 MiB before JSON deserialization. Documents are capped at
 262,144 compact server-serialized UTF-8 bytes, depth 32, and 10,000 nodes. Spring validates
-the full tree and derives block-newline-separated `content_text`; PostgreSQL `json` preserves
-the canonical bytes and enforces ownership/link integrity, schema/JSON presence, size/field
-constraints, and positive versions rather than duplicating the full validator.
+the full tree and derives block-newline-separated `content_text`; checkbox state never
+contributes to `content_text`, so a task item with no text is not meaningful. PostgreSQL `json`
+preserves the canonical bytes and enforces ownership/link integrity, schema/JSON presence,
+size/field constraints, and positive versions rather than duplicating the full validator; no
+SQL tree validator is built.
 
 Notes and Reflections use whole-resource optimistic locking across their mutable fields, with
 `RICH_TEXT_VERSION_CONFLICT` for stale writes. Autosave
@@ -479,7 +489,7 @@ The current product goal is a small pre-user/small-cohort launch, not the full M
 
 ### MVP release boundary
 
-The M3 MVP release gate is currently **not met**. Full production-readiness remains unmet, but the verified M3-P decision above unlocks M4 source/local implementation for the 0–20-user scope. Under the dated 2026-08-12 product-owner override, M4 migrations, reviewed app deployment, and hosted acceptance may proceed only for the zero-user/pre-user boundary and only after applicable M4 checks; M4 Verified remains stopped until rollout evidence passes. Publishing beyond that narrow M4 action, M5 hosted rollout, and broad production-readiness claims remain unauthorized. The 2026-08-11 candidate has passing focused source checks, canonical ACA/Vercel readback, public smoke, hosted authenticated smoke, and corrected no-schema-change backend/frontend rollback evidence. Rate limiting remains an explicitly accepted blocker; collector redaction, alert delivery/receipt, and alert routing evidence remain open. Ten genuine zero-replica trials completed on 2026-08-11, but p95 readiness was 39.425 seconds, above the 30-second criterion; scale-to-zero remains an explicitly accepted risk, not a verified pass. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. The Free-plan backup limitation is accepted as already documented. Any exception requires an explicit product-owner dependency decision in both architecture and backlog.
+The M3 MVP release gate is currently **not met**. Full production-readiness remains unmet, but the verified M3-P decision above unlocks M4 source/local implementation for the 0–20-user scope. M4 is Verified under its dated override. Under the dated 2026-08-16 product-owner authorization, the M5.2 migration, reviewed app deployment, and hosted acceptance may proceed only for the zero-user/pre-user boundary and only after protected CI, merge, and applicable release checks; M5.2 remains unverified until rollout evidence passes. M5.3 hosted work and broad production-readiness claims remain unauthorized. The 2026-08-11 candidate has passing focused source checks, canonical ACA/Vercel readback, public smoke, hosted authenticated smoke, and corrected no-schema-change backend/frontend rollback evidence. Rate limiting remains an explicitly accepted blocker; collector redaction, alert delivery/receipt, and alert routing evidence remain open. Ten genuine zero-replica trials completed on 2026-08-11, but p95 readiness was 39.425 seconds, above the 30-second criterion; scale-to-zero remains an explicitly accepted risk, not a verified pass. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed. The Free-plan backup limitation is accepted as already documented. Any exception requires an explicit product-owner dependency decision in both architecture and backlog.
 
 ## 10. Architecture Change Rules
 

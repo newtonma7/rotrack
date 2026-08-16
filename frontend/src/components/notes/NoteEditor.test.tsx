@@ -43,6 +43,23 @@ describe("NoteEditor", () => {
     expect(screen.getByRole("status").textContent).toBe("Saved");
   });
 
+  it("renders the journal canvas date without adding it to the Note payload", async () => {
+    render(<NoteEditor variant="journal" />);
+    const editor = screen.getByRole("region", { name: "Note editor" });
+    expect(editor.getAttribute("data-variant")).toBe("journal");
+    expect(screen.getByLabelText("Effective local date")).toBeTruthy();
+    expect(editor.className).not.toContain("border-[var(--rt-line)]");
+    fireEvent.change(screen.getByLabelText("Note title"), { target: { value: "journal" } });
+    await waitFor(() => expect(createNote).toHaveBeenCalledTimes(1), { timeout: 1200 });
+    expect(createNote.mock.calls[0][0]).not.toHaveProperty("effectiveLocalDate");
+    expect(createNote.mock.calls[0][0]).not.toHaveProperty("date");
+  });
+
+  it("renders an existing Note date in the effective saved timezone", () => {
+    render(<NoteEditor variant="journal" initialNote={{ ...savedNote, updatedAt: "2026-08-12T23:30:00Z" }} timeZone="Asia/Tokyo" />);
+    expect(screen.getByLabelText("Effective local date").textContent).toBe("08 / 13");
+  });
+
   it("finishes autosave under React development Strict Mode", async () => {
     render(<StrictMode><NoteEditor /></StrictMode>);
     fireEvent.change(screen.getByLabelText("Note title"), { target: { value: "strict save" } });
@@ -103,6 +120,67 @@ describe("NoteEditor", () => {
     confirm.mockRestore();
   });
 
+  it("autosaves a checked checklist state through the shared note API", async () => {
+    const checklist: Note = {
+      ...savedNote,
+      contentJson: {
+        schemaVersion: 1,
+        document: {
+          type: "doc",
+          content: [{ type: "taskList", content: [{ type: "taskItem", attrs: { checked: false }, content: [{ type: "paragraph", content: [{ type: "text", text: "next" }] }] }] }],
+        },
+      } as unknown as Note["contentJson"],
+      contentText: "[ ] next",
+    };
+    updateNote.mockResolvedValue({ ...checklist, version: 2 });
+
+    render(<NoteEditor initialNote={checklist} />);
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Checklist item" }));
+    await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(1), { timeout: 1200 });
+    expect(updateNote.mock.calls[0][1].contentJson.document.content[0].content[0].attrs).toEqual({ checked: true });
+  });
+
+  it("copies checklist state to rich and plain clipboard formats", async () => {
+    class ClipboardItemStub {
+      constructor(public readonly items: Record<string, Blob>) {}
+    }
+    const write = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("ClipboardItem", ClipboardItemStub);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { write } });
+    const checklist: Note = {
+      ...savedNote,
+      contentJson: {
+        schemaVersion: 1,
+        document: {
+          type: "doc",
+          content: [{
+            type: "taskList",
+            content: [{
+              type: "taskItem",
+              attrs: { checked: true },
+              content: [{ type: "paragraph", content: [{ type: "text", text: "done" }] }],
+            }, {
+              type: "taskItem",
+              attrs: { checked: false },
+              content: [{ type: "paragraph", content: [{ type: "text", text: "next" }] }],
+            }],
+          }],
+        },
+      } as unknown as Note["contentJson"],
+      contentText: "done\nnext",
+    };
+
+    render(<NoteEditor initialNote={checklist} />);
+    fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+    await waitFor(async () => {
+      expect(write).toHaveBeenCalledTimes(1);
+      const item = write.mock.calls[0][0][0] as ClipboardItemStub;
+      expect(await item.items["text/plain"].text()).toBe("[x] done\n[ ] next");
+      expect(await item.items["text/html"].text()).toContain('data-type="taskList"');
+      expect(await item.items["text/html"].text()).toContain('data-checked="true"');
+    });
+  });
+
   it("uses the saved preview as the display fallback for a null title", () => {
     render(<NoteEditor initialNote={{ ...savedNote, title: null, preview: "preview fallback" }} />);
     expect(screen.getByLabelText("Note title")).toHaveProperty("placeholder", "preview fallback");
@@ -150,6 +228,20 @@ describe("NoteEditor", () => {
     await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Conflict"), { timeout: 1200 });
     fireEvent.click(screen.getByRole("button", { name: "Save as new Note" }));
     await waitFor(() => expect(createNote).toHaveBeenCalledWith(expect.objectContaining({ title: "local copy" }), expect.any(String)));
+  });
+
+  it("preserves conflict edits when an explicit reload callback cannot fetch a Note", async () => {
+    updateNote.mockRejectedValueOnce(new ApiRequestError("changed", 409, "RICH_TEXT_VERSION_CONFLICT"));
+    const onReload = vi.fn().mockResolvedValue(null);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<NoteEditor initialNote={savedNote} onReload={onReload} />);
+    fireEvent.change(screen.getByLabelText("Note title"), { target: { value: "local conflict edits" } });
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Conflict"), { timeout: 1200 });
+
+    fireEvent.click(screen.getByRole("button", { name: "Reload server version" }));
+    await waitFor(() => expect(onReload).toHaveBeenCalledTimes(1));
+    expect(screen.getByLabelText("Note title")).toHaveProperty("value", "local conflict edits");
+    expect(screen.getByRole("status").textContent).toBe("Conflict");
   });
 
   it("preserves edits and exposes Waiting after a rate limit", async () => {

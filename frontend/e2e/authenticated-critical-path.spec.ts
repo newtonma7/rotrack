@@ -68,7 +68,7 @@ test.describe("authenticated tracker critical path", () => {
     await expect(page.getByText("your last seven local days", { exact: true })).toBeVisible();
 
     await openTracker(page);
-    await expect(page.getByRole("button", { name: "Stop session" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Stop", exact: true })).toBeVisible();
     const stopped = await stopSession(page);
     expect(stopped.id).toBe(started.id);
     expectSameInstant(stopped.startTime, started.startTime);
@@ -159,8 +159,8 @@ test.describe("two-user ownership isolation", () => {
       await waitForRecordedSecond(userAPage);
 
       await openTracker(userBPage);
-      await expect(userBPage.getByText("no active session", { exact: true })).toBeVisible();
-      await expect(userBPage.getByRole("button", { name: "Stop session" })).toHaveCount(0);
+      await expect(userBPage.getByText("choose a mode when you’re ready", { exact: true })).toBeVisible();
+      await expect(userBPage.getByRole("button", { name: "Stop", exact: true })).toHaveCount(0);
 
       const forbiddenWorkStop = await tryStopEntryAsCurrentUser(
         userBPage,

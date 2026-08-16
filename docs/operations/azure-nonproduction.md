@@ -1,6 +1,6 @@
 # Azure non-production deployment runbook
 
-**Scope:** the approved ACA implementation boundary and its non-production guardrails. This runbook must not target the reserved separate production Azure/Supabase lane. The product-owner-approved single-environment decision allows the canonical hosted candidate to use the shared ACA boundary; it does not waive the M3/production-readiness STOP.
+**Scope:** the approved shared ACA implementation boundary and its non-production guardrails, including the canonical hosted path used by the dated M5.2 authorization. This runbook must not target the reserved separate production Azure/Supabase lane. The single-environment decision does not waive the M3/production-readiness STOP.
 
 ## M4 hosted checkpoint — 2026-08-12
 
@@ -8,7 +8,11 @@
 - Target preflight and postflight passed: zero overlong notes/overlaps, `btree_gist`, preference backfill/RLS, completed-history constraints, exact runtime grants, and no runtime schema-create privilege.
 - The reviewed M4 backend was published as an immutable Linux/amd64 image and deployed to the canonical ACA boundary. Digest/service-version equality, 100% traffic, scale `1..1`, readiness, health, and exact Production-alias CORS passed. Full provider identifiers remain in private evidence.
 - Vercel Production rebuilt the reviewed tree and the canonical alias returned `200`. Authenticated tracker smoke passed `4/4` with API-target binding; focused settings/history acceptance passed persistence, two-user isolation, create/list/delete, and overlap behavior.
-- M4 is **Verified**. Full M3 production readiness and M5 hosted rollout remain unauthorized/open.
+- M4 is **Verified**. Full M3 production readiness remains open; M5.2 rollout is authorized but hosted evidence is not yet recorded, and M5.3 remains unauthorized.
+
+## Planned M5.2 shared-hosted checkpoint — authorized 2026-08-16
+
+Migration `006_notes.sql`, reviewed M5.2 artifacts, stable hosted-only HMAC secret injection, Notes writes, and disposable-user acceptance may proceed only after protected CI and merge. Record results here only after migration, immutable artifact readback, health/readiness/CORS, privacy-safe acceptance/cleanup, and application rollback evidence pass.
 
 ## Previous candidate checkpoint — 2026-08-11
 
@@ -145,7 +149,7 @@ Before the M3 gate can pass:
 1. keep the read-back `main` protection: pull requests, zero human approvals, strict app-bound required contexts, administrator enforcement, linear history, no force pushes/deletion, and advisory `CODEOWNERS`; keep the guarded environment policy intact;
 2. keep repository/nonproduction/production auth-secret inventories empty and `ROTRACK_AUTHENTICATED_E2E_ENABLED` absent/default-disabled. The hosted authenticated smoke passed `4/4` with zero skipped/unexpected/flaky and API-target binding; retained synthetic accounts/rows are not claimed as cleanup;
 3. observe collector redaction and route health, readiness, error, restart, auth, connection, budget, and credit-expiry alert delivery/receipt/routing. The Azure action-group provider test-notification command returned failure; synthetic alert delivery is **NOT VERIFIED**, and no successful delivery or receipt is claimed;
-4. run at least ten scale-from-zero trials;
+4. retain the completed ten-trial cold-start evidence and failed 30-second p95 criterion; the canonical shared-hosted path now mitigates that risk with `minReplicas=1`;
 5. retain the documented Free-plan backup limitation and its accepted risk decision;
 6. keep the corrected exact no-schema-change rollback rehearsal evidence with final candidate restoration; do not mark the release gate complete while rate limiting remains deferred/accepted or the observation safeguards remain open.
 

@@ -30,6 +30,13 @@ class NotesMigrationTest {
     }
 
     @Test
+    void migrationLeavesRichTreeValidationToSpring() throws Exception {
+        String sql = Files.readString(Path.of("../database/migrations/006_notes.sql"));
+        assertThat(sql).contains("content_json JSON NOT NULL")
+                .doesNotContain("taskList", "taskItem", "jsonb_path_exists", "json_schema_valid");
+    }
+
+    @Test
     void migrationDoesNotTouchSessionLabels() throws Exception {
         String sql = Files.readString(Path.of("../database/migrations/006_notes.sql"));
         assertThat(sql).doesNotContain("DROP COLUMN notes", "ALTER COLUMN notes", "UPDATE public.time_entries");

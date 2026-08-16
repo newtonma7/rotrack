@@ -85,6 +85,7 @@ environment = {entry['name']: entry for entry in env}
 required_names = {
     'DATABASE_URL', 'DATABASE_USERNAME', 'DATABASE_PASSWORD',
     'DATABASE_CA_CERTIFICATE_PEM', 'SUPABASE_JWKS_URI', 'SUPABASE_ISSUER_URI',
+    'ROTRACK_NOTES_HMAC_SECRET', 'ROTRACK_NOTES_WRITES_ENABLED',
     'PORT', 'DATABASE_CA_CERTIFICATE_PATH', 'DATABASE_CONNECTION_TIMEOUT_MS',
     'DATABASE_POOL_VALIDATION_TIMEOUT_MS', 'DATABASE_MAXIMUM_POOL_SIZE',
     'DATABASE_MINIMUM_IDLE', 'READINESS_CACHE_TTL', 'SUPABASE_JWT_AUDIENCE',
@@ -105,6 +106,7 @@ secret_mapping = {
     'DATABASE_CA_CERTIFICATE_PEM': 'database-ca-certificate-pem',
     'SUPABASE_JWKS_URI': 'supabase-jwks-uri',
     'SUPABASE_ISSUER_URI': 'supabase-issuer-uri',
+    'ROTRACK_NOTES_HMAC_SECRET': 'notes-hmac-secret',
 }
 for name, expected_secret in secret_mapping.items():
     entry = environment[name]
@@ -123,6 +125,7 @@ static_values = {
     'ROTRACK_MUTATION_RATE_LIMIT_REQUESTS': '30',
     'ROTRACK_MUTATION_RATE_LIMIT_WINDOW': '1m',
     'ROTRACK_MUTATION_RATE_LIMIT_MAX_KEYS': '10000',
+    'ROTRACK_NOTES_WRITES_ENABLED': 'true',
     'SERVER_SHUTDOWN': 'graceful',
     'SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE': '25s',
     'LOGGING_STRUCTURED_FORMAT_CONSOLE': 'ecs',
