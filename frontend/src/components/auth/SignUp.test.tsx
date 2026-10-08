@@ -1,6 +1,7 @@
 /* @vitest-environment jsdom */
 
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { AuthRetryableFetchError } from "@supabase/supabase-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import SignUp from "@/components/auth/SignUp";
 
@@ -86,10 +87,10 @@ describe("SignUp", () => {
     expect(push).toHaveBeenCalledWith("/signup/confirmation");
   });
 
-  it("maps trigger failures to safe generic username copy", async () => {
+  it("offers safe retry guidance for signup profile failures without an error code", async () => {
     signUp.mockResolvedValue({
       data: null,
-      error: { code: "unexpected_failure", message: "duplicate key violates unique constraint" },
+      error: new AuthRetryableFetchError("Database error saving new user", 500),
     });
     render(<SignUp />);
     fillForm();
@@ -97,7 +98,7 @@ describe("SignUp", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sign up" }));
 
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toBe("That username is unavailable. Try another one.");
+    expect(alert.textContent).toBe("Unable to create account. Try a different username, or try again later.");
     expect(alert.textContent).not.toContain("duplicate");
     expect(push).not.toHaveBeenCalled();
   });

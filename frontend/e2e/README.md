@@ -99,12 +99,33 @@ configuration:
 ROTRACK_E2E_REQUIRE_AUTH=1 npm run e2e
 ```
 
-A checked authenticated lifecycle run therefore uses `ROTRACK_E2E_REQUIRE_AUTH=1`
-and expects all four lifecycle Chromium tests to pass. A checked signup run also
-sets `ROTRACK_E2E_REQUIRE_SIGNUP=1`; the full confirmation/sign-in acceptance adds
-`ROTRACK_E2E_REQUIRE_SIGNUP_CONFIRMATION=1` and expects both signup tests to pass.
-HTML and failure artifacts are ignored by Git; treat them as sensitive
-operational output and remove them according to the CI retention policy.
+A checked authenticated lifecycle run uses `ROTRACK_E2E_REQUIRE_AUTH=1` and
+expects all four lifecycle Chromium tests to pass. Run fresh signup acceptance
+in two stages: the first creates the account and checks username reservation;
+its confirmation email must be received before the second can run. Use the
+same private signup credentials and a deterministic `ROTRACK_E2E_SIGNUP_USERNAME`
+for both stages.
+
+```bash
+# Stage 1: signup and duplicate-username rejection.
+ROTRACK_E2E_REQUIRE_SIGNUP=1 npm run e2e -- signup-critical-path.spec.ts \
+  --grep 'requires a username' --project=chromium
+```
+
+Retrieve Account A's newly received confirmation link, set
+`ROTRACK_E2E_SIGNUP_CONFIRMATION_URL` privately, then run:
+
+```bash
+# Stage 2: email confirmation and first sign-in.
+ROTRACK_E2E_REQUIRE_SIGNUP=1 ROTRACK_E2E_REQUIRE_SIGNUP_CONFIRMATION=1 \
+  npm run e2e -- signup-critical-path.spec.ts \
+  --grep 'confirms the disposable account' --project=chromium
+```
+
+Do not rerun Stage 1 against the same accounts to execute Stage 2. Clean up only
+accounts created for the disposable test. HTML and failure artifacts are ignored
+by Git; treat them as sensitive operational output and remove them according to
+the CI retention policy.
 
 ## M5.1 local Notes acceptance
 

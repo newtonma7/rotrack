@@ -1,8 +1,8 @@
 # rotrack Development Backlog
 
 **Architecture and contracts:** [`arch.plan.md`](arch.plan.md)
-**Backlog reviewed:** 2026-08-16
-**Current release target:** M5.2 Verified; decide M5.3 source scope while full production readiness remains a separate unmet gate
+**Backlog reviewed:** 2026-10-08 (signup verification and M5.3 story organization)
+**Current release target:** Release the M2.4 signup-message correction, then deliver authorized M5.3 source/local stories; hosted rollout and full production readiness remain separate gates
 
 ## 1. Operating Rules
 
@@ -468,6 +468,8 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 ### M2.4 — Require canonical usernames at registration
 
 **Status:** Implemented—unverified
+**Remaining story:** Deploy and verify the locally checked signup-message correction. Fresh signup, email confirmation, first sign-in, and duplicate rejection have manual hosted evidence below.
+**Verification scope:** The product owner accepts checking the correction without creating accounts again. The first account is retained for operator inspection; no repeated signup or cleanup is required under this request.
 **Dependencies:** M2.1 and M2.3; product-owner approval recorded in the username-registration grilling session
 
 - Add the fail-closed `003_require_usernames.sql` migration after disposable-account preparation; do not invent, rename, or delete existing accounts in the migration.
@@ -484,6 +486,19 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 - Integrated checks passed: `cd frontend && npm test -- --run` (27 tests), `npm run lint`, `npm run typecheck`, and `NEXT_PUBLIC_SITE_URL=https://example.test npm run build`; Java 21 `mvn clean test` passed 96 tests with five expected opt-in PostgreSQL skips.
 - Disposable PostgreSQL 17.6 apply mode passed 2/2 migration tests; verify mode passed 5 tests with one expected apply-only skip, plus Spring repository checks. The migration helper uses the minimal `raw_user_meta_data` auth fixture and one transaction per migration.
 - The external-auth disposable browser signup/confirmation flow was not run because no disposable inbox/auth state was available; this is the remaining blocker to Verified.
+
+**Hosted manual acceptance — 2026-10-08**
+
+- In the current application's Supabase project, the approved inbox had no account before signup. The operator submitted the deployed username signup form with a privately entered password. Subsequent readback confirmed a new matching Auth account, expected username metadata, email confirmation, and first sign-in. The authenticated dashboard loaded its seven-day data and empty-account state.
+- A second unused inbox attempted the same username. Signup was rejected, the corresponding Postgres log recorded `23505` on `users_username_key`, and a refreshed Auth search found no second account. The deployed UI used general error copy instead of username retry guidance.
+- These are manual hosted results; the two signup Playwright scenarios were not executed. The earlier inspected Supabase project belonged to the old application; its email settings do not establish a current-app defect. Account identities, email addresses, passwords, and confirmation links are omitted from source evidence.
+
+**Signup message correction — 2026-10-08 / local verification**
+
+- Supabase Auth client 2.112.1 handles HTTP 500 before extracting the error code. A local replay produced `AuthRetryableFetchError` with status `500`, message `Database error saving new user`, and no code, explaining the previous mapping's failure.
+- Recognize that exact profile-save message with status `500` or legacy `unexpected_failure`; show `Unable to create account. Try a different username, or try again later.` The response does not identify the failed constraint, so the copy offers retries without asserting that all database errors mean a taken username. Other errors retain general safe copy.
+- Updated the existing component fixture, browser expectation, and username specification. The existing corrected fixture failed before the fix and passed afterward. Focused checks passed 9/9, the full frontend suite passed 153/153, lint/typecheck passed, and the placeholder-config production build passed with `npm run build -- --webpack`. Default Turbopack attempts failed on local worker-port restrictions; Turbopack is not recorded as passing.
+- No additional test scenarios or accounts were created, and no migration, Auth setting, or deployment changed. The corrected message is locally verified and awaits deployment; M2.4 remains **Implemented—unverified**.
 
 ## 6. Milestone 3 — CI, Staging, and MVP Release
 
@@ -668,7 +683,7 @@ The gate requires all of the following:
 ## 8. Milestone 5 — WYSIWYG Notes and Daily Study Logs
 
 **Goal:** Add private study context beside the timer and a trustworthy generated daily record.
-**Dependencies:** Milestone 4 and M5.2 **Verified**. M5.3 source/hosted work remains separately gated.
+**Dependencies:** Milestone 4 and M5.2 **Verified**. M5.3 source/local work is authorized on 2026-10-03 after the M2.4 acceptance check; hosted rollout remains separately gated.
 **Contract authority:** [`arch.plan.md`](arch.plan.md) governs; [`CONTEXT.md`](CONTEXT.md) defines domain language, and [`docs/specs/m5-contracts.md`](docs/specs/m5-contracts.md) supplies subordinate implementation detail.
 **Delivery order:** Define all M5 boundaries now, then implement M5.1 → M5.2 → M5.3. Each slice is independently tested and additive.
 
@@ -729,18 +744,61 @@ The gate requires all of the following:
 - Hosted acceptance passed 6/6 for the tracker critical path plus M5.2 Notes workspace: explicit Work/Rot lifecycle, close/reopen restoration, two-user isolation, autosave/reload, conflict recovery, checklist persistence, desktop/mobile journal behavior, and cleanup. The M5.1 API-only spec intentionally refused the hosted target and is not counted as a failure. Disposable Auth users were deleted and an independent follow-up found none remaining; sampled ACA logs omitted Note-content and credential/header sentinels.
 - Application-only rollback selected the prior ACA revision and prior Vercel Production deployment with migration 006 retained. Public health/readiness/frontend smoke passed, and the matching prior-commit Playwright harness passed authenticated 4/4. The current backend revision and frontend deployment were restored and finished healthy. The first rollback attempt used the new selector harness against the old UI and failed only on expected markup differences; it restored safely and was superseded by the passing prior-commit rehearsal.
 
-### M5.3 — Generated Daily Logs and Reflections
+### M5.3 — Generated Daily Logs and Reflections (feature epic)
 
 **Status:** Not started
-**Dependencies:** M5.2
+**Dependencies:** M5.2 Verified; finish the M2.4 acceptance check first, or record an explicit dependency decision if external confirmation access prevents it.
+**Authorization — 2026-10-03:** The product owner requested M2.4 verification first, then all M5.3 source/local work. This authorizes the stories below and isolated local migrations/tests. It does not authorize a hosted migration/deployment, waive M3 risks, or claim production readiness.
+**User outcome:** Browse completed activity by local day and write one private Reflection for that date. A Reflection is the user's written text; the generated Daily Log is calculated on read and is never stored as a statistics snapshot. “Owned API” means the acting user's validated JWT controls access; no other user's Reflection or activity is readable or writable.
+
+#### M5.3-A — Save and retrieve private Reflections
+
+**Status:** Not started
 
 - Add ordered additive Reflection/replay storage keyed by owner and original local-date label. Persist no Daily Log or mutable generated statistics.
-- Add `GET /daily-logs` complete half-open summary ranges capped at 42 days, date detail, and versioned Reflection update returning the Reflection only.
+- Add the owned, versioned Reflection update API returning the Reflection only; first meaningful text creates a row, clearing keeps that row, and versions increase monotonically.
+- Reuse the shared rich-text validator, wire/document size caps, save budget, and content-free keyed creation replay rules. Reject stale versions without silent overwrite or a second Reflection.
+- Acceptance includes isolated migration/catalog/runtime-grant checks, API create/read/clear/replay/conflict cases, two-user isolation, and private payload/log omission. Record focused red/green and database evidence with this story.
+
+#### M5.3-B — Local-day, timezone, and DST correctness
+
+**Status:** Not started
+
+- Resolve explicit timezone override, then saved timezone; the browser supplies its fallback when neither is set.
+- Use canonical local dates and DST-aware half-open day boundaries. Re-bucket generated facts when timezone changes without rewriting stored instants.
+- Keep each Reflection on its original date label and expose immutable creation timezone as context.
+- Acceptance covers cross-midnight intervals, 23/25-hour days and non-hour DST shifts, empty/future days, invalid dates/zones, and timezone changes. This correctness story supports the summaries and screens; it is not a separate timezone settings feature.
+- Resolve the final supported date’s exclusive calendar-range endpoint before implementation: the contract supports detail/Reflection date `9999-12-31`, but a range containing it would end at `10000-01-01`, outside the current query-date domain. Record the chosen range behavior in the architecture/spec and boundary tests.
+
+#### M5.3-C — Generate daily summaries and detail
+
+**Status:** Not started
+**Dependencies:** M5.3-A and M5.3-B
+
+- Add `GET /daily-logs` complete half-open summary ranges capped at 42 days and date-detail reads.
 - Generate completed-only clipped segments, Session Labels, Work/Rot totals, distinct entry/Note counts, and deduplicated timeline-ordered Note references from authoritative owned data; exclude active entries.
-- Use explicit timezone override, then saved/browser fallback. Re-bucket generated facts across DST/timezone changes while keeping the Reflection on its original label and exposing immutable creation timezone as context.
-- Reuse the shared validator/editor primitive; create Reflections only from meaningful text, preserve empty cleared rows and monotonic versions, and apply replay/conflict/privacy rules without force overwrite.
+- Calendar summaries contain counts/totals/meaningful-Reflection presence only, never private detail writing, labels, or exact timestamps.
+- Acceptance covers 1/42/43-day boundaries, completed-only behavior, clipping/counting/order/deduplication, Note movement/detachment/deletion, two-user isolation, and the typed DTO/error contract.
+
+#### M5.3-D — Calendar, daily detail, and Reflection editing
+
+**Status:** Not started
+**Dependencies:** M5.3-A through M5.3-C
+
 - Build protected `/daily-logs` calendar and `/daily-logs/{localDate}` detail routes with desktop combined and mobile navigated layouts.
-- Test empty/future days, 42-day boundaries, cross-midnight and DST clipping/counting, timezone override/change, Reflection creation/clear/replay/conflict, Note-reference privacy/deduplication/order, two-user isolation, responsive UI, and accessibility.
+- Reuse the shared editor with separate Reflection autosave orchestration: Draft/Saving/Saved/Waiting/Offline/Conflict, serialized saves, stable ambiguous-create retries, and local size preflight.
+- Preserve current-tab edits on failure/conflict; flush before in-app leave, warn on unsaved close, and provide explicit rich/plain copy or destructive-confirmed reload. Never unload-save, force overwrite, or Save-as-new a Reflection.
+- Acceptance includes typed-client/component tests for loading/empty/error/retry, autosave/clear/reload/conflict, route/date/timezone changes, keyboard controls, responsive layout, and accessible status/error announcements.
+
+#### M5.3-E — Integrated acceptance and review
+
+**Status:** Not started
+**Dependencies:** M5.3-A through M5.3-D
+
+- Run the relevant full backend/frontend suites, typecheck/build, ordered isolated migration apply/verify, and guards. Each implementation story includes its own tests; this story verifies their integration.
+- Run authenticated local browser acceptance with two disposable users for summary/DST correctness, Reflection autosave/reload/replay/conflict, ownership, private payload/log omission, desktop/mobile layouts, and keyboard/accessibility behavior; clean up fixtures.
+- Review the final diff and record exact commands, dated environment/results, skipped checks, and remaining limitations. Only passing acceptance evidence promotes a story or M5.3 to Verified.
+- Prepare a concrete hosted rollout checklist for later product-owner approval: additive migration before dependent artifacts, protected CI, immutable provenance, hosted smoke/privacy/cleanup, and application rollback. Do not execute hosted rollout under source/local authorization.
 
 **Milestone gate:** Focused source/database suites pass, and authenticated local browser acceptance with two users proves ownership, autosave/reload, attachment/detachment, idempotency, cross-tab conflicts, Daily Log/DST correctness, private payload/log omission, responsive layouts, keyboard operation, and accessible states. M5.3 hosted rollout requires a separate product-owner decision and release evidence.
 
@@ -844,4 +902,4 @@ Append evidence beneath the completed task; do not create unsupported global che
 
 ## 13. Next Action
 
-M5.2 is Verified. Decide and authorize M5.3 source work before implementation; M5.3 hosted work and broad production-readiness claims remain unauthorized, and unresolved M3 risks stay recorded above.
+M5.2 is Verified. The 2026-10-03 request authorizes M2.4 verification first, then M5.3 source/local stories A–E. Manual signup/confirmation and duplicate rejection are recorded; finish release verification of the locally checked message correction before implementation. M5.3 hosted rollout needs a separate decision; unresolved M3 risks must be revisited before onboarding real users and remain recorded above.

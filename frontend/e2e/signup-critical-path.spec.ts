@@ -41,7 +41,7 @@ test.describe.serial("disposable username signup", () => {
     await page.goto("/signup");
     await fillSignup(page, e2eEnvironment.signupEmailB!, username);
     await page.getByRole("button", { name: "Sign up" }).click();
-    await expect(page.getByRole("alert")).toHaveText("That username is unavailable. Try another one.");
+    await expect(page.getByRole("alert")).toHaveText("Unable to create account. Try a different username, or try again later.");
   });
 
   test("confirms the disposable account and signs in", async ({ page }) => {

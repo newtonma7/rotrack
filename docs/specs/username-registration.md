@@ -65,9 +65,9 @@ This is intentionally not a general reservation system. The fixed list is a data
 
 If a username is already taken, signup remains on the signup page and shows safe copy such as:
 
-> That username is unavailable. Try another one.
+> Unable to create account. Try a different username, or try again later.
 
-The UI must not rely on a preflight availability query or expose SQL/provider details. Concurrent signups must be resolved by the database constraint; all server-side username-registration failures may use the same safe message.
+The UI must not rely on a preflight availability query or expose SQL/provider details. Concurrent signups must be resolved by the database constraint. Supabase's opaque `Database error saving new user` response does not identify which constraint or trigger failed; its HTTP 500 wrapper may also omit the error code. Recognize that profile-save response by its exact internal message and status/code, and offer a different username or a later retry without claiming that every database failure proves a taken username. Other signup/server/network errors retain general safe copy.
 
 ## 3. Data and security contract
 
@@ -153,7 +153,7 @@ Implementation requirements:
 - Normalize before calling `signUp`.
 - Prevent submission for invalid local values.
 - Include `aria-describedby` and an error/status region.
-- Map duplicate/trigger failures to safe generic copy such as “That username is unavailable. Try another one.”; never expose SQLSTATE, provider details, or trigger text.
+- Map opaque signup profile-save failures to “Unable to create account. Try a different username, or try again later.”; never expose SQLSTATE, provider details, or trigger text, and never classify an unrelated HTTP 500 as a username conflict.
 - Never include username, email, or password in logs or query strings.
 
 The confirmation page does not need a username field or username in its URL.
