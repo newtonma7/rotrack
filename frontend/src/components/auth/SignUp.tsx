@@ -30,7 +30,7 @@ const RESERVED_USERNAMES = new Set([
   "settings",
 ]);
 
-const SIGNUP_ERROR_MESSAGE = "That username is unavailable. Try another one.";
+const PROFILE_SIGNUP_ERROR_MESSAGE = "Unable to create account. Try a different username, or try again later.";
 const GENERAL_SIGNUP_ERROR_MESSAGE = "Unable to create account. Please check your details and try again.";
 
 function validateUsername(username: string): string | null {
@@ -78,7 +78,11 @@ export default function SignUp() {
         options: { data: { username: normalizedUsername } },
       });
       if (error) {
-        setMessage(error.code === "unexpected_failure" ? SIGNUP_ERROR_MESSAGE : GENERAL_SIGNUP_ERROR_MESSAGE);
+        // Supabase wraps HTTP 500s without a code. Its opaque profile-save error
+        // can mean a taken username or another database failure, so offer both retries.
+        const profileSaveFailed = error.message === "Database error saving new user"
+          && (error.status === 500 || error.code === "unexpected_failure");
+        setMessage(profileSaveFailed ? PROFILE_SIGNUP_ERROR_MESSAGE : GENERAL_SIGNUP_ERROR_MESSAGE);
       } else {
         router.push("/signup/confirmation");
       }

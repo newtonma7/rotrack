@@ -2,7 +2,7 @@
 
 **Status:** M5.1: Verified; M5.2: Verified; M5.3: Not started. The governing contract source is [`arch.plan.md`](../../arch.plan.md), the domain glossary is [`CONTEXT.md`](../../CONTEXT.md), and M4 conventions are in [`m4-contracts.md`](m4-contracts.md). If this document conflicts with the architecture, update the architecture decision before implementation.
 
-M5 is defined as one domain model delivered sequentially: M5.1 Notes data/API, M5.2 rich-text editors and Notes workspace, then M5.3 Daily Logs and Reflections. M5.2 shared-hosted migration and rollout passed for the pre-user boundary; M5.3 hosted work is separately gated.
+M5 is defined as one domain model delivered sequentially: M5.1 Notes data/API, M5.2 rich-text editors and Notes workspace, then M5.3 Daily Logs and Reflections. M5.2 shared-hosted migration and rollout passed for the pre-user boundary. On 2026-10-03 the product owner authorized M2.4 browser verification first, then M5.3 source/local stories A–E as recorded in `todo.md`; M5.3 hosted work is separately gated.
 
 Every API route is under `/api/v1`, derives ownership from the validated JWT `sub`, uses explicit handwritten DTOs through the existing native `fetch` client, and returns the existing error envelope. Request bodies never contain `userId`, generated totals, derived text, or server timestamps. Notes and Reflections are available only through Spring; Supabase browser roles receive no table privileges.
 
@@ -47,7 +47,7 @@ The executable tree grammar is:
 - `blockquote` has one or more paragraph, list, taskList, or blockquote children and no attributes or marks.
 - `text` has a nonempty `text` string, no children or attributes, and zero or more distinct marks. Marks are permitted only on text and canonically ordered `bold`, `italic`, then `link`; `bold` and `italic` have no attributes and `link` has exactly `{ href }`.
 
-Unknown envelope keys, nodes, marks, attributes, duplicate marks, invalid child relationships, empty text nodes, H1, code, images, tables, mentions, embeds, and raw/executable HTML are invalid. Undo and redo are editor history, not persisted nodes. The document may contain at most 10,000 nodes and nesting depth 32, counting `doc` as depth 1 and including every node in the node count. Authenticated Note POST/PUT requests are capped at 1 MiB on the wire before JSON deserialization; the canonical document remains capped at 256 KiB.
+Unknown envelope keys, nodes, marks, attributes, duplicate marks, invalid child relationships, empty text nodes, H1, code, images, tables, mentions, embeds, and raw/executable HTML are invalid. Undo and redo are editor history, not persisted nodes. The document may contain at most 10,000 nodes and nesting depth 32, counting `doc` as depth 1 and including every node in the node count. Authenticated Note POST/PUT requests and M5.3 Reflection PUT requests are capped at 1 MiB on the wire before JSON deserialization; the canonical document remains capped at 256 KiB.
 
 Links accept only absolute `http` or `https` URLs with a host, or `mailto` URLs with a valid address form. Protocol-relative and fragment-only URLs plus `javascript:`, `data:`, `vbscript:`, and every other protocol are invalid. The UI adds/changes/removes links through an accessible dialog, does not auto-link text, and opens links only by deliberate action in a new tab with `noopener` and `noreferrer`.
 
@@ -233,7 +233,7 @@ Errors use `{ error: { code, message, fieldErrors }, timestamp, path }`. Authent
 - `IDEMPOTENCY_CONFLICT` — a creation key names a different canonical request; response contains neither payload.
 - `NOTE_DELETED` — an identical create replay names a Note that was explicitly deleted; response contains no private content.
 - `RATE_LIMITED` — the applicable authenticated mutation/save budget is exhausted.
-- `PAYLOAD_TOO_LARGE` — an authenticated Note POST/PUT wire body exceeds 1 MiB before JSON deserialization; no private body content is returned or logged.
+- `PAYLOAD_TOO_LARGE` — an authenticated Note POST/PUT or Reflection PUT wire body exceeds 1 MiB before JSON deserialization; no private body content is returned or logged.
 
 The client blocks autosave locally when the serialized document exceeds 256 KiB, preserves edits, and resumes after it fits; the server remains authoritative for every limit.
 
