@@ -25,6 +25,8 @@ export function DailyLogCalendar({
 }: DailyLogCalendarProps) {
   const summaryByDate = new Map(summaries.map((summary) => [summary.localDate, summary]));
   const monthLabel = formatLocalDate(monthDate, { month: "long", year: "numeric" });
+  // Clamping at the supported date boundaries can make the first date a non-Sunday.
+  const firstWeekday = new Date(`${range.start}T12:00:00Z`).getUTCDay();
 
   return (
     <section
@@ -74,7 +76,7 @@ export function DailyLogCalendar({
           const isSelected = selectedDate === date;
 
           return (
-            <div role="gridcell" key={date} aria-selected={isSelected}>
+            <div role="gridcell" key={date} aria-selected={isSelected} style={index === 0 ? { gridColumnStart: firstWeekday + 1 } : undefined}>
               <button
                 type="button"
                 aria-label={dayLabel(date, summary)}

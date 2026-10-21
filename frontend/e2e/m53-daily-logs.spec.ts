@@ -177,6 +177,22 @@ test.describe("M5.3 private Daily Logs and Reflection", () => {
     await expect(page.getByRole("combobox", { name: "Timezone" })).toHaveValue("Asia/Tokyo");
   });
 
+  test("minimum supported date stays in its actual weekday column", async ({ page }) => {
+    test.skip(!localHosts.has(new URL(e2eEnvironment.baseUrl).hostname), "M5.3 acceptance is restricted to loopback targets.");
+    await installApiTargetGuard(page, e2eEnvironment.expectedApiUrl);
+    await page.goto(`${e2eEnvironment.baseUrl}/daily-logs/0001-01-01?timeZone=UTC`);
+    const grid = page.getByRole("grid", { name: /daily logs/i });
+    const gridBounds = await grid.boundingBox();
+    const firstDateBounds = await grid.getByRole("gridcell").first().boundingBox();
+    expect(gridBounds).not.toBeNull();
+    expect(firstDateBounds).not.toBeNull();
+    if (gridBounds && firstDateBounds) {
+      // 0001-01-01 is Monday; the unsupported preceding Sunday stays blank.
+      expect(firstDateBounds.x).toBeGreaterThan(gridBounds.x + gridBounds.width / 7 - 2);
+      expect(firstDateBounds.x).toBeLessThan(gridBounds.x + gridBounds.width * 2 / 7);
+    }
+  });
+
   test("phone calendar exposes loading failures and a retry action", async ({ page }) => {
     test.skip(!localHosts.has(new URL(e2eEnvironment.baseUrl).hostname), "M5.3 acceptance is restricted to loopback targets.");
     await page.setViewportSize({ width: 390, height: 844 });

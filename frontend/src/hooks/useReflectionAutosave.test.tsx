@@ -102,6 +102,26 @@ describe("Reflection autosave", () => {
     expect(updateReflection).toHaveBeenCalledTimes(4);
   });
 
+  it("saves the newer revision when its debounce expires during a rate-limited request", async () => {
+    vi.useFakeTimers();
+    const { ApiRequestError } = await import("@/lib/api-errors");
+    let rejectFirst!: (error: Error) => void;
+    vi.mocked(updateReflection)
+      .mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectFirst = reject; }))
+      .mockResolvedValueOnce({ ...saved, contentJson: doc("newer edit"), contentText: "newer edit", version: 2 });
+    const { result } = renderHook(() => useReflectionAutosave({ localDate: "2026-08-01", timeZone: "UTC", initialReflection: saved }));
+    act(() => result.current.setContent(doc("earlier edit")));
+    await act(async () => { await vi.advanceTimersByTimeAsync(750); });
+    act(() => result.current.setContent(doc("newer edit")));
+    await act(async () => { await vi.advanceTimersByTimeAsync(750); });
+    expect(updateReflection).toHaveBeenCalledTimes(1);
+    await act(async () => { rejectFirst(new ApiRequestError("limit", 429, "RATE_LIMITED", {}, 1000)); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(updateReflection).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(updateReflection).mock.calls[1][1]).toEqual({ contentJson: doc("newer edit"), expectedVersion: 1 });
+    expect(result.current.dirty).toBe(false);
+  });
+
   it("waits for an explicit retry after a network failure even when the browser reports online", async () => {
     vi.useFakeTimers();
     vi.mocked(updateReflection).mockRejectedValueOnce(new Error("offline")).mockResolvedValue(saved);

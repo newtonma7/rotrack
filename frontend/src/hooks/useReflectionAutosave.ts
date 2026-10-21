@@ -79,8 +79,7 @@ export function useReflectionAutosave({ localDate, timeZone, initialReflection, 
       };
       pendingCreate.current = createSnapshot;
     }
-    const attemptedRevision = revision.current;
-    const savedRevision = existing ? attemptedRevision : createSnapshot!.revision;
+    const savedRevision = existing ? revision.current : createSnapshot!.revision;
     setStatus("Saving"); setError(null);
     const operation = (async () => {
       try {
@@ -116,8 +115,12 @@ export function useReflectionAutosave({ localDate, timeZone, initialReflection, 
             : "This reflection changed elsewhere. Your edits are preserved.");
         } else if (cause instanceof ApiRequestError && (cause.code === "RATE_LIMITED" || cause.status === 429)) {
           setStatus("Waiting"); setError("Saving is waiting briefly before trying again.");
-          if (!rateLimitRetried.current && attemptedRevision === revision.current && retryTimer.current === null) {
+          if (!rateLimitRetried.current && retryTimer.current === null) {
             rateLimitRetried.current = true;
+            // A newer edit may have joined this in-flight request. Retry the latest revision,
+            // replacing its debounce rather than dropping it or bypassing Retry-After.
+            if (timer.current) clearTimeout(timer.current);
+            timer.current = null;
             retryTimer.current = setTimeout(() => { retryTimer.current = null; void performSaveRef.current(); }, cause.retryAfterMs ?? 1000);
           }
         } else {
