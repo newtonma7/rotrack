@@ -47,7 +47,7 @@ attachment move/detach and Time Entry deletion, history attachment counts, stale
 and ownership. It is intentionally verify-mode only because it needs a committed migrated
 schema.
 
-`FriendshipStoragePostgresIntegrationTest` verifies canonical/unique pairs, request membership/state constraints, directional blocks, account-deletion cascades, defensive RLS, and browser/runtime privileges. It permits only an explicitly isolated loopback target with migrations 001–008 already applied. Probe data, grants, and test-role creation roll back. It does not implement or verify the pending lifecycle API, block cleanup, search, concurrency, or UI.
+`FriendshipStoragePostgresIntegrationTest` verifies canonical/unique pairs, request membership/state constraints, directional blocks, account-deletion cascades, defensive RLS, immutable database-owned creation timestamps, and browser/runtime column privileges. It permits only an explicitly isolated loopback target with migrations 001–008 already applied. Probe data, grants, and test-role creation roll back. It does not implement or verify the pending lifecycle API, block cleanup, search, concurrency, or UI.
 
 The role needs enough permission for the selected mode, including temporary
 fixture inserts into `auth.users` and `public.users`. The raw migration test and

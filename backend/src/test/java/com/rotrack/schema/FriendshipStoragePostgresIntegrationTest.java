@@ -146,13 +146,36 @@ class FriendshipStoragePostgresIntegrationTest {
             }
         }
         for (String table : List.of("public.friendships", "public.user_blocks")) {
-            for (String access : List.of("SELECT", "INSERT", "UPDATE", "DELETE")) {
+            for (String access : List.of("SELECT", "DELETE")) {
                 assertTrue(privilege("rotrack_runtime", table, access));
                 assertFalse(privilege("rotrack_runtime", table, access + " WITH GRANT OPTION"));
             }
-            assertFalse(privilege("rotrack_runtime", table, "TRUNCATE, REFERENCES, TRIGGER"));
+            assertFalse(privilege("rotrack_runtime", table, "INSERT, UPDATE, TRUNCATE, REFERENCES, TRIGGER"));
+            assertEquals(0, count("SELECT CASE WHEN has_column_privilege('rotrack_runtime', ?, 'created_at', 'INSERT, UPDATE') THEN 1 ELSE 0 END", table));
             assertEquals(1, count("SELECT count(*) FROM pg_class WHERE oid = ?::regclass AND relrowsecurity", table));
         }
+    }
+
+    @Test
+    void runtimeCannotSupplyOrRewriteCreationTimesButCanPerformAllowedWrites() throws Exception {
+        UUID existing = insertFriendship(LOW, HIGH, LOW, "PENDING");
+        insertBlock(LOW, HIGH);
+        // Isolate ACL enforcement from RLS in this rollback-only transaction. The actual API
+        // role bypasses RLS; its column privileges must still protect cursor identity.
+        execute("ALTER TABLE public.friendships DISABLE ROW LEVEL SECURITY; ALTER TABLE public.user_blocks DISABLE ROW LEVEL SECURITY; SET LOCAL ROLE rotrack_runtime");
+        expectSqlState("42501", () -> update("UPDATE public.friendships SET created_at = '2000-01-01' WHERE id = ?", existing));
+        expectSqlState("42501", () -> update("INSERT INTO public.friendships(user_low_id, user_high_id, requester_id, created_at) VALUES (?, ?, ?, '2000-01-01')", LOW, THIRD, LOW));
+        expectSqlState("42501", () -> update("UPDATE public.user_blocks SET created_at = '2000-01-01' WHERE blocker_id = ?", LOW));
+        expectSqlState("42501", () -> update("INSERT INTO public.user_blocks(blocker_id, blocked_id, created_at) VALUES (?, ?, '2000-01-01')", LOW, THIRD));
+        UUID allowed = insertFriendship(LOW, THIRD, LOW, "PENDING");
+        assertEquals(1, count("SELECT count(*) FROM public.friendships WHERE id = ? AND created_at = CURRENT_TIMESTAMP", allowed));
+        assertEquals(1, update("UPDATE public.friendships SET state = 'ACCEPTED' WHERE id = ?", allowed));
+        assertEquals(1, count("SELECT count(*) FROM public.friendships WHERE id = ? AND created_at = CURRENT_TIMESTAMP AND updated_at >= created_at AND state = 'ACCEPTED'", allowed));
+        insertBlock(THIRD, LOW);
+        assertEquals(1, count("SELECT count(*) FROM public.user_blocks WHERE blocker_id = ? AND blocked_id = ? AND created_at = CURRENT_TIMESTAMP", THIRD, LOW));
+        assertEquals(1, update("DELETE FROM public.user_blocks WHERE blocker_id = ? AND blocked_id = ?", THIRD, LOW));
+        assertEquals(1, update("DELETE FROM public.friendships WHERE id = ?", allowed));
+        execute("RESET ROLE");
     }
 
     private UUID insertFriendship(UUID low, UUID high, UUID requester, String state) throws SQLException {
