@@ -54,8 +54,10 @@ public final class RouteTemplates {
         if (Set.of(HEALTH, READINESS, START, COLLECTION, HISTORY, ACTIVE, DASHBOARD_STATS, PREFERENCES, NOTES, DAILY_LOGS).contains(path)) {
             return path;
         }
-        if (path != null && path.matches("/api/v1/daily-logs/[0-9]{4}-[0-9]{2}-[0-9]{2}/reflection")) return DAILY_LOG_REFLECTION;
-        if (path != null && path.matches("/api/v1/daily-logs/[0-9]{4}-[0-9]{2}-[0-9]{2}")) return DAILY_LOG;
+        // Match the route shape before validating dates so malformed labels cannot bypass
+        // authenticated save budgets or the pre-deserialization body cap.
+        if (path != null && path.matches("/api/v1/daily-logs/[^/]+/reflection")) return DAILY_LOG_REFLECTION;
+        if (path != null && path.matches("/api/v1/daily-logs/[^/]+")) return DAILY_LOG;
         if (path != null && path.matches("/api/v1/notes/[0-9a-fA-F-]{36}")) {
             return NOTE;
         }

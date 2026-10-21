@@ -1,5 +1,6 @@
 package com.rotrack.dto;
 
+import com.rotrack.model.ActivityType;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -26,7 +27,7 @@ public final class DailyLogDTO {
 
     public record Session(
             String id,
-            String activityType,
+            ActivityType activityType,
             Instant segmentStartTime,
             Instant segmentEndTime,
             long durationSeconds,

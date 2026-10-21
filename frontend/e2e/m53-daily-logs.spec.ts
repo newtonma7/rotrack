@@ -44,6 +44,11 @@ test.describe("M5.3 private Daily Logs and Reflection", () => {
     await installApiTargetGuard(page, e2eEnvironment.expectedApiUrl);
     const tokenA = await auth(page);
     const apiA = await api(tokenA);
+    const oversized = await call(apiA, "PUT", "/daily-logs/not-a-date/reflection", {
+      contentJson: {}, expectedVersion: 0, padding: "x".repeat(1_048_576),
+    });
+    expect(oversized.status).toBe(413);
+    expect(JSON.stringify(oversized.body)).not.toContain("padding");
     const date = `${randomYear()}-11-17`;
     const dstEntry = await call(apiA, "POST", "/time-entries", {
       activityType: "WORK",
@@ -99,6 +104,31 @@ test.describe("M5.3 private Daily Logs and Reflection", () => {
       expect(other.reflection).toBeNull();
       await apiB.dispose();
     } finally { await contextB.close(); await apiA.dispose(); }
+  });
+
+  test("clearing after a lost creation response clears the persisted Reflection", async ({ page }) => {
+    test.skip(!localHosts.has(new URL(e2eEnvironment.baseUrl).hostname), "M5.3 acceptance is restricted to loopback targets.");
+    await installApiTargetGuard(page, e2eEnvironment.expectedApiUrl);
+    const date = `${randomYear()}-11-20`;
+    let dropFirstResponse = true;
+    await page.route(`**/api/v1/daily-logs/${date}/reflection?*`, async (route) => {
+      const response = await route.fetch();
+      if (dropFirstResponse) {
+        dropFirstResponse = false;
+        expect(response.status()).toBe(200);
+        await route.abort();
+      } else {
+        await route.fulfill({ response });
+      }
+    });
+    await page.goto(`${e2eEnvironment.baseUrl}/daily-logs/${date}?timeZone=UTC`);
+    const editor = page.locator('[contenteditable="true"][aria-label="Reflection content"]');
+    await editor.fill("creation response was lost");
+    await expect(page.getByRole("status").filter({ hasText: /^Offline$/ })).toBeVisible();
+    await editor.fill("");
+    await expect(page.getByRole("status").filter({ hasText: /^(Saved|Draft)$/ })).toBeVisible();
+    await page.reload();
+    await expect(editor).toBeEmpty();
   });
 
   test("cross-tab Reflection conflict preserves local edits until confirmed reload", async ({ page, browser }) => {

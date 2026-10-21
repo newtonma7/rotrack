@@ -23,7 +23,6 @@ CREATE TABLE public.reflections (
   CONSTRAINT reflections_positive_version CHECK (version > 0),
   CONSTRAINT reflections_user_local_date_unique UNIQUE (user_id, local_date)
 );
-CREATE INDEX idx_reflections_user_date ON public.reflections (user_id, local_date);
 ALTER TABLE public.reflections ENABLE ROW LEVEL SECURITY;
 CREATE POLICY reflections_select_own ON public.reflections FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY reflections_insert_own ON public.reflections FOR INSERT WITH CHECK (auth.uid() = user_id);

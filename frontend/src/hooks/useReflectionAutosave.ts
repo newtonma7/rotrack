@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { updateReflection } from "@/lib/api";
 import { ApiRequestError } from "@/lib/api-errors";
 import { richTextToPlainText, validateRichTextDocument } from "@/lib/rich-text";
-import { richTextToHtml } from "@/components/notes/NoteEditor";
+import { richTextToHtml } from "@/lib/rich-text-html";
 import type { Reflection } from "@/types/daily-logs";
 import type { RichTextDocument } from "@/types/notes";
 
@@ -39,6 +39,7 @@ export function useReflectionAutosave({ localDate, timeZone, initialReflection, 
   const performSaveRef = useRef<() => Promise<boolean>>(() => Promise.resolve(false));
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rateLimitRetried = useRef(false);
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -64,7 +65,8 @@ export function useReflectionAutosave({ localDate, timeZone, initialReflection, 
     if (bytes(JSON.stringify(contentJson)) > MAX_DOCUMENT_BYTES) { setError(SIZE_ERROR); setStatus("Waiting"); return Promise.resolve(false); }
     const contentText = richTextToPlainText(contentJson);
     const existing = reflectionRef.current;
-    if (!existing && !contentText.trim()) { dirtyRef.current = false; setDirty(false); setStatus("Draft"); return Promise.resolve(true); }
+    // A lost response may have created the row. Replay it before applying a later clear.
+    if (!existing && !pendingCreate.current && !contentText.trim()) { dirtyRef.current = false; setDirty(false); setStatus("Draft"); return Promise.resolve(true); }
 
     let createSnapshot = pendingCreate.current;
     if (!existing && !createSnapshot) {
@@ -77,7 +79,8 @@ export function useReflectionAutosave({ localDate, timeZone, initialReflection, 
       };
       pendingCreate.current = createSnapshot;
     }
-    const savedRevision = existing ? revision.current : createSnapshot!.revision;
+    const attemptedRevision = revision.current;
+    const savedRevision = existing ? attemptedRevision : createSnapshot!.revision;
     setStatus("Saving"); setError(null);
     const operation = (async () => {
       try {
@@ -113,7 +116,10 @@ export function useReflectionAutosave({ localDate, timeZone, initialReflection, 
             : "This reflection changed elsewhere. Your edits are preserved.");
         } else if (cause instanceof ApiRequestError && (cause.code === "RATE_LIMITED" || cause.status === 429)) {
           setStatus("Waiting"); setError("Saving is waiting briefly before trying again.");
-          if (retryTimer.current === null) retryTimer.current = setTimeout(() => { retryTimer.current = null; void performSaveRef.current(); }, cause.retryAfterMs ?? 1000);
+          if (!rateLimitRetried.current && attemptedRevision === revision.current && retryTimer.current === null) {
+            rateLimitRetried.current = true;
+            retryTimer.current = setTimeout(() => { retryTimer.current = null; void performSaveRef.current(); }, cause.retryAfterMs ?? 1000);
+          }
         } else {
           setStatus("Offline"); setError("Your edits are safe in this tab. Retry when the connection returns.");
         }
@@ -138,6 +144,7 @@ export function useReflectionAutosave({ localDate, timeZone, initialReflection, 
     documentRef.current = next;
     setDocument(next);
     revision.current += 1;
+    rateLimitRetried.current = false;
     dirtyRef.current = true;
     setDirty(true);
     setError(null);
@@ -159,6 +166,7 @@ export function useReflectionAutosave({ localDate, timeZone, initialReflection, 
 
   const retry = useCallback(() => {
     if (statusRef.current === "Conflict") return;
+    rateLimitRetried.current = false;
     if (retryTimer.current) clearTimeout(retryTimer.current);
     retryTimer.current = null;
     void performSave();
@@ -191,10 +199,5 @@ export function useReflectionAutosave({ localDate, timeZone, initialReflection, 
     return plain;
   }, []);
 
-  useEffect(() => {
-    const online = () => { if (dirtyRef.current && statusRef.current !== "Conflict") { setStatus("Waiting"); void performSave(); } };
-    window.addEventListener("online", online);
-    return () => window.removeEventListener("online", online);
-  }, [performSave, setStatus]);
   return { reflection, document, status, error, dirty, setContent, flush, retry, reloadServerVersion, copy, getCurrentReflection: () => reflectionRef.current };
 }

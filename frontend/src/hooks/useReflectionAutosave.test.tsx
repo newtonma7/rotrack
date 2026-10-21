@@ -85,6 +85,39 @@ describe("Reflection autosave", () => {
     expect(result.current.document).toEqual(doc("local"));
   });
 
+  it("retries a rate-limited save once per edit or explicit retry", async () => {
+    vi.useFakeTimers();
+    const { ApiRequestError } = await import("@/lib/api-errors");
+    vi.mocked(updateReflection).mockRejectedValue(new ApiRequestError("limit", 429, "RATE_LIMITED", {}, 1000));
+    const { result } = renderHook(() => useReflectionAutosave({ localDate: "2026-08-01", timeZone: "UTC", initialReflection: saved }));
+    act(() => result.current.setContent(doc("waiting edit")));
+    await act(async () => { await vi.advanceTimersByTimeAsync(750); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(updateReflection).toHaveBeenCalledTimes(2);
+    await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
+    expect(updateReflection).toHaveBeenCalledTimes(2);
+    expect(result.current.dirty).toBe(true);
+    act(() => result.current.retry());
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(updateReflection).toHaveBeenCalledTimes(4);
+  });
+
+  it("waits for an explicit retry after a network failure even when the browser reports online", async () => {
+    vi.useFakeTimers();
+    vi.mocked(updateReflection).mockRejectedValueOnce(new Error("offline")).mockResolvedValue(saved);
+    const { result } = renderHook(() => useReflectionAutosave({ localDate: "2026-08-01", timeZone: "UTC", initialReflection: saved }));
+    act(() => result.current.setContent(doc("waiting edit")));
+    await act(async () => { await vi.advanceTimersByTimeAsync(750); });
+    act(() => window.dispatchEvent(new Event("online")));
+    await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
+    expect(updateReflection).toHaveBeenCalledTimes(1);
+    expect(result.current.status).toBe("Offline");
+    act(() => result.current.retry());
+    await act(async () => { await Promise.resolve(); });
+    expect(updateReflection).toHaveBeenCalledTimes(2);
+    expect(result.current.status).toBe("Saved");
+  });
+
   it("blocks local writes above the 256 KiB serialized document limit", async () => {
     vi.useFakeTimers();
     const { result } = renderHook(() => useReflectionAutosave({ localDate: "2026-08-01", timeZone: "UTC", initialReflection: null }));

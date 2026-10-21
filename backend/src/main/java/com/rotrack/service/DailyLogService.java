@@ -220,7 +220,7 @@ public class DailyLogService {
             } else {
                 rotSeconds += seconds;
             }
-            sessions.add(new DailyLogDTO.Session(session.getId().toString(), session.getActivityType().name(),
+            sessions.add(new DailyLogDTO.Session(session.getId().toString(), session.getActivityType(),
                     segmentStart, segmentEnd, seconds, session.getNotes()));
             sessionsById.put(session.getId(), session);
         }

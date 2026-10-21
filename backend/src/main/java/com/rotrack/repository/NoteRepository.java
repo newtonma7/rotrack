@@ -57,8 +57,6 @@ public interface NoteRepository extends JpaRepository<Note, UUID> {
 
     long countByUserIdAndTimeEntryId(UUID userId, UUID timeEntryId);
 
-    List<Note> findAllByUserIdAndTimeEntryIdIn(UUID userId, List<UUID> timeEntryIds);
-
     @Query("select note.id as id, note.timeEntryId as timeEntryId from Note note "
             + "where note.userId = :userId and note.timeEntryId in :timeEntryIds")
     List<DailyNoteCountProjection> findDailyNoteCounts(

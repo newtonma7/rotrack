@@ -8,7 +8,8 @@ import { RichTextEditor } from "@/components/notes/RichTextEditor";
 import { useNoteAutosave } from "@/hooks/useNoteAutosave";
 import { BEFORE_APP_NAVIGATION, guardedNavigationProceed } from "@/lib/navigation-guard";
 import { richTextToPlainText } from "@/lib/rich-text";
-import type { Note, RichTextDocument } from "@/types/notes";
+import { richTextToHtml } from "@/lib/rich-text-html";
+import type { Note } from "@/types/notes";
 
 export interface NoteEditorHandle {
   flush: () => Promise<boolean>;
@@ -171,42 +172,4 @@ function formatJournalDate(date: Date, timeZone?: string): string {
   const month = parts.find((part) => part.type === "month")?.value ?? "--";
   const day = parts.find((part) => part.type === "day")?.value ?? "--";
   return `${month} / ${day}`;
-}
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] ?? character);
-}
-
-type ClipboardNode = {
-  type: string;
-  text?: string;
-  attrs?: { href?: string; level?: number; start?: number; checked?: boolean };
-  marks?: Array<{ type: string; attrs?: { href?: string } }>;
-  content?: ClipboardNode[];
-};
-
-export function richTextToHtml(document: RichTextDocument): string {
-  const render = (node: ClipboardNode): string => {
-    if (node.type === "text") {
-      let text = escapeHtml(node.text ?? "");
-      for (const mark of node.marks ?? []) {
-        if (mark.type === "bold") text = `<strong>${text}</strong>`;
-        if (mark.type === "italic") text = `<em>${text}</em>`;
-        if (mark.type === "link") text = `<a href="${escapeHtml(mark.attrs?.href ?? "")}">${text}</a>`;
-      }
-      return text;
-    }
-    const content = (node.content ?? []).map(render).join("");
-    switch (node.type) {
-      case "heading": return `<h${node.attrs?.level ?? 2}>${content}</h${node.attrs?.level ?? 2}>`;
-      case "bulletList": return `<ul>${content}</ul>`;
-      case "orderedList": return `<ol>${content}</ol>`;
-      case "taskList": return `<ul data-type="taskList">${content}</ul>`;
-      case "taskItem": return `<li data-type="taskItem" data-checked="${node.attrs?.checked === true}"><label><input type="checkbox"${node.attrs?.checked === true ? " checked" : ""} disabled aria-label="Checklist item"><span></span></label><div>${content}</div></li>`;
-      case "listItem": return `<li>${content}</li>`;
-      case "blockquote": return `<blockquote>${content}</blockquote>`;
-      default: return `<p>${content}</p>`;
-    }
-  };
-  return (document.document.content as unknown as ClipboardNode[]).map(render).join("");
 }
