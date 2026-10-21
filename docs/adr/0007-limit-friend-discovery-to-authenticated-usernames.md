@@ -1,0 +1,5 @@
+# Limit friend discovery to authenticated usernames
+
+M6.1 introduces cross-user discovery of canonical usernames through the Spring API for authenticated users only. Results contain usernames and the viewer's own relationship context, never email addresses, account metadata, or study activity. This deliberately narrows the previously owner-only username boundary without making profiles or Supabase tables public. Minimum-length prefix search, small result sets, per-viewer rate limits, and indistinguishable missing/blocked target responses reduce enumeration while retaining useful friend discovery.
+
+Blocks are independent directional records, not friendship states. Blocking must remove the pair's pending or accepted relationship atomically and prevent new direct interaction in either direction; unblocking never restores a relationship. M6.2/M6.3 must consult the same block boundary before exposing any opted-in study projection. This source/local decision does not authorize hosted migrations, deployment, or public-profile URLs.

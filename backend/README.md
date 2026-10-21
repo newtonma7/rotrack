@@ -18,6 +18,8 @@ REST API for rotrack time tracking. Validates Supabase JWTs and connects to Supa
 mvn spring-boot:run
 ```
 
+M6.1 currently adds only migration `008_friendships.sql` and isolated storage verification. Apply 001–008 to a disposable local database to run that suite, following [`src/test/README.md`](src/test/README.md). Friendship/search endpoints are not implemented yet. Hosted migration 008 remains unauthorized.
+
 Liveness: `GET http://localhost:8080/api/v1/health`
 
 Database readiness: `GET http://localhost:8080/api/v1/readiness`

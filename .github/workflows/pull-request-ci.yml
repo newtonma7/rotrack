@@ -172,4 +172,4 @@ jobs:
         run: >-
           mvn --batch-mode --no-transfer-progress
           -Drotrack.postgres.integration=true
-          -Dtest=PostgresMigrationIntegrationTest,TimeEntryRepositoryPostgresIntegrationTest test
+          -Dtest=PostgresMigrationIntegrationTest,TimeEntryRepositoryPostgresIntegrationTest,FriendshipStoragePostgresIntegrationTest test

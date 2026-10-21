@@ -49,6 +49,7 @@ This section describes what exists in source control today. It is not a completi
 
 - Spring Boot 3.4, Java 21 target, Maven, Spring Web, JPA, OAuth2 Resource Server, validation, and PostgreSQL
 - M5.3 source adds generated Daily Log calendar/detail projections and private date-label-owned Reflection updates. Migration `007_reflections.sql` is additive and locally verified only; it has not been applied to hosted data
+- M6.1 source migration `008_friendships.sql` adds a locally tested friendship/block storage foundation. Lifecycle services, username search, social endpoints, and `/friends` UI are not yet implemented; hosted migration is not authorized
 - Implemented endpoints: independent liveness/readiness, explicit session lifecycle, dashboard stats, owned preferences GET/PUT, completed-only history/manual-entry routes, and owned Notes CRUD with attachment and optimistic-locking contracts
 - Supabase migrations defining `users`, `time_entries`, `user_preferences`, private `notes` and creation-replay metadata, the `ROT|WORK` enum, ownership RLS policies, signup profile/default-preference creation, timestamp constraints, one-active-session uniqueness, completed-history non-overlap, and reporting indexes
 - Source-controlled suites include executable PostgreSQL migration/repository tests, generated signed-JWT filter tests, service/controller ownership tests, Vitest/RTL coverage, and a quarantined external-auth Playwright critical path that can bind observed browser API responses to an approved API base
@@ -93,6 +94,10 @@ For the zero-user/pre-user boundary, the product owner authorizes migration `006
 ### Product-owner M5.3 source/local authorization — 2026-10-21
 
 The product owner authorizes implementing M5.3 Generated Daily Logs and Reflections against the existing M5 contracts. The Notes editor redesign is deferred; Reflections reuse RichTextDocument v1 and the current editor. This authorizes source changes and isolated local validation only, not hosted migrations, deployment, publishing, or broad production-readiness claims. Daily Logs remain generated, while Reflections retain their owner/date identity independently of projection timezone.
+
+### Product-owner M6.1 source/local start — 2026-10-21
+
+The product owner requests the next roadmap feature after M5.3. M6.1 can proceed independently of M5 under its existing M4 dependency. Begin with the friendship/block database foundation and the authenticated username-discovery boundary in [ADR-0007](docs/adr/0007-limit-friend-discovery-to-authenticated-usernames.md) and the [M6.1 contract](docs/specs/m6-friendships-contracts.md), then hand off the remaining service/API/UI work. Only source changes and isolated local validation are authorized. Hosted migrations 007/008, deployment, publishing, and broad production-readiness claims remain outside scope.
 
 ### Product-owner pre-user operations scope — 2026-08-11
 
@@ -420,9 +425,11 @@ canonical local dates use `YYYY-MM-DD` with years 0001 through 9999.
 
 ### 8.5 Friendships and presence
 
+The source/local M6.1 contract is recorded in [`docs/specs/m6-friendships-contracts.md`](docs/specs/m6-friendships-contracts.md). [ADR-0007](docs/adr/0007-limit-friend-discovery-to-authenticated-usernames.md) permits authenticated Spring-only username discovery, not public profiles or direct browser-table access. Search/lifecycle/API/UI implementation remains pending while the database foundation is developed.
+
 Friendships are mutual and use `PENDING` and `ACCEPTED` states. Store one canonical ordered user pair, the requester, and enforce pair uniqueness. Store blocks separately as directional `(blocker_id, blocked_id)` records so a user can block someone without an existing friendship.
 
-- The canonical lowercase username becomes the future public handle. It remains owner-readable only until a later architecture decision adds public profiles/search. Search requires at least three characters, returns a small rate-limited result set, and never searches or exposes email addresses.
+- The canonical lowercase username becomes the future public handle. ADR-0007 now permits authenticated username discovery through the future M6.1 Spring API; the current browser-table boundary stays owner-only. Public profiles remain out of scope. Search requires at least three characters, returns a small rate-limited result set, and never searches or exposes email addresses.
 - Users cannot friend themselves.
 - Duplicate and reversed requests are rejected.
 - Blocking deletes pending/accepted friendship state and pairwise invitations, prevents new direct interaction, and suppresses pairwise activity/presence projections.

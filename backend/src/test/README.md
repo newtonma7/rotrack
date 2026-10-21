@@ -23,7 +23,7 @@ Choose one target and mode:
 
 - `apply` requires an empty disposable database. It creates a minimal
   `auth.users`/`auth.uid()` test contract only when PostgreSQL does not already
-  provide one, applies checked-in migrations `001` through `006`, proves the
+  provide one, applies checked-in migrations `001` through `008`, proves the
   invariants, and rolls back all DDL and data. Run only the raw migration test,
   because the rollback intentionally leaves no schema for a later Spring context:
 
@@ -38,7 +38,7 @@ Choose one target and mode:
 
   ```bash
   ROTRACK_TEST_DATABASE_MODE=verify mvn -Drotrack.postgres.integration=true \
-    -Dtest='PostgresMigrationIntegrationTest,TimeEntryRepositoryPostgresIntegrationTest,NoteServicePostgresIntegrationTest' test
+    -Dtest='PostgresMigrationIntegrationTest,TimeEntryRepositoryPostgresIntegrationTest,NoteServicePostgresIntegrationTest,DailyLogServicePostgresIntegrationTest,FriendshipStoragePostgresIntegrationTest' test
   ```
 
 `NoteServicePostgresIntegrationTest` uses the public Note service/repository seam to verify
@@ -46,6 +46,8 @@ non-transactional reads, exactly-one concurrent creation, replay conflicts/delet
 attachment move/detach and Time Entry deletion, history attachment counts, stale versions,
 and ownership. It is intentionally verify-mode only because it needs a committed migrated
 schema.
+
+`FriendshipStoragePostgresIntegrationTest` verifies canonical/unique pairs, request membership/state constraints, directional blocks, account-deletion cascades, defensive RLS, and browser/runtime privileges. It permits only an explicitly isolated loopback target with migrations 001–008 already applied. Probe data, grants, and test-role creation roll back. It does not implement or verify the pending lifecycle API, block cleanup, search, concurrency, or UI.
 
 The role needs enough permission for the selected mode, including temporary
 fixture inserts into `auth.users` and `public.users`. The raw migration test and

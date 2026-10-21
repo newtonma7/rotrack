@@ -2,7 +2,7 @@
 
 **Architecture and contracts:** [`arch.plan.md`](arch.plan.md)
 **Backlog reviewed:** 2026-10-21
-**Current release target:** M5.3 source/local implementation authorized; hosted rollout and full production readiness remain separate unmet gates
+**Current release target:** Complete M6.1 from its verified local storage foundation. M5.3 fresh-Supabase acceptance, hosted rollout, and full production readiness remain separate unmet gates.
 
 ## 1. Operating Rules
 
@@ -72,7 +72,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 | Canonical hosted deployment | **Implemented—unverified** | On 2026-08-11, source commit `744635c` passed focused Azure contract/readback, publish, preflight, RBAC, container, and release checks. The reviewed backend candidate passed canonical ACA readback, selected digest/service-version equality, production runtime label, scale `1..1`, 100% traffic, and readiness; the same reviewed commit passed canonical Vercel Production alias readback. Public smoke and hosted authenticated smoke passed (`4/4`, zero skipped/unexpected/flaky, with API-target binding). The corrected no-schema-change backend/frontend rollback rehearsal passed and ended on the candidate. Rate limiting remains an accepted blocker; collector redaction, broad per-signal delivery, and alert routing remain open. Ten genuine zero-replica trials completed on 2026-08-11 with readiness 10/10, p50 34.586 seconds, and p95/max 39.425 seconds; the 30-second p95 criterion was not met, so scale-to-zero remains an explicitly accepted risk rather than a verified pass. Retained operator-owned synthetic accounts and stopped rows are not claimed as cleaned up; the separate production Supabase/Azure lane remains reserved. |
 | Release safeguards and observability | **In progress** | Source commit `744635c` includes the Azure readback/rollback-selection hardening and focused release checks passed. Public and hosted authenticated smoke plus the corrected exact rollback rehearsal passed. Rate limiting remains explicitly deferred/accepted; collector redaction, broad per-signal delivery, and alert routing evidence remain incomplete. Ten genuine zero-replica trials completed on 2026-08-11, but p95 readiness was 39.425 seconds, above the 30-second criterion; scale-to-zero remains an explicitly accepted risk, not a verified pass. The provider test-notification command failed, so provider-synthetic delivery is **NOT VERIFIED**; one alternate temporary metric-alert path has a confirmed receipt. |
 | M4 preferences and completed history | **Verified** | PR #32 merged through the protected path. The shared hosted database was remediated with product-owner-supplied usernames, then migrations 003–005 applied; catalog/grants/readiness, immutable ACA/Vercel rollout, authenticated tracker smoke, and focused hosted settings/history acceptance passed. |
-| Notes, logs, friends, groups | **In progress** | M5.1 and M5.2 are Verified. M5.3 source is implemented with local signed-JWT/browser/database evidence below; fresh Supabase acceptance remains unverified. Hosted M5.3 and later social work remain separately gated. |
+| Notes, logs, friends, groups | **In progress** | M5.1 and M5.2 are Verified. M5.3 source has local signed-JWT/browser/database evidence; fresh Supabase acceptance remains unverified. M6.1's source/local database foundation is tested; its lifecycle/search/API/UI remains unimplemented. Hosted M5.3/M6 and later social slices remain separately gated. |
 
 **Canonical hosted residual gate — 2026-08-11:** The shared ACA implementation boundary and canonical Vercel Production alias are deployed from the reviewed source commit, with candidate traffic, readiness/readback, digest/service-version equality, runtime label, scale, public smoke, API-target-bound authenticated smoke, and corrected no-schema-change rollback evidence passing. Retained operator-owned synthetic accounts and stopped rows remain by product-owner decision; cleanup is not claimed. Rate limiting remains explicitly deferred/accepted. Collector redaction, alert delivery/receipt, and alert routing evidence remain open. Ten genuine zero-replica trials completed on 2026-08-11, but p95 readiness was 39.425 seconds, above the 30-second criterion; scale-to-zero remains an explicitly accepted risk, not a verified pass. The Free-plan backup limitation is accepted as already documented. The M3/production-readiness STOP remains.
 
@@ -768,7 +768,9 @@ The gate requires all of the following:
 
 ### M6.1 — Friendship lifecycle and blocking
 
-**Status:** Not started
+**Status:** In progress
+
+**Source/local start — 2026-10-21:** The next feature can proceed independently of M5.3 acceptance. This work unit defines [the M6.1 contract](docs/specs/m6-friendships-contracts.md), records [ADR-0007](docs/adr/0007-limit-friend-discovery-to-authenticated-usernames.md), and implements an isolated, additive friendship/block database foundation. Search, transactional lifecycle services, APIs, limiters, and `/friends` UI remain for the handoff. Hosted migration/deployment is not authorized.
 
 - Add canonical mutual friendship/request storage with `PENDING` and `ACCEPTED` states plus a separate directional user-block table.
 - Add the canonical usernames as rate-limited search keys with a three-character minimum; never search or expose email addresses.
@@ -776,6 +778,15 @@ The gate requires all of the following:
 - Reject self, duplicate, and reversed duplicate requests.
 - Blocking deletes friendship/direct-invitation state, prevents new direct requests, and suppresses pairwise activity visibility.
 - Test both sides of every transition, authorization, enumeration resistance, and concurrent requests.
+
+**Foundation evidence — 2026-10-21 / disposable local PostgreSQL 17.10**
+
+- Integration baseline: `619039a230beff498a54f882370aac1156a50cd0`. Added source-only migration `008_friendships.sql`, with canonical unordered pairs, requester membership and `PENDING | ACCEPTED` constraints, directional blocks, FK cascades, defensive read-only RLS, no browser table grants, and bounded runtime DML grants. No API, search, UI, or block-cleanup service is claimed.
+- `FriendshipStoragePostgresIntegrationTest` first failed 5/5 against the schema through migration 007 because the two tables did not exist. After applying 008 to the isolated loopback database, all five checks passed, covering UUID signed-boundary ordering, duplicates/reversed/self pairs, invalid requester/state, directional/self/duplicate blocks, FK cascades, RLS isolation and exact privileges. Probe transactions left zero friendship/block rows.
+- `cd backend && JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 mvn clean test package` passed: 218 tests, zero failures/errors, 27 expected opt-in skips.
+- With explicit isolated-target/local JDBC configuration, apply mode `mvn -Drotrack.postgres.integration=true -Dtest=PostgresMigrationIntegrationTest test` passed on an empty database, rolling back migration DDL. Verify mode with `-Dtest='PostgresMigrationIntegrationTest,TimeEntryRepositoryPostgresIntegrationTest,NoteServicePostgresIntegrationTest,DailyLogServicePostgresIntegrationTest,FriendshipStoragePostgresIntegrationTest'` passed: 27 tests, zero failures/errors, three mode-specific skips. The credential-free CI migration job now includes the new storage suite.
+- Migration-order and workflow-policy guards, actionlint, and `git diff --check` passed. Frontend/browser checks were not rerun for this database-only unit; there is no M6.1 UI to exercise yet. Review closure and handoff are recorded after verification.
+- **Remaining work:** Implement the pair-serialized lifecycle service, safe username search and limiter, owned API/DTOs, typed frontend and `/friends` UI, concurrent transition tests, and distinct-user browser acceptance from the contract. M6.1 stays In progress. M6.2/M6.3 and hosted migrations/deployment remain out of scope.
 
 ### M6.2 — Privacy-safe study summaries
 
@@ -861,4 +872,4 @@ Append evidence beneath the completed task; do not create unsupported global che
 
 ## 13. Next Action
 
-Refresh external disposable Supabase acceptance for the implemented M5.3 source before marking it Verified. Resolve the separately recorded dependency audit findings before claiming a green release pipeline. Keep the current editor. M5.3 hosted work and broad production-readiness claims remain unauthorized, and unresolved M3 risks stay recorded above.
+Continue M6.1's lifecycle/search/API/UI from `docs/specs/m6-friendships-contracts.md`; do not mistake the tested database foundation for a complete feature. M6.1 may proceed independently of M5.3. Separately refresh M5.3 disposable Supabase acceptance and resolve the recorded dependency audit findings before claiming a green release pipeline. Keep the current editor. Hosted migrations 007/008, deployment, and broad production-readiness claims remain unauthorized.

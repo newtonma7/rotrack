@@ -47,7 +47,8 @@ class PostgresMigrationIntegrationTest {
             "004_user_preferences.sql",
             "005_time_entry_history.sql",
             "006_notes.sql",
-            "007_reflections.sql"
+            "007_reflections.sql",
+            "008_friendships.sql"
     );
 
     @Test
