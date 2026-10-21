@@ -22,6 +22,16 @@ class NotesMigrationTest {
     }
 
     @Test
+    void reflectionMigrationIsPrivateAndDateIdentityIsUnique() throws Exception {
+        String sql = Files.readString(Path.of("../database/migrations/007_reflections.sql"));
+        assertThat(sql).contains("CREATE TABLE public.reflections", "UNIQUE (user_id, local_date)")
+                .contains("timezone_at_creation", "CREATE TABLE public.reflection_creation_replays")
+                .contains("PRIMARY KEY (owner_id, idempotency_key)")
+                .contains("REVOKE ALL PRIVILEGES")
+                .doesNotContain("daily_logs");
+    }
+
+    @Test
     void migrationRequiresJsonEnvelopeVersionToMatchColumnVersion() throws Exception {
         String sql = Files.readString(Path.of("../database/migrations/006_notes.sql"));
         assertThat(sql).contains("notes_content_json_schema_version_match")

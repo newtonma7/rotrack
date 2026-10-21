@@ -35,6 +35,10 @@ public final class NoteHmac {
         }
     }
 
+    public byte[] reflectionFingerprint(String localDate, String timeZone, String serializedContent) {
+        return fingerprint(localDate + "|" + timeZone, serializedContent, "reflection");
+    }
+
     public boolean matches(byte[] left, byte[] right) {
         return MessageDigest.isEqual(left, right);
     }

@@ -58,6 +58,20 @@ class NoteBodySizeLimitFilterTest {
     }
 
     @Test
+    void rejectsOversizedReflectionPutBeforeReadingOrCallingDownstream() throws Exception {
+        NoteBodySizeLimitFilter filter = new NoteBodySizeLimitFilter(objectMapper);
+        BodyRequest request = request("PUT", "/api/v1/daily-logs/2026-01-01/reflection", "private-reflection");
+        request.setDeclaredContentLength(NoteBodySizeLimitFilter.MAX_WIRE_BYTES + 1);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean downstreamCalled = new AtomicBoolean();
+
+        filter.doFilter(request, response, (wrappedRequest, wrappedResponse) -> downstreamCalled.set(true));
+
+        assertThat(downstreamCalled).isFalse();
+        assertTooLarge(response, "/api/v1/daily-logs/{localDate}/reflection");
+    }
+
+    @Test
     void doesNotAffectNoteReadsOrDeletes() throws Exception {
         NoteBodySizeLimitFilter filter = new NoteBodySizeLimitFilter(objectMapper);
         for (String method : List.of("GET", "DELETE")) {

@@ -46,7 +46,8 @@ class PostgresMigrationIntegrationTest {
             "003_require_usernames.sql",
             "004_user_preferences.sql",
             "005_time_entry_history.sql",
-            "006_notes.sql"
+            "006_notes.sql",
+            "007_reflections.sql"
     );
 
     @Test
@@ -247,6 +248,8 @@ class PostgresMigrationIntegrationTest {
                 proveTwoUserPreferencesRls(connection);
                 proveNotesInvariants(connection);
                 proveTwoUserNotesRls(connection);
+                proveReflectionInvariants(connection);
+                proveTwoUserReflectionsRls(connection);
             } finally {
                 connection.rollback();
             }
@@ -361,6 +364,10 @@ class PostgresMigrationIntegrationTest {
                 "public.time_entries must be an actual table");
         assertTrue(relationExists(connection, "public.user_preferences"),
                 "public.user_preferences must be an actual table");
+        assertTrue(relationExists(connection, "public.reflections"),
+                "public.reflections must be an actual table");
+        assertTrue(relationExists(connection, "public.reflection_creation_replays"),
+                "reflection replay metadata must be an actual table");
 
         String rangeConstraint = querySingleString(connection, """
                 SELECT pg_get_constraintdef(oid)
@@ -418,15 +425,16 @@ class PostgresMigrationIntegrationTest {
         assertNotNull(reportingIndex, "the reporting index must exist on public.time_entries");
         assertTrue(normalize(reportingIndex).contains("(user_id, start_time)"));
 
-        assertEquals(5, querySingleInt(connection, """
+        assertEquals(7, querySingleInt(connection, """
                 SELECT count(*)
                 FROM pg_class
                 WHERE oid IN ('public.users'::regclass, 'public.time_entries'::regclass,
                               'public.user_preferences'::regclass, 'public.notes'::regclass,
-                              'public.note_creation_replays'::regclass)
+                              'public.note_creation_replays'::regclass, 'public.reflections'::regclass,
+                              'public.reflection_creation_replays'::regclass)
                   AND relrowsecurity
                 """), "RLS must remain enabled on all application tables");
-        assertEquals(14, querySingleInt(connection, """
+        assertEquals(18, querySingleInt(connection, """
                 SELECT count(*)
                 FROM pg_policies
                 WHERE schemaname = 'public'
@@ -448,8 +456,41 @@ class PostgresMigrationIntegrationTest {
                     (tablename = 'notes' AND policyname IN (
                       'notes_select_own', 'notes_insert_own', 'notes_update_own', 'notes_delete_own'
                     ))
+                    OR
+                    (tablename = 'reflections' AND policyname IN (
+                      'reflections_select_own', 'reflections_insert_own', 'reflections_update_own', 'reflections_delete_own'
+                    ))
                   )
                 """), "all ownership policies must exist");
+        assertEquals(1, querySingleInt(connection, """
+                SELECT count(*) FROM pg_constraint
+                WHERE conrelid = 'public.reflections'::regclass
+                  AND conname = 'reflections_user_local_date_unique'
+                """), "Reflection identity must be unique by owner and original local date");
+        assertEquals(1, querySingleInt(connection, """
+                SELECT count(*) FROM pg_constraint
+                WHERE conrelid = 'public.reflections'::regclass
+                  AND conname = 'reflections_json_schema_version_match'
+                """), "Reflection document schema version must match its column");
+        assertEquals(4, querySingleInt(connection, """
+                SELECT count(*)
+                FROM aclexplode((SELECT relacl FROM pg_class WHERE oid = 'public.reflections'::regclass))
+                WHERE grantee = 'rotrack_runtime'::regrole
+                  AND privilege_type IN ('SELECT', 'INSERT', 'UPDATE', 'DELETE')
+                """), "runtime role must have Reflection DML grants");
+        assertEquals(2, querySingleInt(connection, """
+                SELECT count(*)
+                FROM aclexplode((SELECT relacl FROM pg_class WHERE oid = 'public.reflection_creation_replays'::regclass))
+                WHERE grantee = 'rotrack_runtime'::regrole
+                  AND privilege_type IN ('SELECT', 'INSERT')
+                """), "runtime role must have only replay read/claim privileges");
+        assertEquals(0, querySingleInt(connection, """
+                SELECT count(*)
+                FROM aclexplode((SELECT relacl FROM pg_class WHERE oid = 'public.reflection_creation_replays'::regclass))
+                JOIN pg_roles role ON role.oid = grantee
+                WHERE role.rolname IN ('anon', 'authenticated')
+                  AND privilege_type IS NOT NULL
+                """), "browser roles must not receive replay metadata privileges");
         assertEquals(1, querySingleInt(connection, """
                 SELECT count(*) FROM pg_constraint
                 WHERE conrelid = 'public.notes'::regclass
@@ -771,6 +812,60 @@ class PostgresMigrationIntegrationTest {
             statement.executeUpdate();
         }
         assertEquals(0, queryCount(connection, "SELECT count(*) FROM public.note_creation_replays WHERE owner_id = ?", owner));
+    }
+
+    private void proveReflectionInvariants(Connection connection) throws SQLException {
+        UUID owner = UUID.randomUUID();
+        insertAuthUser(connection, owner, "reflection_owner");
+        UUID id = UUID.randomUUID();
+        String document = "{\"schemaVersion\":1,\"document\":{\"type\":\"doc\",\"content\":[]}}";
+        insertReflection(connection, id, owner, java.sql.Date.valueOf("9999-12-31"), "UTC", 1, document);
+        expectSqlState(connection, "23505", () -> insertReflection(connection, UUID.randomUUID(), owner,
+                java.sql.Date.valueOf("9999-12-31"), "UTC", 1, document));
+        expectSqlState(connection, "23514", () -> insertReflection(connection, UUID.randomUUID(), owner,
+                java.sql.Date.valueOf("2026-01-01"), "UTC", 0, document));
+        expectSqlState(connection, "23514", () -> insertReflection(connection, UUID.randomUUID(), owner,
+                java.sql.Date.valueOf("2026-01-02"), "UTC", 1, "{\"schemaVersion\":2}"));
+        assertEquals(4, querySingleInt(connection, "SELECT count(*) FROM pg_policies WHERE tablename = 'reflections'"));
+    }
+
+    private void proveTwoUserReflectionsRls(Connection connection) throws SQLException {
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+        insertAuthUser(connection, first, "reflection_rls_first");
+        insertAuthUser(connection, second, "reflection_rls_second");
+        insertReflection(connection, UUID.randomUUID(), first, java.sql.Date.valueOf("2026-03-01"), "UTC", 1,
+                "{\"schemaVersion\":1,\"document\":{\"type\":\"doc\",\"content\":[]}}");
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("GRANT USAGE ON SCHEMA public TO rotrack_notes_rls_probe");
+            statement.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON public.reflections TO rotrack_notes_rls_probe");
+            statement.execute("SET LOCAL ROLE rotrack_notes_rls_probe");
+        }
+        setJwtSubject(connection, first);
+        assertEquals(1, queryCount(connection, "SELECT count(*) FROM public.reflections WHERE user_id IN (?, ?)", first, second));
+        setJwtSubject(connection, second);
+        assertEquals(0, queryCount(connection, "SELECT count(*) FROM public.reflections WHERE user_id = ?", first));
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("RESET ROLE");
+            statement.execute("RESET request.jwt.claim.sub");
+        }
+    }
+
+    private void insertReflection(Connection connection, UUID id, UUID owner, java.sql.Date date,
+                                  String timeZone, long version, String json) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                INSERT INTO public.reflections(id, user_id, local_date, timezone_at_creation,
+                    content_json, content_text, content_schema_version, version)
+                VALUES (?, ?, ?, ?, ?::json, '', 1, ?)
+                """)) {
+            statement.setObject(1, id);
+            statement.setObject(2, owner);
+            statement.setDate(3, date);
+            statement.setString(4, timeZone);
+            statement.setString(5, json);
+            statement.setLong(6, version);
+            statement.executeUpdate();
+        }
     }
 
     private void proveTwoUserNotesRls(Connection connection) throws SQLException {

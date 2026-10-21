@@ -31,6 +31,19 @@ class NoteRateLimitFilterTest {
     }
 
     @Test
+    void reflectionWritesShareTheRichTextSaveBudget() throws Exception {
+        NoteRateLimiter limiter = new NoteRateLimiter(1, Duration.ofMinutes(1), 10, java.time.Clock.systemUTC());
+        NoteRateLimitFilter filter = new NoteRateLimitFilter(limiter, new ObjectMapper().findAndRegisterModules());
+
+        MockHttpServletResponse reflection = invoke(filter, "PUT", "/api/v1/daily-logs/2026-01-01/reflection");
+        MockHttpServletResponse note = invoke(filter, "PUT", "/api/v1/notes/22222222-2222-4222-8222-222222222222");
+
+        assertThat(reflection.getStatus()).isEqualTo(200);
+        assertThat(note.getStatus()).isEqualTo(429);
+        assertThat(note.getHeader("Retry-After")).isEqualTo("60");
+    }
+
+    @Test
     void readsAndTimerMutationsDoNotConsumeNoteBudget() throws Exception {
         NoteRateLimiter limiter = new NoteRateLimiter(1, Duration.ofMinutes(1), 10, java.time.Clock.systemUTC());
         NoteRateLimitFilter filter = new NoteRateLimitFilter(limiter, new ObjectMapper().findAndRegisterModules());

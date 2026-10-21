@@ -84,7 +84,8 @@ public final class NoteBodySizeLimitFilter extends OncePerRequestFilter {
     private boolean isNoteBodyMutation(HttpServletRequest request) {
         String route = RouteTemplates.resolve(request);
         return (RouteTemplates.NOTES.equals(route) && "POST".equals(request.getMethod()))
-                || (RouteTemplates.NOTE.equals(route) && "PUT".equals(request.getMethod()));
+                || (RouteTemplates.NOTE.equals(route) && "PUT".equals(request.getMethod()))
+                || (RouteTemplates.DAILY_LOG_REFLECTION.equals(route) && "PUT".equals(request.getMethod()));
     }
 
     private boolean isAuthenticated() {

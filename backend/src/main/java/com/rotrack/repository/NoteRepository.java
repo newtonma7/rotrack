@@ -56,4 +56,30 @@ public interface NoteRepository extends JpaRepository<Note, UUID> {
     );
 
     long countByUserIdAndTimeEntryId(UUID userId, UUID timeEntryId);
+
+    List<Note> findAllByUserIdAndTimeEntryIdIn(UUID userId, List<UUID> timeEntryIds);
+
+    @Query("select note.id as id, note.timeEntryId as timeEntryId from Note note "
+            + "where note.userId = :userId and note.timeEntryId in :timeEntryIds")
+    List<DailyNoteCountProjection> findDailyNoteCounts(
+            @Param("userId") UUID userId, @Param("timeEntryIds") List<UUID> timeEntryIds);
+
+    @Query("select note.id as id, note.title as title, note.contentText as contentText, "
+            + "note.timeEntryId as timeEntryId, note.updatedAt as updatedAt from Note note "
+            + "where note.userId = :userId and note.timeEntryId in :timeEntryIds")
+    List<DailyNotePreviewProjection> findDailyNotePreviews(
+            @Param("userId") UUID userId, @Param("timeEntryIds") List<UUID> timeEntryIds);
+
+    interface DailyNoteCountProjection {
+        UUID getId();
+        UUID getTimeEntryId();
+    }
+
+    interface DailyNotePreviewProjection {
+        UUID getId();
+        String getTitle();
+        String getContentText();
+        UUID getTimeEntryId();
+        Instant getUpdatedAt();
+    }
 }

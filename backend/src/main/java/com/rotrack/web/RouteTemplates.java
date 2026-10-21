@@ -23,9 +23,12 @@ public final class RouteTemplates {
     public static final String PREFERENCES = "/api/v1/preferences";
     public static final String NOTES = "/api/v1/notes";
     public static final String NOTE = "/api/v1/notes/{id}";
+    public static final String DAILY_LOGS = "/api/v1/daily-logs";
+    public static final String DAILY_LOG = "/api/v1/daily-logs/{localDate}";
+    public static final String DAILY_LOG_REFLECTION = "/api/v1/daily-logs/{localDate}/reflection";
     private static final String UNMATCHED = "/unmatched";
     private static final Set<String> ALLOWED_TEMPLATES = Set.of(
-            HEALTH, READINESS, START, COLLECTION, HISTORY, ACTIVE, ENTRY, STOP, DASHBOARD_STATS, PREFERENCES, NOTES, NOTE
+            HEALTH, READINESS, START, COLLECTION, HISTORY, ACTIVE, ENTRY, STOP, DASHBOARD_STATS, PREFERENCES, NOTES, NOTE, DAILY_LOGS, DAILY_LOG, DAILY_LOG_REFLECTION
     );
 
     private RouteTemplates() {
@@ -48,9 +51,11 @@ public final class RouteTemplates {
                 path = path.substring(0, suffixStart);
             }
         }
-        if (Set.of(HEALTH, READINESS, START, COLLECTION, HISTORY, ACTIVE, DASHBOARD_STATS, PREFERENCES, NOTES).contains(path)) {
+        if (Set.of(HEALTH, READINESS, START, COLLECTION, HISTORY, ACTIVE, DASHBOARD_STATS, PREFERENCES, NOTES, DAILY_LOGS).contains(path)) {
             return path;
         }
+        if (path != null && path.matches("/api/v1/daily-logs/[0-9]{4}-[0-9]{2}-[0-9]{2}/reflection")) return DAILY_LOG_REFLECTION;
+        if (path != null && path.matches("/api/v1/daily-logs/[0-9]{4}-[0-9]{2}-[0-9]{2}")) return DAILY_LOG;
         if (path != null && path.matches("/api/v1/notes/[0-9a-fA-F-]{36}")) {
             return NOTE;
         }
@@ -74,6 +79,7 @@ public final class RouteTemplates {
         if ("DELETE".equals(request.getMethod()) && (ENTRY.equals(route) || NOTE.equals(route))) {
             return Optional.of(new MutationRoute("DELETE", route));
         }
+        if ("PUT".equals(request.getMethod()) && DAILY_LOG_REFLECTION.equals(route)) return Optional.of(new MutationRoute("PUT", route));
         if ("PUT".equals(request.getMethod()) && PREFERENCES.equals(route)) {
             return Optional.of(new MutationRoute("PUT", PREFERENCES));
         }
@@ -83,7 +89,8 @@ public final class RouteTemplates {
     public static boolean isNoteMutation(HttpServletRequest request) {
         String route = resolve(request);
         return (NOTES.equals(route) && "POST".equals(request.getMethod()))
-                || (NOTE.equals(route) && ("PUT".equals(request.getMethod()) || "DELETE".equals(request.getMethod())));
+                || (NOTE.equals(route) && ("PUT".equals(request.getMethod()) || "DELETE".equals(request.getMethod())))
+                || (DAILY_LOG_REFLECTION.equals(route) && "PUT".equals(request.getMethod()));
     }
 
     public record MutationRoute(String method, String template) {
