@@ -9,6 +9,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -49,7 +50,9 @@ public class Reflection {
 
     @PrePersist
     void onCreate() {
-        Instant now = Instant.now();
+        // PostgreSQL stores microseconds. Match that precision before returning the first write
+        // so a later read or idempotent replay has the same authoritative timestamp.
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
         if (id == null) id = UUID.randomUUID();
         if (createdAt == null) createdAt = now;
         if (updatedAt == null) updatedAt = now;
@@ -59,7 +62,7 @@ public class Reflection {
 
     @PreUpdate
     void onUpdate() {
-        updatedAt = Instant.now();
+        updatedAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
     }
 
     public UUID getId() { return id; }

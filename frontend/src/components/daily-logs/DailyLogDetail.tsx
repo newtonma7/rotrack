@@ -24,7 +24,7 @@ export function DailyLogDetail({
     <>
       <div className="mb-5 flex items-center gap-3">
         <Link
-          href="/daily-logs"
+          href={`/daily-logs?timeZone=${encodeURIComponent(timeZone)}`}
           className="rounded-full border border-[var(--rt-line)] px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-[var(--rt-orange)]"
         >
           ← calendar

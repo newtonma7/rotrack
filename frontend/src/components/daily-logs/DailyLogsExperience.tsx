@@ -16,10 +16,16 @@ function today(timeZone: string): string {
   return localDateInTimeZone(new Date(), timeZone);
 }
 
-export function DailyLogsExperience({ localDate: routeDate }: { localDate?: string }) {
+export function DailyLogsExperience({
+  localDate: routeDate,
+  initialTimeZone,
+}: {
+  localDate?: string;
+  initialTimeZone?: string;
+}) {
   const router = useRouter();
   const pathname = usePathname();
-  const [timeZone, setTimeZone] = useState(getBrowserTimeZone());
+  const [timeZone, setTimeZone] = useState(initialTimeZone ?? getBrowserTimeZone());
   const currentTimeZone = useRef(timeZone);
   const [timeZoneReady, setTimeZoneReady] = useState(false);
   const [selectedDate, setSelectedDate] = useState(
@@ -38,7 +44,7 @@ export function DailyLogsExperience({ localDate: routeDate }: { localDate?: stri
     void getPreferences()
       .then((preferences) => {
         if (!active) return;
-        const savedTimeZone = preferences.timeZone || getBrowserTimeZone();
+        const savedTimeZone = initialTimeZone ?? preferences.timeZone ?? getBrowserTimeZone();
         const effectiveTimeZone = timeZoneChangedByUser.current ? currentTimeZone.current : savedTimeZone;
         if (!timeZoneChangedByUser.current) { currentTimeZone.current = savedTimeZone; setTimeZone(savedTimeZone); }
         if (!routeDate && !dateSelectedByUser.current) setSelectedDate(today(effectiveTimeZone));
@@ -46,14 +52,14 @@ export function DailyLogsExperience({ localDate: routeDate }: { localDate?: stri
       })
       .catch(() => {
         if (!active) return;
-        const browserTimeZone = getBrowserTimeZone();
+        const browserTimeZone = initialTimeZone ?? getBrowserTimeZone();
         const effectiveTimeZone = timeZoneChangedByUser.current ? currentTimeZone.current : browserTimeZone;
         if (!timeZoneChangedByUser.current) { currentTimeZone.current = browserTimeZone; setTimeZone(browserTimeZone); }
         if (!routeDate && !dateSelectedByUser.current) setSelectedDate(today(effectiveTimeZone));
         setTimeZoneReady(true);
       });
     return () => { active = false; };
-  }, [routeDate]);
+  }, [initialTimeZone, routeDate]);
 
   useEffect(() => {
     if (routeDate && isCanonicalLocalDate(routeDate)) setSelectedDate(routeDate);
@@ -92,7 +98,7 @@ export function DailyLogsExperience({ localDate: routeDate }: { localDate?: stri
     requestAppNavigation(() => {
       dateSelectedByUser.current = true;
       setSelectedDate(date);
-      router.push(`/daily-logs/${date}`);
+      router.push(`/daily-logs/${date}?timeZone=${encodeURIComponent(timeZone)}`);
     });
   };
 
@@ -101,7 +107,7 @@ export function DailyLogsExperience({ localDate: routeDate }: { localDate?: stri
       const nextDate = shiftLocalMonth(selectedDateLabel, direction);
       dateSelectedByUser.current = true;
       setSelectedDate(nextDate);
-      if (pathname !== "/daily-logs") router.push(`/daily-logs/${nextDate}`);
+      if (pathname !== "/daily-logs") router.push(`/daily-logs/${nextDate}?timeZone=${encodeURIComponent(timeZone)}`);
     });
   };
 
@@ -110,6 +116,8 @@ export function DailyLogsExperience({ localDate: routeDate }: { localDate?: stri
       timeZoneChangedByUser.current = true;
       currentTimeZone.current = nextTimeZone;
       setTimeZone(nextTimeZone);
+      // Date navigation remounts this workspace; keep the projection timezone in the URL.
+      router.replace(`${pathname}?timeZone=${encodeURIComponent(nextTimeZone)}`, { scroll: false });
     });
   };
 
@@ -156,6 +164,15 @@ export function DailyLogsExperience({ localDate: routeDate }: { localDate?: stri
         </label>
       </div>
 
+      {error && (
+        <div role="alert" className="mb-5 rounded-2xl border border-[var(--rt-orange)] bg-[var(--rt-orange-soft)] p-4">
+          <p>{error}</p>
+          <Button onClick={() => void load()} className="mt-3 rounded-full">Retry</Button>
+        </div>
+      )}
+      {loading && (
+        <p role="status" className="mb-4 text-sm text-[var(--rt-ink-muted)]">Loading daily logs…</p>
+      )}
       <div className="grid gap-6 lg:grid-cols-[minmax(300px,0.8fr)_minmax(0,1.2fr)]">
         <div className={showCalendarOnMobile ? "" : "hidden lg:block"}>
           <DailyLogCalendar
@@ -170,29 +187,12 @@ export function DailyLogsExperience({ localDate: routeDate }: { localDate?: stri
           />
         </div>
         <section aria-label={`Daily log for ${selectedDateLabel}`} className={`${showDetailOnMobile ? "" : "hidden lg:block"} min-w-0`}>
-          {!selectedDetail && loading && (
-            <p role="status" className="rounded-[28px] bg-[var(--rt-paper)] p-8">Loading daily log…</p>
-          )}
-          {!selectedDetail && error && (
-            <div role="alert" className="rounded-[28px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-8">
-              <p>{error}</p>
-              <Button onClick={() => void load()} className="mt-4 rounded-full">Retry</Button>
-            </div>
-          )}
           {selectedDetail && (
-            <>
-              {error && (
-                <div role="alert" className="mb-3 rounded-2xl border border-[var(--rt-orange)] bg-[var(--rt-orange-soft)] p-3">
-                  {error} <Button onClick={() => void load()} className="ml-2 rounded-full">Retry</Button>
-                </div>
-              )}
-              {loading && <p role="status" className="sr-only">Updating daily log…</p>}
-              <DailyLogDetail
-                dailyLog={selectedDetail}
-                onReflectionSaved={handleReflectionSaved}
-                onReload={async () => (await getDailyLog(selectedDateLabel, timeZone)).reflection}
-              />
-            </>
+            <DailyLogDetail
+              dailyLog={selectedDetail}
+              onReflectionSaved={handleReflectionSaved}
+              onReload={async () => (await getDailyLog(selectedDateLabel, timeZone)).reflection}
+            />
           )}
         </section>
       </div>

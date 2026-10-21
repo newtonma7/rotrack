@@ -111,11 +111,14 @@ class DailyLogServicePostgresIntegrationTest {
                 request(content, 0));
         assertThat(created.version()).isEqualTo(1);
         assertThat(created.timeZoneAtCreation()).isEqualTo("America/New_York");
+        assertThat(service.updateReflection(OWNER, "2026-03-08", "America/New_York", key,
+                request(content, 0))).isEqualTo(created);
 
         var cleared = service.updateReflection(OWNER, "2026-03-08", "UTC", null,
                 request(MAPPER.readTree("{\"schemaVersion\":1,\"document\":{\"type\":\"doc\",\"content\":[]}}"), 1));
         assertThat(cleared.version()).isEqualTo(2);
         assertThat(cleared.timeZoneAtCreation()).isEqualTo("America/New_York");
+        assertThat(service.detail(OWNER, "2026-03-08", "UTC").reflection()).isEqualTo(cleared);
         assertThat(service.updateReflection(OWNER, "2026-03-08", "America/New_York", key,
                 request(content, 0)).version()).isEqualTo(2);
         assertThat(service.summaries(OWNER, "2026-03-08", "2026-03-09", "UTC").days().getFirst().hasReflectionContent()).isFalse();

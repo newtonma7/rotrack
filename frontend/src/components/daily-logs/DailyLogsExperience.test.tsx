@@ -6,8 +6,9 @@ import { getDailyLog, getDailyLogs, getPreferences } from "@/lib/api";
 import type { DailyLog } from "@/types/daily-logs";
 
 const push = vi.fn();
+const replace = vi.fn();
 let pathName = "/daily-logs";
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }), usePathname: () => pathName }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push, replace }), usePathname: () => pathName }));
 vi.mock("next/link", () => ({ default: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a> }));
 vi.mock("@/components/notes/RichTextEditor", () => ({ RichTextEditor: () => <div contentEditable aria-label="Reflection content" /> }));
 vi.mock("@/lib/api", () => ({ getDailyLog: vi.fn(), getDailyLogs: vi.fn(), getPreferences: vi.fn() }));
@@ -33,6 +34,14 @@ describe("daily log calendar selection", () => {
     vi.mocked(getPreferences).mockResolvedValue({ timeZone: "America/Los_Angeles", dailyWorkGoalMinutes: null, shareStudySummary: false, shareActiveStudyStatus: false });
     render(<DailyLogsExperience />);
     await waitFor(() => expect(getDailyLog).toHaveBeenLastCalledWith("2025-12-31", "America/Los_Angeles"));
+  });
+
+  it("honors an explicit URL timezone over saved preferences", async () => {
+    vi.setSystemTime(new Date("2026-01-01T01:00:00Z"));
+    render(<DailyLogsExperience initialTimeZone="America/Los_Angeles" />);
+    await waitFor(() => expect(getDailyLog).toHaveBeenLastCalledWith("2025-12-31", "America/Los_Angeles"));
+    fireEvent.change(screen.getByRole("combobox", { name: "Timezone" }), { target: { value: "Asia/Tokyo" } });
+    expect(replace).toHaveBeenCalledWith("/daily-logs?timeZone=Asia%2FTokyo", { scroll: false });
   });
 
   it("advances from January to February by one calendar month", async () => {

@@ -1,7 +1,7 @@
 # rotrack Architecture
 
 **Status:** Living architecture and contract document
-**Last reviewed:** 2026-08-15
+**Last reviewed:** 2026-10-21
 **Delivery backlog:** [`todo.md`](todo.md)
 
 ## 1. Purpose and Product Boundaries
@@ -38,7 +38,7 @@ This section describes what exists in source control today. It is not a completi
 ### Frontend
 
 - Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4, shadcn/ui primitives, Recharts, and `@supabase/supabase-js`
-- Routes: `/`, `/signin`, `/signup`, `/signup/confirmation`, `/tracker`, `/dashboard`, `/history`, `/settings`, `/notes`, and `/notes/{id}`
+- Routes: `/`, `/signin`, `/signup`, `/signup/confirmation`, `/tracker`, `/dashboard`, `/history`, `/settings`, `/notes`, `/notes/{id}`, `/daily-logs`, and `/daily-logs/{localDate}`
 - Client-side Supabase session context and protected-route layouts
 - API client using native `fetch` and Supabase bearer tokens
 - Tracker UI with start, active-session restore, elapsed display, explicit stop, and an integrated private Notes journal; sessions remain active across reload, navigation, tab changes, minimization, and browser closure until explicitly stopped
@@ -48,6 +48,7 @@ This section describes what exists in source control today. It is not a completi
 ### Backend and database
 
 - Spring Boot 3.4, Java 21 target, Maven, Spring Web, JPA, OAuth2 Resource Server, validation, and PostgreSQL
+- M5.3 source adds generated Daily Log calendar/detail projections and private date-label-owned Reflection updates. Migration `007_reflections.sql` is additive and locally verified only; it has not been applied to hosted data
 - Implemented endpoints: independent liveness/readiness, explicit session lifecycle, dashboard stats, owned preferences GET/PUT, completed-only history/manual-entry routes, and owned Notes CRUD with attachment and optimistic-locking contracts
 - Supabase migrations defining `users`, `time_entries`, `user_preferences`, private `notes` and creation-replay metadata, the `ROT|WORK` enum, ownership RLS policies, signup profile/default-preference creation, timestamp constraints, one-active-session uniqueness, completed-history non-overlap, and reporting indexes
 - Source-controlled suites include executable PostgreSQL migration/repository tests, generated signed-JWT filter tests, service/controller ownership tests, Vitest/RTL coverage, and a quarantined external-auth Playwright critical path that can bind observed browser API responses to an approved API base
@@ -88,6 +89,10 @@ For the zero-user/pre-user boundary, the product owner authorized a narrow share
 ### Product-owner M5.2 shared-hosted rollout authorization — 2026-08-16
 
 For the zero-user/pre-user boundary, the product owner authorizes migration `006_notes.sql`, deployment of the reviewed M5.2 backend and frontend artifacts to the canonical shared Supabase/ACA/Vercel Production path, runtime Notes writes with a stable hosted-only HMAC secret, and disposable-user hosted acceptance after protected CI and merge. Migration precedes the dependent application; rollback remains application-only with the additive schema retained. The rollout passed on 2026-08-16 and M5.2 is **Verified**. This decision does not authorize M5.3, waive unresolved M3 risks, or support broad production-readiness claims.
+
+### Product-owner M5.3 source/local authorization — 2026-10-21
+
+The product owner authorizes implementing M5.3 Generated Daily Logs and Reflections against the existing M5 contracts. The Notes editor redesign is deferred; Reflections reuse RichTextDocument v1 and the current editor. This authorizes source changes and isolated local validation only, not hosted migrations, deployment, publishing, or broad production-readiness claims. Daily Logs remain generated, while Reflections retain their owner/date identity independently of projection timezone.
 
 ### Product-owner pre-user operations scope — 2026-08-11
 
@@ -379,7 +384,7 @@ Spring remains the sole rich-content API and RLS remains defense in depth.
 
 ### 8.3.1 Rich-text migration and compatibility
 
-M5.1 adds ordered additive Notes and content-free idempotency/tombstone storage. M5.3 later
+M5.1 adds ordered additive Notes and content-free idempotency/tombstone storage. M5.3
 adds Reflections and creation-replay metadata. Neither migration converts, truncates, or
 deletes Session Labels. Migrations precede dependent application versions, while application
 rollback leaves additive tables in place and does not imply database rollback.

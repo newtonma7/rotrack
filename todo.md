@@ -1,8 +1,8 @@
 # rotrack Development Backlog
 
 **Architecture and contracts:** [`arch.plan.md`](arch.plan.md)
-**Backlog reviewed:** 2026-08-16
-**Current release target:** M5.2 Verified; decide M5.3 source scope while full production readiness remains a separate unmet gate
+**Backlog reviewed:** 2026-10-21
+**Current release target:** M5.3 source/local implementation authorized; hosted rollout and full production readiness remain separate unmet gates
 
 ## 1. Operating Rules
 
@@ -72,7 +72,7 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 | Canonical hosted deployment | **Implemented—unverified** | On 2026-08-11, source commit `744635c` passed focused Azure contract/readback, publish, preflight, RBAC, container, and release checks. The reviewed backend candidate passed canonical ACA readback, selected digest/service-version equality, production runtime label, scale `1..1`, 100% traffic, and readiness; the same reviewed commit passed canonical Vercel Production alias readback. Public smoke and hosted authenticated smoke passed (`4/4`, zero skipped/unexpected/flaky, with API-target binding). The corrected no-schema-change backend/frontend rollback rehearsal passed and ended on the candidate. Rate limiting remains an accepted blocker; collector redaction, broad per-signal delivery, and alert routing remain open. Ten genuine zero-replica trials completed on 2026-08-11 with readiness 10/10, p50 34.586 seconds, and p95/max 39.425 seconds; the 30-second p95 criterion was not met, so scale-to-zero remains an explicitly accepted risk rather than a verified pass. Retained operator-owned synthetic accounts and stopped rows are not claimed as cleaned up; the separate production Supabase/Azure lane remains reserved. |
 | Release safeguards and observability | **In progress** | Source commit `744635c` includes the Azure readback/rollback-selection hardening and focused release checks passed. Public and hosted authenticated smoke plus the corrected exact rollback rehearsal passed. Rate limiting remains explicitly deferred/accepted; collector redaction, broad per-signal delivery, and alert routing evidence remain incomplete. Ten genuine zero-replica trials completed on 2026-08-11, but p95 readiness was 39.425 seconds, above the 30-second criterion; scale-to-zero remains an explicitly accepted risk, not a verified pass. The provider test-notification command failed, so provider-synthetic delivery is **NOT VERIFIED**; one alternate temporary metric-alert path has a confirmed receipt. |
 | M4 preferences and completed history | **Verified** | PR #32 merged through the protected path. The shared hosted database was remediated with product-owner-supplied usernames, then migrations 003–005 applied; catalog/grants/readiness, immutable ACA/Vercel rollout, authenticated tracker smoke, and focused hosted settings/history acceptance passed. |
-| Notes, logs, friends, groups | **In progress** | M5.1 and M5.2 are Verified. M5.3 logs and later social work remain unstarted and separately gated. |
+| Notes, logs, friends, groups | **In progress** | M5.1 and M5.2 are Verified. M5.3 source is implemented with local signed-JWT/browser/database evidence below; fresh Supabase acceptance remains unverified. Hosted M5.3 and later social work remain separately gated. |
 
 **Canonical hosted residual gate — 2026-08-11:** The shared ACA implementation boundary and canonical Vercel Production alias are deployed from the reviewed source commit, with candidate traffic, readiness/readback, digest/service-version equality, runtime label, scale, public smoke, API-target-bound authenticated smoke, and corrected no-schema-change rollback evidence passing. Retained operator-owned synthetic accounts and stopped rows remain by product-owner decision; cleanup is not claimed. Rate limiting remains explicitly deferred/accepted. Collector redaction, alert delivery/receipt, and alert routing evidence remain open. Ten genuine zero-replica trials completed on 2026-08-11, but p95 readiness was 39.425 seconds, above the 30-second criterion; scale-to-zero remains an explicitly accepted risk, not a verified pass. The Free-plan backup limitation is accepted as already documented. The M3/production-readiness STOP remains.
 
@@ -668,7 +668,7 @@ The gate requires all of the following:
 ## 8. Milestone 5 — WYSIWYG Notes and Daily Study Logs
 
 **Goal:** Add private study context beside the timer and a trustworthy generated daily record.
-**Dependencies:** Milestone 4 and M5.2 **Verified**. M5.3 source/hosted work remains separately gated.
+**Dependencies:** Milestone 4 and M5.2 **Verified**. M5.3 source/local work is authorized as of 2026-10-21; hosted work remains separately gated.
 **Contract authority:** [`arch.plan.md`](arch.plan.md) governs; [`CONTEXT.md`](CONTEXT.md) defines domain language, and [`docs/specs/m5-contracts.md`](docs/specs/m5-contracts.md) supplies subordinate implementation detail.
 **Delivery order:** Define all M5 boundaries now, then implement M5.1 → M5.2 → M5.3. Each slice is independently tested and additive.
 
@@ -731,8 +731,10 @@ The gate requires all of the following:
 
 ### M5.3 — Generated Daily Logs and Reflections
 
-**Status:** Not started
-**Dependencies:** M5.2
+**Status:** Implemented—unverified
+**Dependencies:** M5.2 Verified
+
+**Product-owner authorization — 2026-10-21:** Implement the existing roadmap contracts using the current rich-text editor. Defer the Notes editor redesign. Source changes and isolated local validation are authorized; hosted migrations and rollout require a separate decision.
 
 - Add ordered additive Reflection/replay storage keyed by owner and original local-date label. Persist no Daily Log or mutable generated statistics.
 - Add `GET /daily-logs` complete half-open summary ranges capped at 42 days, date detail, and versioned Reflection update returning the Reflection only.
@@ -741,6 +743,19 @@ The gate requires all of the following:
 - Reuse the shared validator/editor primitive; create Reflections only from meaningful text, preserve empty cleared rows and monotonic versions, and apply replay/conflict/privacy rules without force overwrite.
 - Build protected `/daily-logs` calendar and `/daily-logs/{localDate}` detail routes with desktop combined and mobile navigated layouts.
 - Test empty/future days, 42-day boundaries, cross-midnight and DST clipping/counting, timezone override/change, Reflection creation/clear/replay/conflict, Note-reference privacy/deduplication/order, two-user isolation, responsive UI, and accessibility.
+
+**Evidence — 2026-10-21 / isolated local environment**
+
+- Implemented the three documented API routes, generated-only calendar/detail facts, owner/date Reflection storage and replay metadata, and protected desktop/mobile routes. Migration `007_reflections.sql` leaves existing Notes and Time Entries intact. The existing rich-text editor and validator are reused; no editor redesign or hosted action occurred.
+- Integration baseline: `0413c2f80203bcd6f11604869cc9b4acb700b614`. Backend and frontend were implemented in separate worktrees with Herdr Pi agents, then reviewed and integrated by the coordinator.
+- `cd frontend && npm run lint && npm run typecheck && npm test` passed, including 175 tests. A build with non-secret loopback API/Auth configuration passed and included both Daily Logs routes.
+- `cd backend && JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 mvn clean test package` passed: 212 tests, zero failures/errors, 22 expected opt-in PostgreSQL skips.
+- Against disposable loopback PostgreSQL 17.10 only, `ROTRACK_TEST_DATABASE_MODE=apply mvn -Drotrack.postgres.integration=true -Dtest=PostgresMigrationIntegrationTest test` passed on an empty database. Verify mode with `-Dtest='PostgresMigrationIntegrationTest,DailyLogServicePostgresIntegrationTest,NoteServicePostgresIntegrationTest,TimeEntryRepositoryPostgresIntegrationTest'` passed: 22 tests, zero failures/errors, three mode-specific skips. Both runs set the explicit isolated-target acknowledgement and local connection variables.
+- With `ROTRACK_E2E_REQUIRE_AUTH=1`, external local storage states, frontend `http://localhost:15455`, and approved API `http://localhost:15456/api/v1`, `npm run e2e -- authenticated-critical-path.spec.ts m51-notes-api.spec.ts m52-notes-workspace.spec.ts m53-daily-logs.spec.ts --project=chromium` passed 12/12 without skips. This includes signed bearer validation, two-user isolation, DST projection, Reflection replay/conflicts, cross-tab conflict preservation and confirmed reload, autosave/reload, timezone-preserving navigation, mobile error/retry, keyboard operation, and existing tracker/Notes regressions.
+- Real-browser regressions first failed for missing mobile retry, timezone resets, missing app navigation, and overlapping mobile header controls. PostgreSQL replay equality first failed for nanosecond/microsecond timestamp drift. Focused regressions and the full browser suite passed after the fixes. The initial backend service implementation did not capture a separate pre-implementation failing-service run; controller and integration regression failures are recorded instead.
+- Native Chrome desktop/mobile screenshots were inspected and their saved artifacts verified outside the repository. Migration ordering and `git diff --check` passed. Independent standards/spec review results are recorded after review below.
+- **Remaining acceptance boundary:** Existing real Supabase storage states are expired. The browser runs used locally issued ES256 test JWTs and a loopback JWKS fixture with the real Spring API, dedicated runtime database role, and disposable PostgreSQL. This proves local integration, not fresh Supabase sign-in/token issuance. M5.3 remains Implemented—unverified until that external acceptance is refreshed. Hosted migration/rollout is not authorized.
+- **Separate existing dependency issue:** `npm audit --json` reports 45 findings, including 13 high and one critical. Package manifests and the lockfile are unchanged from the integration baseline. Dependency remediation and hosted CI are not claimed as passed.
 
 **Milestone gate:** Focused source/database suites pass, and authenticated local browser acceptance with two users proves ownership, autosave/reload, attachment/detachment, idempotency, cross-tab conflicts, Daily Log/DST correctness, private payload/log omission, responsive layouts, keyboard operation, and accessible states. M5.3 hosted rollout requires a separate product-owner decision and release evidence.
 
@@ -844,4 +859,4 @@ Append evidence beneath the completed task; do not create unsupported global che
 
 ## 13. Next Action
 
-M5.2 is Verified. Decide and authorize M5.3 source work before implementation; M5.3 hosted work and broad production-readiness claims remain unauthorized, and unresolved M3 risks stay recorded above.
+Refresh external disposable Supabase acceptance for the implemented M5.3 source before marking it Verified. Resolve the separately recorded dependency audit findings before claiming a green release pipeline. Keep the current editor. M5.3 hosted work and broad production-readiness claims remain unauthorized, and unresolved M3 risks stay recorded above.
