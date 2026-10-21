@@ -185,7 +185,7 @@ type ClipboardNode = {
   content?: ClipboardNode[];
 };
 
-function richTextToHtml(document: RichTextDocument): string {
+export function richTextToHtml(document: RichTextDocument): string {
   const render = (node: ClipboardNode): string => {
     if (node.type === "text") {
       let text = escapeHtml(node.text ?? "");

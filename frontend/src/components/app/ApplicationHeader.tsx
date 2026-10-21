@@ -10,6 +10,7 @@ const links = [
   { href: "/tracker", label: "tracker" },
   { href: "/history", label: "history" },
   { href: "/notes", label: "notes" },
+  { href: "/daily-logs", label: "daily logs" },
   { href: "/settings", label: "settings" },
 ] as const;
 
@@ -23,7 +24,7 @@ export function ApplicationHeader() {
           rotrack<span className="text-[var(--rt-orange)]">.</span>
         </Link>
         <nav aria-label="Application" className="flex min-w-0 items-center justify-end gap-0.5">
-          {links.map((link) => pathname === link.href ? (
+          {links.map((link) => pathname === link.href || pathname.startsWith(`${link.href}/`) ? (
             <span key={link.href} aria-current="page" className="flex h-8 items-center rounded-full bg-[var(--rt-cream-soft)] px-1.5 text-[0.6rem] font-semibold sm:px-2.5 sm:text-xs md:px-3">
               {link.label}
             </span>

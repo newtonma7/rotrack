@@ -106,6 +106,28 @@ sets `ROTRACK_E2E_REQUIRE_SIGNUP=1`; the full confirmation/sign-in acceptance ad
 HTML and failure artifacts are ignored by Git; treat them as sensitive
 operational output and remove them according to the CI retention policy.
 
+## M5.3 local Daily Logs acceptance
+
+`m53-daily-logs.spec.ts` covers date-range responses across the New York DST
+boundary, stable Reflection creation replay, version conflicts, timezone identity,
+two-user isolation, calendar navigation, and editor autosave/reload. It accepts
+the same external storage-state contract and refuses non-loopback targets. The
+coordinator's local signed JWT/JWKS fixture is test infrastructure only; passing
+this spec is not evidence of real Supabase authentication acceptance.
+
+```bash
+ROTRACK_E2E_BASE_URL=http://localhost:15455 \
+ROTRACK_E2E_EXPECTED_API_URL=http://localhost:15456/api/v1 \
+ROTRACK_E2E_USER_A_STORAGE_STATE=/tmp/rotrack-m53-evidence/user-a.json \
+ROTRACK_E2E_USER_B_STORAGE_STATE=/tmp/rotrack-m53-evidence/user-b.json \
+ROTRACK_E2E_REQUIRE_AUTH=1 \
+npm run e2e -- m53-daily-logs.spec.ts --project=chromium
+```
+
+The fixture's Supabase-compatible auth origin is loopback-only. Keep both
+storage states and its tokens outside this checkout; the test writes only to the
+disposable local API/database configured by the coordinator.
+
 ## M5.1 local Notes acceptance
 
 `m51-notes-api.spec.ts` is an authenticated API/browser-boundary acceptance

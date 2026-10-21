@@ -25,6 +25,7 @@ import type {
   NotePage,
   UpdateNoteRequest,
 } from "@/types/notes";
+import type { DailyLog, DailyLogRangeQuery, DailyLogSummaryPage, UpdateReflectionRequest } from "@/types/daily-logs";
 
 // NEXT_PUBLIC_* vars are embedded at build time and visible in the browser — safe for URLs, not secrets.
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ||
@@ -193,6 +194,33 @@ export async function getNote(id: string): Promise<Note> {
 export async function updateNote(id: string, request: UpdateNoteRequest): Promise<Note> {
   return apiFetch<Note>(`/notes/${encodeURIComponent(id)}`, {
     method: "PUT",
+    body: JSON.stringify(request),
+  });
+}
+
+/** Fetches a complete local-date range of generated, owner-private daily summaries. */
+export async function getDailyLogs(query: DailyLogRangeQuery): Promise<DailyLogSummaryPage> {
+  const search = new URLSearchParams({ start: query.start, end: query.end, timeZone: query.timeZone });
+  return apiFetch<DailyLogSummaryPage>(`/daily-logs?${search.toString()}`);
+}
+
+export async function getDailyLog(localDate: string, timeZone: string): Promise<DailyLog> {
+  const search = new URLSearchParams({ timeZone });
+  return apiFetch<DailyLog>(`/daily-logs/${encodeURIComponent(localDate)}?${search.toString()}`);
+}
+
+/** Idempotency key is required for first creation (expectedVersion 0), never for updates. */
+export async function updateReflection(
+  localDate: string,
+  request: UpdateReflectionRequest,
+  idempotencyKey: string | undefined,
+  timeZone: string,
+): Promise<import("@/types/daily-logs").Reflection> {
+  const headers: Record<string, string> = idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {};
+  const search = new URLSearchParams({ timeZone });
+  return apiFetch<import("@/types/daily-logs").Reflection>(`/daily-logs/${encodeURIComponent(localDate)}/reflection?${search.toString()}`, {
+    method: "PUT",
+    headers,
     body: JSON.stringify(request),
   });
 }
