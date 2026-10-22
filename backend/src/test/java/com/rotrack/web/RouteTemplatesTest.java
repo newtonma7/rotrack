@@ -71,6 +71,26 @@ class RouteTemplatesTest {
         assertThat(RouteTemplates.mutation(search)).isEmpty();
     }
 
+    @Test
+    void summaryRoutesNeverLogThePeerHandleBeforeOrAfterControllerMapping() {
+        var summary = request("GET", "/api/v1/social/summaries/private_handle");
+        assertThat(RouteTemplates.resolve(summary)).isEqualTo("/api/v1/social/summaries/{username}");
+        assertThat(RouteTemplates.mutation(summary)).isEmpty();
+        summary.setAttribute(org.springframework.web.servlet.HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE,
+                "/api/v1/social/summaries/{username}");
+        assertThat(RouteTemplates.resolve(summary)).isEqualTo("/api/v1/social/summaries/{username}");
+    }
+
+    @Test
+    void presenceRoutesNeverLogThePeerBeforeOrAfterMapping() {
+        var presence = request("GET", "/api/v1/social/presence/private_handle");
+        assertThat(RouteTemplates.resolve(presence)).isEqualTo(RouteTemplates.STUDY_PRESENCE);
+        assertThat(RouteTemplates.mutation(presence)).isEmpty();
+        presence.setAttribute(org.springframework.web.servlet.HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE,
+                RouteTemplates.STUDY_PRESENCE);
+        assertThat(RouteTemplates.resolve(presence)).isEqualTo(RouteTemplates.STUDY_PRESENCE);
+    }
+
     private MockHttpServletRequest request(String method, String path) {
         MockHttpServletRequest request = new MockHttpServletRequest(method, path);
         request.setServletPath(path);

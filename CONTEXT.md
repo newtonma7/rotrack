@@ -44,6 +44,18 @@ _Avoid_: Daily Log, daily snapshot
 
 ## Social connections
 
+**Study Summary**:
+An opted-in view of a Friend's completed Work total and Study-day Streak, without their private activity details.
+_Avoid_: Dashboard, activity feed
+
+**Study Day**:
+A calendar day in the studying person's saved timezone (UTC when unset) containing at least one whole second of completed Work.
+_Avoid_: Active day, goal met
+
+**Study-day Streak**:
+Consecutive Study Days ending today or yesterday. A bounded lookback can establish only a lower bound for longer streaks.
+_Avoid_: Attendance, goal streak
+
 **Friendship Request**:
 A pending invitation from one person to another to establish a mutual Friendship. It is not permission to view study activity.
 _Avoid_: Friend, follow

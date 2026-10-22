@@ -1,5 +1,16 @@
 # Authenticated Playwright critical path
 
+## M6.3 local presence acceptance
+
+`m63-study-presence.spec.ts` requires two distinct disposable external auth states and loopback frontend/API targets using the environment contract below. It creates an accepted Friendship, verifies the exact boolean/no-store payload, excludes Rot and private labels, exercises opt-in/revocation/block, observes a real 30-second poll, and proves immediate same-origin cross-tab invalidation after explicit tracker start/stop. After the completed poll, it pauses the observer tab's clock so ordinary polling cannot satisfy the start/stop invalidation checks. It restores preferences and removes its friendship/block state. The test stops stale fixture sessions and leaves completed test entries; use only disposable users. Viewport checks cover 320, 390, 768, and 1280 pixels.
+
+```bash
+ROTRACK_E2E_REQUIRE_AUTH=1 npm run e2e -- m63-study-presence.spec.ts --project=chromium
+```
+
+Local signed JWTs exercise the Spring security/database path but do not prove Supabase token issuance. Unit tests cover synthetic hide/show and late-response cleanup; this browser test does not claim OS-level background-tab validation.
+
+
 This suite exercises the real browser → Supabase Auth → Spring API path. It does
 not mock M1.4 dashboard behavior. It verifies Work and Rot mutations,
 reload/navigation/browser-reopen restoration, explicit stop, owner dashboard
@@ -121,6 +132,23 @@ directional blocks, reload persistence, third-user isolation, minimal payloads, 
 and keyboard/responsive controls. It deletes only relationships created by the test and blocks
 between its disposable pair. Local signed JWTs prove the browser/Spring/database path, not
 Supabase token issuance or hosted acceptance. Keep auth states outside the checkout.
+
+## M6.2 local Study Summary acceptance
+
+`m62-study-summaries.spec.ts` requires two distinct disposable users and a loopback frontend, Spring API, and PostgreSQL database. It creates an accepted friendship, toggles the peer's existing Settings sharing preference through the local preferences API, captures and checks the exact three-field summary allowlist and `Cache-Control: no-store`, verifies opt-out returns indistinguishable unavailable UI, then blocks the peer and verifies authorization is revoked. The spec restores the original preference and removes the test relationship/block in `finally`; if interrupted, the operator must clean up that disposable pair manually. Use externally stored auth states only; local signed JWTs exercise the Spring/database boundary, not Supabase token issuance.
+
+The fixture coordinator must seed both storage-state subjects into the disposable database, start local services with migrations applied, and ensure the pair has no pre-existing relationship or block. No hosted URL/database is accepted.
+
+```bash
+ROTRACK_E2E_BASE_URL=http://localhost:<FRONTEND_PORT> \
+ROTRACK_E2E_EXPECTED_API_URL=http://localhost:<API_PORT>/api/v1 \
+ROTRACK_E2E_USER_A_STORAGE_STATE=/tmp/rotrack-m62/user-a.json \
+ROTRACK_E2E_USER_B_STORAGE_STATE=/tmp/rotrack-m62/user-b.json \
+ROTRACK_E2E_REQUIRE_AUTH=1 \
+npm run e2e -- m62-study-summaries.spec.ts --project=chromium
+```
+
+Keep state files, service logs, and Playwright artifacts outside source control; remove them and the disposable fixture after the run. The coordinator owns the fresh fixture/browser execution for this handoff.
 
 ## M5.3 local Daily Logs acceptance
 

@@ -1,8 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { searchUsers, getFriends, getFriendRequests, getBlocks, requestFriend, acceptFriendRequest, deleteFriendRequest, removeFriend, blockUser, unblockUser } from "@/lib/api";
+import { searchUsers, getFriends, getFriendRequests, getBlocks, requestFriend, acceptFriendRequest, deleteFriendRequest, removeFriend, blockUser, unblockUser, getStudySummary } from "@/lib/api";
 
 vi.mock("@/lib/supabase/client", () => ({ supabase: { auth: { getSession: vi.fn().mockResolvedValue({ data: { session: { access_token: "token", expires_at: Math.floor(Date.now() / 1000) + 3600 } } }), refreshSession: vi.fn() } } }));
 describe("friendship API", () => {
+  it("reads only the allowlisted study summary for an encoded username", async () => {
+    const summary = { workSeconds: 12_345, studyDayStreak: 7, streakCapped: true };
+    const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ data: summary })));
+    await expect(getStudySummary("al/ice")).resolves.toEqual(summary);
+    expect(fetch).toHaveBeenCalledWith("http://localhost:8080/api/v1/social/summaries/al%2Fice", expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer token" }) }));
+  });
   beforeEach(() => vi.restoreAllMocks());
   it("encodes queries and opaque cursors without sending a viewer identity", async () => {
     const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response(JSON.stringify({ data: { items: [], nextCursor: null } })));
