@@ -12,6 +12,10 @@ import { requestAppNavigation } from "@/lib/navigation-guard";
 import { getBrowserTimeZone } from "@/lib/timezone";
 import type { DailyLog, DailyLogSummaryPage, Reflection } from "@/types/daily-logs";
 
+type QueryState =
+  | { key: string; status: "loading" | "ready" }
+  | { key: string; status: "error"; message: string };
+
 function today(timeZone: string): string {
   return localDateInTimeZone(new Date(), timeZone);
 }
@@ -28,13 +32,23 @@ export function DailyLogsExperience({
   const [timeZone, setTimeZone] = useState(initialTimeZone ?? getBrowserTimeZone());
   const currentTimeZone = useRef(timeZone);
   const [timeZoneReady, setTimeZoneReady] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(
-    routeDate && isCanonicalLocalDate(routeDate) ? routeDate : today(getBrowserTimeZone()),
-  );
+  const [selection, setSelection] = useState({
+    routeDate,
+    date: routeDate && isCanonicalLocalDate(routeDate) ? routeDate : today(getBrowserTimeZone()),
+  });
+  if (selection.routeDate !== routeDate) {
+    setSelection({ routeDate, date: routeDate && isCanonicalLocalDate(routeDate) ? routeDate : selection.date });
+  }
+  const setSelectedDate = (date: string) => setSelection({ routeDate, date });
   const [summaries, setSummaries] = useState<DailyLogSummaryPage | null>(null);
   const [dailyLog, setDailyLog] = useState<DailyLog | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const selectedDateLabel = routeDate && pathname !== "/daily-logs" ? routeDate : selection.date;
+  const queryKey = `${selectedDateLabel}:${timeZone}`;
+  const [query, setQuery] = useState<QueryState>({ key: queryKey, status: "loading" });
+  if (query.key !== queryKey) setQuery({ key: queryKey, status: "loading" });
+  const [resolvedQuery, setResolvedQuery] = useState<string | null>(null);
+  const error = query.key === queryKey && query.status === "error" ? query.message : null;
+  const loading = !timeZoneReady || query.key !== queryKey || query.status === "loading";
   const timeZoneChangedByUser = useRef(false);
   const dateSelectedByUser = useRef(false);
   const requestSequence = useRef(0);
@@ -47,7 +61,7 @@ export function DailyLogsExperience({
         const savedTimeZone = initialTimeZone ?? preferences.timeZone ?? getBrowserTimeZone();
         const effectiveTimeZone = timeZoneChangedByUser.current ? currentTimeZone.current : savedTimeZone;
         if (!timeZoneChangedByUser.current) { currentTimeZone.current = savedTimeZone; setTimeZone(savedTimeZone); }
-        if (!routeDate && !dateSelectedByUser.current) setSelectedDate(today(effectiveTimeZone));
+        if (!routeDate && !dateSelectedByUser.current) setSelection({ routeDate, date: today(effectiveTimeZone) });
         setTimeZoneReady(true);
       })
       .catch(() => {
@@ -55,39 +69,31 @@ export function DailyLogsExperience({
         const browserTimeZone = initialTimeZone ?? getBrowserTimeZone();
         const effectiveTimeZone = timeZoneChangedByUser.current ? currentTimeZone.current : browserTimeZone;
         if (!timeZoneChangedByUser.current) { currentTimeZone.current = browserTimeZone; setTimeZone(browserTimeZone); }
-        if (!routeDate && !dateSelectedByUser.current) setSelectedDate(today(effectiveTimeZone));
+        if (!routeDate && !dateSelectedByUser.current) setSelection({ routeDate, date: today(effectiveTimeZone) });
         setTimeZoneReady(true);
       });
     return () => { active = false; };
   }, [initialTimeZone, routeDate]);
 
-  useEffect(() => {
-    if (routeDate && isCanonicalLocalDate(routeDate)) setSelectedDate(routeDate);
-  }, [routeDate]);
-
-  const selectedDateLabel = routeDate && pathname !== "/daily-logs" ? routeDate : selectedDate;
   const monthDate = useMemo(() => monthStart(selectedDateLabel), [selectedDateLabel]);
   const range = useMemo(() => calendarRange(monthDate), [monthDate]);
 
   const load = useCallback(async () => {
     const requestId = ++requestSequence.current;
-    setLoading(true);
-    setError(null);
-    try {
-      const [summaryPage, detail] = await Promise.all([
-        getDailyLogs({ ...range, timeZone }),
-        getDailyLog(selectedDateLabel, timeZone),
-      ]);
+    await Promise.all([
+      getDailyLogs({ ...range, timeZone }),
+      getDailyLog(selectedDateLabel, timeZone),
+    ]).then(([summaryPage, detail]) => {
       if (requestId !== requestSequence.current) return;
+      setQuery({ key: queryKey, status: "ready" });
+      setResolvedQuery(queryKey);
       setSummaries(summaryPage);
       setDailyLog(detail);
-    } catch (cause) {
+    }).catch((cause: unknown) => {
       if (requestId !== requestSequence.current) return;
-      setError(cause instanceof ApiRequestError ? cause.message : "Daily logs could not be loaded.");
-    } finally {
-      if (requestId === requestSequence.current) setLoading(false);
-    }
-  }, [range, selectedDateLabel, timeZone]);
+      setQuery({ key: queryKey, status: "error", message: cause instanceof ApiRequestError ? cause.message : "Daily logs could not be loaded." });
+    });
+  }, [queryKey, range, selectedDateLabel, timeZone]);
 
   useEffect(() => {
     if (timeZoneReady) void load();
@@ -131,7 +137,7 @@ export function DailyLogsExperience({
     } : current);
   };
 
-  const selectedDetail = dailyLog && dailyLog.localDate === selectedDateLabel ? dailyLog : null;
+  const selectedDetail = dailyLog?.localDate === selectedDateLabel ? dailyLog : null;
   const showCalendarOnMobile = pathname === "/daily-logs";
   const showDetailOnMobile = pathname !== "/daily-logs";
 
@@ -167,7 +173,7 @@ export function DailyLogsExperience({
       {error && (
         <div role="alert" className="mb-5 rounded-2xl border border-[var(--rt-orange)] bg-[var(--rt-orange-soft)] p-4">
           <p>{error}</p>
-          <Button onClick={() => void load()} className="mt-3 rounded-full">Retry</Button>
+          <Button onClick={() => { setQuery({ key: queryKey, status: "loading" }); void load(); }} className="mt-3 rounded-full">Retry</Button>
         </div>
       )}
       {loading && (
@@ -178,7 +184,7 @@ export function DailyLogsExperience({
           <DailyLogCalendar
             monthDate={monthDate}
             range={range}
-            summaries={summaries?.days ?? []}
+            summaries={resolvedQuery === queryKey ? summaries?.days ?? [] : []}
             selectedDate={selectedDateLabel}
             onSelectDate={navigateToDate}
             onMonthChange={changeMonth}
@@ -187,13 +193,16 @@ export function DailyLogsExperience({
           />
         </div>
         <section aria-label={`Daily log for ${selectedDateLabel}`} className={`${showDetailOnMobile ? "" : "hidden lg:block"} min-w-0`}>
-          {selectedDetail && (
-            <DailyLogDetail
-              dailyLog={selectedDetail}
-              onReflectionSaved={handleReflectionSaved}
-              onReload={async () => (await getDailyLog(selectedDateLabel, timeZone)).reflection}
-            />
-          )}
+          {/* Keep the date-owned Reflection editor mounted during timezone projection loads. */}
+          <div hidden={resolvedQuery !== queryKey}>
+            {selectedDetail && (
+              <DailyLogDetail
+                dailyLog={selectedDetail}
+                onReflectionSaved={handleReflectionSaved}
+                onReload={async () => (await getDailyLog(selectedDateLabel, timeZone)).reflection}
+              />
+            )}
+          </div>
         </section>
       </div>
     </main>

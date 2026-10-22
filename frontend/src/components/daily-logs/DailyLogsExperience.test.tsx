@@ -51,6 +51,33 @@ describe("daily log calendar selection", () => {
     await screen.findByRole("heading", { name: "February 2026" });
   });
 
+  it("does not display the previous timezone's projection while a new query is pending", async () => {
+    pathName = "/daily-logs/2026-01-15";
+    render(<DailyLogsExperience localDate="2026-01-15" />);
+    await screen.findByRole("heading", { name: "January 15, 2026" });
+    vi.mocked(getDailyLog).mockImplementation(() => new Promise(() => {}));
+    fireEvent.change(screen.getByRole("combobox", { name: "Timezone" }), { target: { value: "Asia/Tokyo" } });
+    expect(screen.queryByRole("heading", { name: "January 15, 2026" })).toBeNull();
+    expect(screen.getByText("Loading daily logs…")).toBeTruthy();
+  });
+
+  it("retains the date-owned Reflection editor through a timezone load and failure/retry", async () => {
+    pathName = "/daily-logs/2026-01-15";
+    render(<DailyLogsExperience localDate="2026-01-15" />);
+    await screen.findByRole("heading", { name: "January 15, 2026" });
+    const editor = screen.getByLabelText("Reflection content");
+    vi.mocked(getDailyLog).mockRejectedValueOnce(new Error("unavailable"));
+    fireEvent.change(screen.getByRole("combobox", { name: "Timezone" }), { target: { value: "Asia/Tokyo" } });
+    await screen.findByRole("alert");
+    expect(editor.isConnected).toBe(true);
+    expect(screen.queryByRole("heading", { name: "January 15, 2026" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(screen.getByText("Loading daily logs…")).toBeTruthy();
+    await screen.findByRole("heading", { name: "January 15, 2026" });
+    expect(screen.getByLabelText("Reflection content")).toBe(editor);
+    expect(getDailyLog).toHaveBeenLastCalledWith("2026-01-15", "Asia/Tokyo");
+  });
+
   it("ignores a stale date response that resolves after the current selection", async () => {
     pathName = "/daily-logs/2026-08-01";
     const pending = new Map<string, (value: DailyLog) => void>();

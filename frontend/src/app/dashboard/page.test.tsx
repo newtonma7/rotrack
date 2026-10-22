@@ -133,6 +133,8 @@ describe("DashboardPage", () => {
 
     expect((await screen.findByRole("alert")).textContent).toContain("Dashboard unavailable");
     fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+    expect(screen.getByText(/loading your last seven days/i)).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
 
     await waitFor(() => expect(getDashboardStats).toHaveBeenCalledTimes(2));
     expect(await screen.findByText(/nothing tracked yet/i)).toBeTruthy();

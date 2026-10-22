@@ -39,15 +39,15 @@ export function useTimeTracking() {
   const [error, setError] = useState<string | null>(null);
 
   const refreshActive = useCallback(async () => {
-    try {
-      const session = await getActiveSession();
+    await getActiveSession().then((session) => {
       setActiveEntry(session);
+      setElapsed(session ? formatElapsed(session.startTime) : "00:00:00");
       setError(null);
-    } catch (err) {
+    }).catch((err: unknown) => {
       setError(err instanceof Error ? err.message : "Failed to load session");
-    } finally {
+    }).finally(() => {
       setLoading(false);
-    }
+    });
   }, []);
 
   // On first load, ask the backend if a session was left running (e.g. after refresh).
@@ -57,13 +57,9 @@ export function useTimeTracking() {
 
   // Local 1-second ticker — purely cosmetic until stop; server owns the truth.
   useEffect(() => {
-    if (!activeEntry?.startTime) {
-      setElapsed("00:00:00");
-      return;
-    }
+    if (!activeEntry?.startTime) return;
 
     const tick = () => setElapsed(formatElapsed(activeEntry.startTime));
-    tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [activeEntry?.startTime]);
@@ -74,6 +70,7 @@ export function useTimeTracking() {
     try {
       const entry = await startSession(activityType);
       setActiveEntry(entry);
+      setElapsed(formatElapsed(entry.startTime));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start session");
     } finally {
@@ -97,7 +94,7 @@ export function useTimeTracking() {
 
   return {
     activeEntry,
-    elapsed,
+    elapsed: activeEntry ? elapsed : "00:00:00",
     loading,
     error,
     start: handleStart,

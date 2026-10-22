@@ -80,6 +80,8 @@ describe("HistoryPage", () => {
     render(<HistoryPage />);
     expect((await screen.findByRole("alert")).textContent).toContain("History unavailable");
     fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+    expect(screen.getByRole("status").textContent).toMatch(/loading history/i);
+    expect(screen.queryByRole("alert")).toBeNull();
 
     await waitFor(() => expect(getHistory).toHaveBeenCalledTimes(2));
     expect(await screen.findByText(/no completed entries yet/i)).toBeTruthy();

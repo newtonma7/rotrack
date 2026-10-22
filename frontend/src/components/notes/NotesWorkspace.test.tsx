@@ -1,8 +1,8 @@
 /* @vitest-environment jsdom */
 
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { NoteSummary } from "@/types/notes";
+import type { Note, NoteSummary } from "@/types/notes";
 
 const api = vi.hoisted(() => ({
   getNotes: vi.fn(),
@@ -72,6 +72,48 @@ describe("NotesWorkspace", () => {
     render(<NotesWorkspace />);
     await waitFor(() => expect(api.getHistory).toHaveBeenCalledWith("cursor-2"));
     expect(document.querySelector('option[value="entry-2"]')).toBeTruthy();
+  });
+
+  it("owns detail loading and errors by route identity, including a return to the same note", async () => {
+    const note: Note = { ...first, contentJson: { schemaVersion: 1, document: { type: "doc", content: [] } }, contentText: "", contentSchemaVersion: 1 };
+    api.getNote.mockResolvedValueOnce(note);
+    const { rerender } = render(<NotesWorkspace selectedNoteId="note-1" />);
+    await screen.findByDisplayValue("one");
+    api.getNote.mockRejectedValueOnce(new Error("missing second note"));
+    rerender(<NotesWorkspace selectedNoteId="note-2" />);
+    expect(screen.queryByLabelText("Note title")).toBeNull();
+    expect(await screen.findByText("missing second note")).toBeTruthy();
+    rerender(<NotesWorkspace />);
+    expect(screen.getByLabelText("Note title")).toHaveProperty("value", "");
+    expect(screen.queryByText("missing second note")).toBeNull();
+    let resolveNote: (value: Note) => void = () => {};
+    api.getNote.mockReturnValueOnce(new Promise<Note>((resolve) => { resolveNote = resolve; }));
+    rerender(<NotesWorkspace selectedNoteId="note-1" />);
+    expect(screen.getByText("Loading note…")).toBeTruthy();
+    expect(screen.queryByLabelText("Note title")).toBeNull();
+    await act(async () => { resolveNote({ ...note, title: "fresh one" }); });
+    expect(await screen.findByDisplayValue("fresh one")).toBeTruthy();
+  });
+
+  it("ignores stale list results and keeps the draft mounted through filter loads and retry", async () => {
+    render(<NotesWorkspace />);
+    await screen.findByText("one");
+    const title = screen.getByLabelText("Note title");
+    let resolveStale: (value: { notes: NoteSummary[]; nextCursor: null }) => void = () => {};
+    api.getNotes.mockReturnValueOnce(new Promise((resolve) => { resolveStale = resolve; }));
+    fireEvent.click(screen.getByRole("button", { name: "Attached" }));
+    expect(screen.getByText("Loading notes…")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Load more" })).toBeNull();
+    api.getNotes.mockRejectedValueOnce(new Error("standalone unavailable"));
+    fireEvent.click(screen.getByRole("button", { name: "Standalone" }));
+    await screen.findByText("standalone unavailable");
+    await act(async () => { resolveStale({ notes: [second], nextCursor: null }); });
+    expect(screen.queryByText("two")).toBeNull();
+    api.getNotes.mockResolvedValueOnce({ notes: [first], nextCursor: null });
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(screen.getByText("Loading notes…")).toBeTruthy();
+    await screen.findByText("one");
+    expect(screen.getByLabelText("Note title")).toBe(title);
   });
 
   it("passes attachment filters to the typed list API", async () => {

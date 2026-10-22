@@ -38,9 +38,6 @@ export function ActiveTracker() {
   const loadNotes = useCallback(async (cursor?: string, preserveCurrent = false) => {
     const requestId = ++notesRequestSequence.current;
     const mutationGeneration = notesMutationGeneration.current;
-    if (cursor) setNotesLoadingMore(true);
-    else setNotesLoading(true);
-    setNotesError(null);
     try {
       const page = await getNotes(cursor ? { cursor } : {});
       if (requestId !== notesRequestSequence.current) return;
@@ -63,8 +60,16 @@ export function ActiveTracker() {
     }
   }, []);
 
+  const refreshNotes = async (cursor?: string, preserveCurrent = false) => {
+    if (cursor) setNotesLoadingMore(true);
+    else setNotesLoading(true);
+    setNotesError(null);
+    await loadNotes(cursor, preserveCurrent);
+  };
+
   useEffect(() => {
     void loadNotes();
+    return () => { notesRequestSequence.current += 1; };
   }, [loadNotes]);
 
   useEffect(() => {
@@ -143,7 +148,7 @@ export function ActiveTracker() {
     try {
       await deleteNote(note.id, note.version);
       notesMutationGeneration.current += 1;
-      await loadNotes();
+      await refreshNotes();
       ++selectionSequence.current;
       setSelectedNote(null);
       setSelectedNoteId(null);
@@ -174,7 +179,7 @@ export function ActiveTracker() {
     setNotes((current) => mergeSummaries([saved, ...current]));
     setSelectedNoteId(saved.id);
     setSelectedNote(saved);
-    if (!notesLoading) void loadNotes(undefined, true);
+    if (!notesLoading) void refreshNotes(undefined, true);
   };
 
   const isActive = Boolean(activeEntry);
@@ -219,8 +224,8 @@ export function ActiveTracker() {
               <Button type="button" variant="ghost" aria-label="New note" onClick={() => void startDraft()} disabled={selectionBusy} className="size-7 rounded-full border border-[var(--rt-line)] p-0 text-[var(--rt-ink-muted)]"><span aria-hidden="true" className="text-sm leading-none">+</span></Button>
             </div>
             <div className="mt-5" aria-live="polite">
-              {notesLoading ? <p role="status" className="py-6 text-sm text-[var(--rt-ink-muted)]">Loading notes…</p> : notesError ? <div role="alert" aria-label="Notes error" className="py-4 text-sm"><p>{notesError}</p><Button type="button" variant="outline" onClick={() => void loadNotes()} className="mt-3 rounded-full">Try again</Button></div> : notes.length === 0 ? <p className="py-6 text-sm text-[var(--rt-ink-muted)]">No notes yet. Start a draft beside your timer.</p> : <ul className="space-y-1">{notes.map((summary) => <li key={summary.id}><Button type="button" variant="ghost" disabled={selectionBusy} onClick={() => void selectNote(summary.id)} aria-current={selectedNoteId === summary.id ? "true" : undefined} className={`h-auto w-full rounded-xl px-3 py-2.5 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--rt-orange)] disabled:opacity-60 ${selectedNoteId === summary.id ? "bg-[var(--rt-line)]" : "hover:bg-[var(--rt-line)]/70"}`}><span className="block truncate text-[0.82rem] font-semibold">{summary.title || summary.preview || "untitled note"}</span><span className="mt-1 block truncate text-[0.68rem] font-normal text-[var(--rt-ink-muted)]">{summary.preview || (summary.timeEntryId ? "attached" : "standalone")}</span></Button></li>)}</ul>}
-              {nextCursor && <Button type="button" variant="ghost" onClick={() => void loadNotes(nextCursor)} disabled={notesLoadingMore} className="mt-3 rounded-full px-3">{notesLoadingMore ? "Loading…" : "Load more"}</Button>}
+              {notesLoading ? <p role="status" className="py-6 text-sm text-[var(--rt-ink-muted)]">Loading notes…</p> : notesError ? <div role="alert" aria-label="Notes error" className="py-4 text-sm"><p>{notesError}</p><Button type="button" variant="outline" onClick={() => void refreshNotes()} className="mt-3 rounded-full">Try again</Button></div> : notes.length === 0 ? <p className="py-6 text-sm text-[var(--rt-ink-muted)]">No notes yet. Start a draft beside your timer.</p> : <ul className="space-y-1">{notes.map((summary) => <li key={summary.id}><Button type="button" variant="ghost" disabled={selectionBusy} onClick={() => void selectNote(summary.id)} aria-current={selectedNoteId === summary.id ? "true" : undefined} className={`h-auto w-full rounded-xl px-3 py-2.5 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--rt-orange)] disabled:opacity-60 ${selectedNoteId === summary.id ? "bg-[var(--rt-line)]" : "hover:bg-[var(--rt-line)]/70"}`}><span className="block truncate text-[0.82rem] font-semibold">{summary.title || summary.preview || "untitled note"}</span><span className="mt-1 block truncate text-[0.68rem] font-normal text-[var(--rt-ink-muted)]">{summary.preview || (summary.timeEntryId ? "attached" : "standalone")}</span></Button></li>)}</ul>}
+              {nextCursor && <Button type="button" variant="ghost" onClick={() => void refreshNotes(nextCursor)} disabled={notesLoadingMore} className="mt-3 rounded-full px-3">{notesLoadingMore ? "Loading…" : "Load more"}</Button>}
               <Button type="button" variant="ghost" onClick={() => void startDraft()} disabled={selectionBusy} className="mt-5 block rounded-full px-3 py-2 text-sm text-[var(--rt-ink-muted)] hover:bg-[var(--rt-cream-soft)] hover:text-[var(--rt-ink)]">+ new note</Button>
             </div>
           </aside>

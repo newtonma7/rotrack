@@ -93,6 +93,19 @@ describe("ActiveTracker", () => {
     expect(api.getNotes.mock.calls[0][0]).not.toHaveProperty("localDate");
   });
 
+  it("shows Notes retry loading without resetting the timer or current editor", async () => {
+    api.getNotes.mockRejectedValueOnce(new Error("notes unavailable")).mockResolvedValueOnce({ notes: [summary], nextCursor: null });
+    renderTracker();
+    await screen.findByText("notes unavailable");
+    const mountsBeforeRetry = editor.mounts;
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(screen.getByText("Loading notes…")).toBeTruthy();
+    expect(screen.queryByText("notes unavailable")).toBeNull();
+    expect(screen.getByRole("timer").textContent).toBe("00:12:34");
+    await screen.findByRole("button", { name: /Work plan/ });
+    expect(editor.mounts).toBe(mountsBeforeRetry);
+  });
+
   it("merges a saved Draft with a deferred initial Notes response", async () => {
     let resolveInitial: (page: { notes: NoteSummary[]; nextCursor: null }) => void = () => undefined;
     api.getNotes.mockImplementationOnce(() => new Promise((resolve) => { resolveInitial = resolve; }));

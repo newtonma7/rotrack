@@ -1,8 +1,8 @@
 /* @vitest-environment jsdom */
 
-import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getActiveSession, stopSession } from "@/lib/api";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { getActiveSession, startSession, stopSession } from "@/lib/api";
 import { useTimeTracking } from "@/hooks/useTimeTracking";
 import type { TimeEntry } from "@/types/time-entry";
 
@@ -31,6 +31,28 @@ describe("useTimeTracking", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getActiveSession).mockResolvedValue(null);
+  });
+
+  afterEach(() => { cleanup(); vi.useRealTimers(); });
+
+  it("renders restored elapsed time immediately, ticks, and resets for explicit stop/start", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T11:00:00Z"));
+    vi.mocked(getActiveSession).mockResolvedValue(activeEntry);
+    vi.mocked(stopSession).mockResolvedValue(stoppedEntry);
+    vi.mocked(startSession).mockResolvedValue({ ...activeEntry, id: "entry-2", activityType: "ROT", startTime: "2026-01-01T11:00:01Z" });
+    const { result } = renderHook(() => useTimeTracking());
+    expect(result.current.loading).toBe(true);
+    await act(async () => {});
+    expect(result.current.elapsed).toBe("01:00:00");
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(result.current.elapsed).toBe("01:00:01");
+    await act(async () => { await result.current.stop(); });
+    expect(result.current.elapsed).toBe("00:00:00");
+    await act(async () => { await result.current.start("ROT"); });
+    expect(result.current.elapsed).toBe("00:00:00");
+    expect(startSession).toHaveBeenCalledExactlyOnceWith("ROT");
+    expect(result.current.loading).toBe(false);
   });
 
   it("restores the server-owned active entry on mount", async () => {
