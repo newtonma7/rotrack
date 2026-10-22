@@ -6,6 +6,7 @@ import { acceptFriendRequest, blockUser, deleteFriendRequest, getBlocks, getFrie
 import { ApiRequestError } from "@/lib/api-errors";
 import { Button } from "@/components/ui/button";
 import { FriendSearch } from "@/components/friends/FriendSearch";
+import { StudySummaryControl } from "@/components/friends/StudySummaryControl";
 import { PagedPeople } from "@/components/friends/PagedPeople";
 import type { Relationship } from "@/types/friendships";
 
@@ -50,6 +51,7 @@ export function FriendsExperience() {
 
   function actions(person: Relationship) {
     return <>
+      {view.id === "friends" && <StudySummaryControl key={`${person.username}-${revision}`} username={person.username} />}
       {view.id === "incoming" && <Button disabled={busy} className="rounded-full bg-[var(--rt-ink)] text-[var(--rt-paper)]" aria-label={`Accept ${person.username}`} onClick={() => void mutate(() => acceptFriendRequest(person.id), `You're now friends with @${person.username}.`)}>Accept</Button>}
       <Button variant="outline" disabled={busy} className="rounded-full border-[var(--rt-line)]" aria-label={`${view.id === "friends" ? "Remove" : view.id === "incoming" ? "Decline" : "Cancel request to"} ${person.username}`} onClick={() => {
         if (view.id === "friends") {

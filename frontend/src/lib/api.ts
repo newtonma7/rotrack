@@ -28,6 +28,7 @@ import type {
 import type { DailyLog, DailyLogRangeQuery, DailyLogSummaryPage, UpdateReflectionRequest } from "@/types/daily-logs";
 
 import type { BlockPage, Relationship, RelationshipPage, RequestDirection, UserSearchPage } from "@/types/friendships";
+import type { StudySummary } from "@/types/study-summary";
 
 // NEXT_PUBLIC_* vars are embedded at build time and visible in the browser — safe for URLs, not secrets.
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ||
@@ -109,6 +110,9 @@ export async function getFriendRequests(direction: RequestDirection, cursor?: st
   const query = new URLSearchParams({ direction });
   if (cursor !== undefined) query.set("cursor", cursor);
   return apiFetch<RelationshipPage>(`/friend-requests?${query}`);
+}
+export async function getStudySummary(username: string): Promise<StudySummary> {
+  return apiFetch<StudySummary>(`/social/summaries/${encodeURIComponent(username)}`);
 }
 export async function getBlocks(cursor?: string): Promise<BlockPage> {
   return apiFetch<BlockPage>(`/blocks${cursor === undefined ? "" : `?${new URLSearchParams({ cursor })}`}`);

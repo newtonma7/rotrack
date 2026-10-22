@@ -7,7 +7,8 @@ import * as api from "@/lib/api";
 import { ApiRequestError } from "@/lib/api-errors";
 import type { UserSearchPage } from "@/types/friendships";
 
-vi.mock("@/lib/api", () => ({ getFriends: vi.fn(), getFriendRequests: vi.fn(), getBlocks: vi.fn(), searchUsers: vi.fn(), requestFriend: vi.fn(), acceptFriendRequest: vi.fn(), deleteFriendRequest: vi.fn(), removeFriend: vi.fn(), blockUser: vi.fn(), unblockUser: vi.fn() }));
+vi.mock("@/context/AuthProvider", () => ({ useAuth: () => ({ user: { id: "test-user" } }) }));
+vi.mock("@/lib/api", () => ({ getFriends: vi.fn(), getFriendRequests: vi.fn(), getBlocks: vi.fn(), getStudySummary: vi.fn(), searchUsers: vi.fn(), requestFriend: vi.fn(), acceptFriendRequest: vi.fn(), deleteFriendRequest: vi.fn(), removeFriend: vi.fn(), blockUser: vi.fn(), unblockUser: vi.fn() }));
 const empty = { items: [], nextCursor: null };
 const alice = { id: "relationship-id", username: "alice" };
 beforeEach(() => {
@@ -15,11 +16,36 @@ beforeEach(() => {
   vi.mocked(api.getFriends).mockResolvedValue(empty);
   vi.mocked(api.getFriendRequests).mockResolvedValue(empty);
   vi.mocked(api.getBlocks).mockResolvedValue(empty);
+  vi.mocked(api.getStudySummary).mockResolvedValue({ workSeconds: 0, studyDayStreak: 0, streakCapped: false });
   vi.mocked(api.searchUsers).mockResolvedValue({ items: [] });
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
 
 describe("friendship workspace", () => {
+  it("reveals a friend summary only on request and explains its timezone and completed-work scope", async () => {
+    vi.mocked(api.getFriends).mockResolvedValue({ items: [alice], nextCursor: null });
+    vi.mocked(api.getStudySummary).mockResolvedValue({ workSeconds: 0, studyDayStreak: 365, streakCapped: true });
+    render(<FriendsExperience />);
+    fireEvent.click(await screen.findByRole("button", { name: "Show study summary for alice" }));
+    expect(await screen.findByText("0h 0m work · last 7 days")).toBeTruthy();
+    expect(screen.getByText("365+ study days" )).toBeTruthy();
+    expect(screen.getByText(/friend's saved timezone \(UTC if unset\).*completed Work/i)).toBeTruthy();
+    expect(api.getStudySummary).toHaveBeenCalledWith("alice");
+  });
+
+  it("clears prior summary while refreshing and provides retry for unavailable access", async () => {
+    vi.mocked(api.getFriends).mockResolvedValue({ items: [alice], nextCursor: null });
+    vi.mocked(api.getStudySummary).mockResolvedValueOnce({ workSeconds: 3600, studyDayStreak: 1, streakCapped: false }).mockRejectedValueOnce(new ApiRequestError("Not found", 404, "NOT_FOUND", {})).mockResolvedValue({ workSeconds: 7200, studyDayStreak: 2, streakCapped: false });
+    render(<FriendsExperience />);
+    fireEvent.click(await screen.findByRole("button", { name: "Show study summary for alice" }));
+    expect(await screen.findByText("1h 0m work · last 7 days")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Refresh study summary for alice" }));
+    expect(screen.queryByText("1h 0m work · last 7 days")).toBeNull();
+    expect(await screen.findByText("Summary unavailable.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Retry study summary for alice" }));
+    expect(await screen.findByText("2h 0m work · last 7 days")).toBeTruthy();
+  });
+
   it("shows honest empty states without searching before three characters", async () => {
     render(<FriendsExperience />);
     await screen.findByText(/No friends yet/);

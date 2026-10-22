@@ -122,6 +122,23 @@ and keyboard/responsive controls. It deletes only relationships created by the t
 between its disposable pair. Local signed JWTs prove the browser/Spring/database path, not
 Supabase token issuance or hosted acceptance. Keep auth states outside the checkout.
 
+## M6.2 local Study Summary acceptance
+
+`m62-study-summaries.spec.ts` requires two distinct disposable users and a loopback frontend, Spring API, and PostgreSQL database. It creates an accepted friendship, toggles the peer's existing Settings sharing preference through the local preferences API, captures and checks the exact three-field summary allowlist and `Cache-Control: no-store`, verifies opt-out returns indistinguishable unavailable UI, then blocks the peer and verifies authorization is revoked. The spec restores the original preference and removes the test relationship/block in `finally`; if interrupted, the operator must clean up that disposable pair manually. Use externally stored auth states only; local signed JWTs exercise the Spring/database boundary, not Supabase token issuance.
+
+The fixture coordinator must seed both storage-state subjects into the disposable database, start local services with migrations applied, and ensure the pair has no pre-existing relationship or block. No hosted URL/database is accepted.
+
+```bash
+ROTRACK_E2E_BASE_URL=http://localhost:<FRONTEND_PORT> \
+ROTRACK_E2E_EXPECTED_API_URL=http://localhost:<API_PORT>/api/v1 \
+ROTRACK_E2E_USER_A_STORAGE_STATE=/tmp/rotrack-m62/user-a.json \
+ROTRACK_E2E_USER_B_STORAGE_STATE=/tmp/rotrack-m62/user-b.json \
+ROTRACK_E2E_REQUIRE_AUTH=1 \
+npm run e2e -- m62-study-summaries.spec.ts --project=chromium
+```
+
+Keep state files, service logs, and Playwright artifacts outside source control; remove them and the disposable fixture after the run. The coordinator owns the fresh fixture/browser execution for this handoff.
+
 ## M5.3 local Daily Logs acceptance
 
 `m53-daily-logs.spec.ts` covers date-range responses across the New York DST
