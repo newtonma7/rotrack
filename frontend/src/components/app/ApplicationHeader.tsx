@@ -11,6 +11,7 @@ const links = [
   { href: "/history", label: "history" },
   { href: "/notes", label: "notes" },
   { href: "/daily-logs", label: "daily logs" },
+  { href: "/friends", label: "friends" },
   { href: "/settings", label: "settings" },
 ] as const;
 
@@ -23,9 +24,9 @@ export function ApplicationHeader() {
         <Link href="/" className="shrink-0 font-display text-xl tracking-[-0.04em]">
           rotrack<span className="text-[var(--rt-orange)]">.</span>
         </Link>
-        <nav aria-label="Application" className="order-last flex w-full min-w-0 items-center justify-between gap-0.5 sm:order-none sm:ml-auto sm:w-auto sm:justify-end">
+        <nav aria-label="Application" className="order-last grid w-full min-w-0 grid-cols-4 items-center gap-0.5 sm:order-none sm:ml-auto sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
           {links.map((link) => pathname === link.href || pathname.startsWith(`${link.href}/`) ? (
-            <span key={link.href} aria-current="page" className="flex h-8 items-center whitespace-nowrap rounded-full bg-[var(--rt-cream-soft)] px-1.5 text-[0.65rem] font-semibold sm:px-2.5 sm:text-xs md:px-3">
+            <span key={link.href} aria-current="page" className="flex h-8 items-center justify-center whitespace-nowrap rounded-full bg-[var(--rt-cream-soft)] px-1.5 text-[0.65rem] font-semibold sm:px-2.5 sm:text-xs md:px-3">
               {link.label}
             </span>
           ) : (

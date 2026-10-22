@@ -1,6 +1,6 @@
 # M6.1 friendship lifecycle and blocking
 
-**Status:** Source/local contract. This work unit implements the database foundation only. The API, search limiter, lifecycle service, and UI below are not yet implemented.
+**Status:** Implemented in source with isolated local validation. Fresh Supabase acceptance and hosted rollout remain unverified and unauthorized for this work unit.
 **Roadmap:** [`todo.md`, M6.1](../../todo.md)
 **Privacy decision:** [ADR-0007](../adr/0007-limit-friend-discovery-to-authenticated-usernames.md)
 
@@ -12,7 +12,7 @@
 - Search excludes the viewer and any peer blocked in either direction. Missing and blocked request targets have the same safe `404 NOT_FOUND` response. No `blockedByPeer` flag or counterpart block list is exposed.
 - M6.2 study summaries and M6.3 presence remain separate slices. Existing sharing preferences do not authorize M6.1 activity projections.
 
-## Planned API contract
+## API contract
 
 Every route is under `/api/v1`. The acting user comes exclusively from the validated JWT `sub`. Clients address peers by canonical username, never by an acting-user field. JSON responses use the existing `{ data: ... }` envelope and errors use the existing sanitized error contract.
 
@@ -51,14 +51,14 @@ Self requests and self blocks return `400 VALIDATION_ERROR`. Missing and foreign
 - Canonical order uses PostgreSQL UUID ordering. Canonical lowercase UUID-string lexical comparison agrees with that ordering; Java's signed `UUID.compareTo` does not for all pairs. Every writer must use the same ordering and tests must include UUIDs on both sides of the signed boundary.
 - Both participants reference `users` with cascading account deletion. The requester must be one of those participants. Self pairs, reversed storage order, duplicate pairs, null/unknown states, and nonparticipant requesters are invalid.
 - `user_blocks`: directional `(blocker_id, blocked_id)` primary key, server creation timestamp, no self-blocks, both users cascading on account deletion. Reciprocal blocks are independent and valid.
-- RLS permits defensive relationship reads only for participants and block reads only for the blocker. No browser DML policy or table privilege is introduced. The existing dedicated API runtime receives table SELECT/DELETE, INSERT on identity/state columns only, and UPDATE on friendship state only. It cannot supply or rewrite creation timestamps, update participant/requester identity, or update blocks in place. PostgreSQL defaults own creation time; a trigger owns friendship update time. Future ORM mappings must omit both friendship timestamp columns from INSERT/UPDATE and the block timestamp from INSERT. Ownership remains enforced by the service because the runtime role bypasses RLS.
+- RLS permits defensive relationship reads only for participants and block reads only for the blocker. No browser DML policy or table privilege is introduced. The existing dedicated API runtime receives table SELECT/DELETE, INSERT on identity/state columns only, and UPDATE on friendship state only. It cannot supply or rewrite creation timestamps, update participant/requester identity, or update blocks in place. PostgreSQL defaults own creation time; a trigger owns friendship update time. The SQL repository omits all timestamp columns from writes. Any future ORM mapping must preserve that restriction. Ownership remains enforced by the service because the runtime role bypasses RLS.
 - Participant-list and request lookups need indexed participant/state/creation order. Block primary/reverse indexes support either-direction eligibility checks. Avoid a redundant index duplicating a primary or unique key.
 
-The schema foundation does **not** implement block cleanup or cross-table lifecycle eligibility. Before any relationship or block mutation, the future service must obtain one transaction-scoped lock for the canonical pair, then re-read eligibility and mutate. Use a stable pair-scoped PostgreSQL advisory-lock key derived identically for both directions. Hash collisions may serialize unrelated pairs but must never weaken correctness. Acquire this lock before any relationship/block row lock or write to avoid lock-order inversion. Database uniqueness remains authoritative for duplicate pairs. Tests must exercise reversed concurrent requests, request-versus-block, accept-versus-block, reciprocal blocks, and retry outcomes before the lifecycle is accepted.
+The schema alone does **not** implement block cleanup or cross-table lifecycle eligibility. `FriendshipService` owns the transaction and lifecycle rules; `FriendshipRepository` uses explicit parameterized SQL for persistence and minimal projections. Before any relationship or block mutation, the service obtains a transaction-scoped advisory lock for the canonical pair, then re-reads eligibility. The key is PostgreSQL `hashtextextended(lowUuid + ':' + highUuid, 61)`, identical in both directions. Hash collisions only serialize unrelated pairs. The pair lock precedes every relationship/block row lock or write. ID-based transitions first perform an ownership-scoped nonlocking read to identify the pair, then repeat that read after acquiring the pair lock. Database uniqueness remains authoritative for duplicate pairs. Tests cover reversed concurrent requests, request-versus-block, accept-versus-block, reciprocal blocks, and retry outcomes. Two deterministic waiter tests prove that requests and accepts wait for the pair lock and re-read after committed block cleanup.
 
 M7 invitations do not exist yet. Do not create a speculative invitation table or no-op deletion adapter. When M7 introduces invitations, extend this same transactional block boundary to remove pairwise invitations while preserving third-party group ownership/membership.
 
-## Planned UI and acceptance
+## UI and acceptance
 
 Protected `/friends` provides accepted Friends, incoming/outgoing requests, username search, and the viewer's block list. Controls offer request, accept, decline/cancel, remove, block, and unblock with explicit destructive confirmation for block/removal. Empty/loading/error/waiting states, keyboard operation, responsive layouts, and accessible result announcements are required. Refresh relationship lists after transitions and suppress stale search results.
 

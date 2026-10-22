@@ -26,9 +26,18 @@ public final class RouteTemplates {
     public static final String DAILY_LOGS = "/api/v1/daily-logs";
     public static final String DAILY_LOG = "/api/v1/daily-logs/{localDate}";
     public static final String DAILY_LOG_REFLECTION = "/api/v1/daily-logs/{localDate}/reflection";
+    public static final String USER_SEARCH = "/api/v1/users/search";
+    public static final String FRIENDS = "/api/v1/friends";
+    public static final String FRIEND = "/api/v1/friends/{id}";
+    public static final String REQUESTS = "/api/v1/friend-requests";
+    public static final String REQUEST = "/api/v1/friend-requests/{id}";
+    public static final String ACCEPT = "/api/v1/friend-requests/{id}/accept";
+    public static final String BLOCKS = "/api/v1/blocks";
+    public static final String BLOCK = "/api/v1/blocks/{username}";
     private static final String UNMATCHED = "/unmatched";
     private static final Set<String> ALLOWED_TEMPLATES = Set.of(
-            HEALTH, READINESS, START, COLLECTION, HISTORY, ACTIVE, ENTRY, STOP, DASHBOARD_STATS, PREFERENCES, NOTES, NOTE, DAILY_LOGS, DAILY_LOG, DAILY_LOG_REFLECTION
+            HEALTH, READINESS, START, COLLECTION, HISTORY, ACTIVE, ENTRY, STOP, DASHBOARD_STATS, PREFERENCES, NOTES, NOTE, DAILY_LOGS, DAILY_LOG, DAILY_LOG_REFLECTION,
+            USER_SEARCH, FRIENDS, FRIEND, REQUESTS, REQUEST, ACCEPT, BLOCKS, BLOCK
     );
 
     private RouteTemplates() {
@@ -51,9 +60,13 @@ public final class RouteTemplates {
                 path = path.substring(0, suffixStart);
             }
         }
-        if (Set.of(HEALTH, READINESS, START, COLLECTION, HISTORY, ACTIVE, DASHBOARD_STATS, PREFERENCES, NOTES, DAILY_LOGS).contains(path)) {
+        if (Set.of(HEALTH, READINESS, START, COLLECTION, HISTORY, ACTIVE, DASHBOARD_STATS, PREFERENCES, NOTES, DAILY_LOGS, USER_SEARCH, FRIENDS, REQUESTS, BLOCKS).contains(path)) {
             return path;
         }
+        if (path != null && path.matches("/api/v1/friend-requests/[^/]+/accept")) return ACCEPT;
+        if (path != null && path.matches("/api/v1/friend-requests/[^/]+")) return REQUEST;
+        if (path != null && path.matches("/api/v1/friends/[^/]+")) return FRIEND;
+        if (path != null && path.matches("/api/v1/blocks/[^/]+")) return BLOCK;
         // Match the route shape before validating dates so malformed labels cannot bypass
         // authenticated save budgets or the pre-deserialization body cap.
         if (path != null && path.matches("/api/v1/daily-logs/[^/]+/reflection")) return DAILY_LOG_REFLECTION;
@@ -72,6 +85,12 @@ public final class RouteTemplates {
 
     public static Optional<MutationRoute> mutation(HttpServletRequest request) {
         String route = resolve(request);
+        if ("POST".equals(request.getMethod()) && (REQUESTS.equals(route) || ACCEPT.equals(route)))
+            return Optional.of(new MutationRoute("POST", route));
+        if (BLOCK.equals(route) && ("PUT".equals(request.getMethod()) || "DELETE".equals(request.getMethod())))
+            return Optional.of(new MutationRoute(request.getMethod(), route));
+        if ("DELETE".equals(request.getMethod()) && (FRIEND.equals(route) || REQUEST.equals(route)))
+            return Optional.of(new MutationRoute("DELETE", route));
         if ("POST".equals(request.getMethod()) && (START.equals(route) || COLLECTION.equals(route) || NOTES.equals(route))) {
             return Optional.of(new MutationRoute("POST", route));
         }

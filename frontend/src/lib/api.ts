@@ -27,6 +27,8 @@ import type {
 } from "@/types/notes";
 import type { DailyLog, DailyLogRangeQuery, DailyLogSummaryPage, UpdateReflectionRequest } from "@/types/daily-logs";
 
+import type { BlockPage, Relationship, RelationshipPage, RequestDirection, UserSearchPage } from "@/types/friendships";
+
 // NEXT_PUBLIC_* vars are embedded at build time and visible in the browser — safe for URLs, not secrets.
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ||
   (process.env.NODE_ENV !== "production" ? "http://localhost:8080/api/v1" : "");
@@ -95,6 +97,39 @@ async function apiFetch<T>(
   if (response.status === 204) return undefined as T;
   const json = (await response.json()) as ApiResponse<T>;
   return json.data;
+}
+
+export async function searchUsers(query: string): Promise<UserSearchPage> {
+  return apiFetch<UserSearchPage>(`/users/search?${new URLSearchParams({ q: query })}`);
+}
+export async function getFriends(cursor?: string): Promise<RelationshipPage> {
+  return apiFetch<RelationshipPage>(`/friends${cursor === undefined ? "" : `?${new URLSearchParams({ cursor })}`}`);
+}
+export async function getFriendRequests(direction: RequestDirection, cursor?: string): Promise<RelationshipPage> {
+  const query = new URLSearchParams({ direction });
+  if (cursor !== undefined) query.set("cursor", cursor);
+  return apiFetch<RelationshipPage>(`/friend-requests?${query}`);
+}
+export async function getBlocks(cursor?: string): Promise<BlockPage> {
+  return apiFetch<BlockPage>(`/blocks${cursor === undefined ? "" : `?${new URLSearchParams({ cursor })}`}`);
+}
+export async function requestFriend(username: string): Promise<Relationship> {
+  return apiFetch<Relationship>("/friend-requests", { method: "POST", body: JSON.stringify({ username }) });
+}
+export async function acceptFriendRequest(id: string): Promise<Relationship> {
+  return apiFetch<Relationship>(`/friend-requests/${encodeURIComponent(id)}/accept`, { method: "POST" });
+}
+export async function deleteFriendRequest(id: string): Promise<void> {
+  await apiFetch<null>(`/friend-requests/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+export async function removeFriend(id: string): Promise<void> {
+  await apiFetch<null>(`/friends/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+export async function blockUser(username: string): Promise<void> {
+  await apiFetch<null>(`/blocks/${encodeURIComponent(username)}`, { method: "PUT" });
+}
+export async function unblockUser(username: string): Promise<void> {
+  await apiFetch<null>(`/blocks/${encodeURIComponent(username)}`, { method: "DELETE" });
 }
 
 /** Start a new active session — backend rejects if another session is already open. */

@@ -40,6 +40,7 @@ public final class StructuredRequestLoggingFilter extends OncePerRequestFilter {
             "CONFLICT",
             "CONSTRAINT_VIOLATION",
             "FORBIDDEN",
+            "FRIENDSHIP_CONFLICT",
             "INTERNAL_ERROR",
             "INVALID_PARAMETER",
             "INVALID_CURSOR",

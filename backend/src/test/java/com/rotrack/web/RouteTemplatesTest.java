@@ -51,6 +51,26 @@ class RouteTemplatesTest {
                 .contains(new RouteTemplates.MutationRoute("DELETE", RouteTemplates.ENTRY));
     }
 
+    @Test
+    void socialMutationsShareTheBudgetWithoutLoggingIdsOrHandles() {
+        for (String[] route : new String[][] {
+                {"POST", "/api/v1/friend-requests", RouteTemplates.REQUESTS},
+                {"POST", "/api/v1/friend-requests/not-a-uuid/accept", RouteTemplates.ACCEPT},
+                {"DELETE", "/api/v1/friend-requests/not-a-uuid", RouteTemplates.REQUEST},
+                {"DELETE", "/api/v1/friends/not-a-uuid", RouteTemplates.FRIEND},
+                {"PUT", "/api/v1/blocks/private_handle", RouteTemplates.BLOCK},
+                {"DELETE", "/api/v1/blocks/private_handle", RouteTemplates.BLOCK}
+        }) {
+            var request = request(route[0], route[1]);
+            assertThat(RouteTemplates.resolve(request)).isEqualTo(route[2]);
+            assertThat(RouteTemplates.mutation(request)).contains(new RouteTemplates.MutationRoute(route[0], route[2]));
+            assertThat(RouteTemplates.isNoteMutation(request)).isFalse();
+        }
+        var search = request("GET", "/api/v1/users/search");
+        assertThat(RouteTemplates.resolve(search)).isEqualTo(RouteTemplates.USER_SEARCH);
+        assertThat(RouteTemplates.mutation(search)).isEmpty();
+    }
+
     private MockHttpServletRequest request(String method, String path) {
         MockHttpServletRequest request = new MockHttpServletRequest(method, path);
         request.setServletPath(path);

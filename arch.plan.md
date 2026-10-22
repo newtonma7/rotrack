@@ -38,7 +38,7 @@ This section describes what exists in source control today. It is not a completi
 ### Frontend
 
 - Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4, shadcn/ui primitives, Recharts, and `@supabase/supabase-js`
-- Routes: `/`, `/signin`, `/signup`, `/signup/confirmation`, `/tracker`, `/dashboard`, `/history`, `/settings`, `/notes`, `/notes/{id}`, `/daily-logs`, and `/daily-logs/{localDate}`
+- Routes: `/`, `/signin`, `/signup`, `/signup/confirmation`, `/tracker`, `/dashboard`, `/history`, `/settings`, `/notes`, `/notes/{id}`, `/daily-logs`, `/daily-logs/{localDate}`, and `/friends`
 - Client-side Supabase session context and protected-route layouts
 - API client using native `fetch` and Supabase bearer tokens
 - Tracker UI with start, active-session restore, elapsed display, explicit stop, and an integrated private Notes journal; sessions remain active across reload, navigation, tab changes, minimization, and browser closure until explicitly stopped
@@ -49,7 +49,7 @@ This section describes what exists in source control today. It is not a completi
 
 - Spring Boot 3.4, Java 21 target, Maven, Spring Web, JPA, OAuth2 Resource Server, validation, and PostgreSQL
 - M5.3 source adds generated Daily Log calendar/detail projections and private date-label-owned Reflection updates. Migration `007_reflections.sql` is additive and locally verified only; it has not been applied to hosted data
-- M6.1 source migration `008_friendships.sql` adds a locally tested friendship/block storage foundation. Lifecycle services, username search, social endpoints, and `/friends` UI are not yet implemented; hosted migration is not authorized
+- M6.1 adds `008_friendships.sql`, a pair-serialized transactional lifecycle service, privacy-safe username search with its own limiter, social endpoints, and protected `/friends` UI. Isolated database and local signed-JWT browser checks pass; fresh Supabase acceptance and hosted rollout remain unverified
 - Implemented endpoints: independent liveness/readiness, explicit session lifecycle, dashboard stats, owned preferences GET/PUT, completed-only history/manual-entry routes, and owned Notes CRUD with attachment and optimistic-locking contracts
 - Supabase migrations defining `users`, `time_entries`, `user_preferences`, private `notes` and creation-replay metadata, the `ROT|WORK` enum, ownership RLS policies, signup profile/default-preference creation, timestamp constraints, one-active-session uniqueness, completed-history non-overlap, and reporting indexes
 - Source-controlled suites include executable PostgreSQL migration/repository tests, generated signed-JWT filter tests, service/controller ownership tests, Vitest/RTL coverage, and a quarantined external-auth Playwright critical path that can bind observed browser API responses to an approved API base
@@ -302,7 +302,7 @@ Framework authentication, JSON parsing, validation, domain conflicts, missing re
 ## 7. Frontend Architecture
 
 - Public routes: landing, sign-in, sign-up, confirmation.
-- Protected routes: tracker, dashboard, history, and settings. Notes/logs, friends, and groups remain future routes.
+- Protected routes: tracker, dashboard, history, settings, Notes, Daily Logs, and friends. Groups remain a future slice.
 - After sign-in, redirect to the originally requested protected route when present; otherwise redirect to `/dashboard`.
 - `AuthProvider` owns the Supabase browser session. The API client obtains/refreshes its bearer token and normalizes errors.
 - `useTimeTracking` owns tracker orchestration. Timer display is client-derived, but the API remains authoritative.
@@ -425,14 +425,14 @@ canonical local dates use `YYYY-MM-DD` with years 0001 through 9999.
 
 ### 8.5 Friendships and presence
 
-The source/local M6.1 contract is recorded in [`docs/specs/m6-friendships-contracts.md`](docs/specs/m6-friendships-contracts.md). [ADR-0007](docs/adr/0007-limit-friend-discovery-to-authenticated-usernames.md) permits authenticated Spring-only username discovery, not public profiles or direct browser-table access. Search/lifecycle/API/UI implementation remains pending while the database foundation is developed.
+The source/local M6.1 contract is recorded in [`docs/specs/m6-friendships-contracts.md`](docs/specs/m6-friendships-contracts.md). [ADR-0007](docs/adr/0007-limit-friend-discovery-to-authenticated-usernames.md) permits authenticated Spring-only username discovery, not public profiles or direct browser-table access. The lifecycle API and `/friends` UI are implemented in source. Spring owns all discovery and pair-serialized mutations; the SQL repository omits database-owned timestamps from writes. Local signed-JWT browser validation is not Supabase sign-in or hosted rollout evidence.
 
 Friendships are mutual and use `PENDING` and `ACCEPTED` states. Store one canonical ordered user pair, the requester, and enforce pair uniqueness. Store blocks separately as directional `(blocker_id, blocked_id)` records so a user can block someone without an existing friendship.
 
-- The canonical lowercase username becomes the future public handle. ADR-0007 now permits authenticated username discovery through the future M6.1 Spring API; the current browser-table boundary stays owner-only. Public profiles remain out of scope. Search requires at least three characters, returns a small rate-limited result set, and never searches or exposes email addresses.
+- The canonical lowercase username is the authenticated discovery handle. ADR-0007 permits username discovery through the M6.1 Spring API; the current browser-table boundary stays owner-only. Public profiles remain out of scope. Search requires at least three characters, returns a small rate-limited result set, and never searches or exposes email addresses.
 - Users cannot friend themselves.
 - Duplicate and reversed requests are rejected.
-- Blocking deletes pending/accepted friendship state and pairwise invitations, prevents new direct interaction, and suppresses pairwise activity/presence projections.
+- Blocking atomically deletes pending/accepted friendship state and prevents new direct requests. When M7 introduces invitations, the same transactional boundary must remove pairwise invitations. M6.2/M6.3 must suppress blocked-pair activity/presence projections.
 - Shared study summaries contain only opted-in Work totals and study-day streak. Goal progress may be added only after the goals feature defines its own sharing contract.
 - Rot totals, raw sessions, timestamps, notes, and reflections are never shared.
 - Active presence is a derived boolean: `studying=true` only when an opted-in user has an active `WORK` session.

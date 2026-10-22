@@ -32,7 +32,8 @@ class SafeguardConfigurationTest {
                             .isEqualTo("release-2026-08-08");
                     assertThat(context.getBean(MutationRateLimiter.class)).isNotNull();
                     var registrations = context.getBeansOfType(org.springframework.boot.web.servlet.FilterRegistrationBean.class);
-                    assertThat(registrations).hasSize(2);
+                    assertThat(registrations).hasSize(3);
+                    assertThat(registrations.get("userSearchFilterRegistration").isEnabled()).isFalse();
                     assertThat(registrations.values()).anySatisfy(registration ->
                             assertThat(registration.getOrder())
                                     .isLessThan(org.springframework.boot.autoconfigure.security.SecurityProperties.DEFAULT_FILTER_ORDER)

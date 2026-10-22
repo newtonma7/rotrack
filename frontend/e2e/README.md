@@ -106,6 +106,22 @@ sets `ROTRACK_E2E_REQUIRE_SIGNUP=1`; the full confirmation/sign-in acceptance ad
 HTML and failure artifacts are ignored by Git; treat them as sensitive
 operational output and remove them according to the CI retention policy.
 
+## M6.1 local friendship acceptance
+
+`m61-friendships.spec.ts` requires three distinct disposable users and loopback frontend/API targets.
+Supply `ROTRACK_E2E_USER_C_STORAGE_STATE` in addition to the two states above.
+The fixture usernames must be present in their auth metadata, and the pair must begin without a relationship or block.
+
+```bash
+ROTRACK_E2E_REQUIRE_AUTH=1 npm run e2e -- m61-friendships.spec.ts --project=chromium
+```
+
+The test covers both directions of request/cancel/decline, accept retries, removal confirmation,
+directional blocks, reload persistence, third-user isolation, minimal payloads, search limits,
+and keyboard/responsive controls. It deletes only relationships created by the test and blocks
+between its disposable pair. Local signed JWTs prove the browser/Spring/database path, not
+Supabase token issuance or hosted acceptance. Keep auth states outside the checkout.
+
 ## M5.3 local Daily Logs acceptance
 
 `m53-daily-logs.spec.ts` covers date-range responses across the New York DST

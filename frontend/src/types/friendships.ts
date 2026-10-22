@@ -1,0 +1,9 @@
+export type RelationshipState = "NONE" | "OUTGOING" | "INCOMING" | "FRIEND";
+export type UserSearchResult = { username: string; relationship: RelationshipState };
+export type UserSearchPage = { items: UserSearchResult[] };
+export type Relationship = { id: string; username: string };
+export type PeoplePage<T> = { items: T[]; nextCursor: string | null };
+export type RelationshipPage = PeoplePage<Relationship>;
+export type BlockedUser = { username: string };
+export type BlockPage = PeoplePage<BlockedUser>;
+export type RequestDirection = "incoming" | "outgoing";

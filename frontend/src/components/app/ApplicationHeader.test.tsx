@@ -25,5 +25,6 @@ describe("ApplicationHeader", () => {
     expect(dashboard.className).not.toContain("hidden");
     expect(tracker.className).not.toContain("hidden");
     expect(screen.getByRole("link", { name: /settings/i }).getAttribute("href")).toBe("/settings");
+    expect(screen.getByRole("link", { name: /friends/i }).getAttribute("href")).toBe("/friends");
   });
 });
