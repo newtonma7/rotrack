@@ -7,6 +7,7 @@ import { ApiRequestError } from "@/lib/api-errors";
 import { Button } from "@/components/ui/button";
 import { FriendSearch } from "@/components/friends/FriendSearch";
 import { StudySummaryControl } from "@/components/friends/StudySummaryControl";
+import { StudyPresenceControl } from "@/components/friends/StudyPresenceControl";
 import { PagedPeople } from "@/components/friends/PagedPeople";
 import type { Relationship } from "@/types/friendships";
 
@@ -80,7 +81,8 @@ export function FriendsExperience() {
           <div aria-label="Connection lists" className="flex flex-wrap gap-1 rounded-2xl bg-[var(--rt-cream)] p-1">
             {views.map((item) => <Button key={item.id} variant="ghost" aria-pressed={view.id === item.id} disabled={busy} onClick={() => setView(item)} className={`flex-1 rounded-xl ${view.id === item.id ? "bg-[var(--rt-paper)] text-[var(--rt-ink)] shadow-sm" : "text-[var(--rt-ink-muted)]"}`}>{item.label}</Button>)}
           </div>
-          <PagedPeople key={`${view.id}-${revision}`} load={view.load} revision={revision} label={view.label.toLowerCase()} empty={view.empty} disabled={busy} actions={actions} details={view.id === "friends" ? (person) => <StudySummaryControl username={person.username} /> : undefined} />
+          {view.id === "friends" && <p className="mt-4 text-xs leading-relaxed text-[var(--rt-ink-muted)]">Presence is opt-in and shows only active Work, not whether someone is online. Updates every 30 seconds while this page is visible.</p>}
+          <PagedPeople key={`${view.id}-${revision}`} load={view.load} revision={revision} label={view.label.toLowerCase()} empty={view.empty} disabled={busy} actions={actions} details={view.id === "friends" && !busy ? (person) => <><StudyPresenceControl username={person.username} /><StudySummaryControl username={person.username} /></> : undefined} />
         </section>
         <div className="min-w-0 space-y-6">
           <FriendSearch revision={revision} busy={busy} request={(username) => void mutate(() => requestFriend(username), `Request sent to @${username}.`)} block={block} />

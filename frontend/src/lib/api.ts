@@ -29,6 +29,8 @@ import type { DailyLog, DailyLogRangeQuery, DailyLogSummaryPage, UpdateReflectio
 
 import type { BlockPage, Relationship, RelationshipPage, RequestDirection, UserSearchPage } from "@/types/friendships";
 import type { StudySummary } from "@/types/study-summary";
+import type { StudyPresence } from "@/types/study-presence";
+import { notifyStudyPresenceChanged } from "@/lib/study-presence-events";
 
 // NEXT_PUBLIC_* vars are embedded at build time and visible in the browser — safe for URLs, not secrets.
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ||
@@ -114,6 +116,9 @@ export async function getFriendRequests(direction: RequestDirection, cursor?: st
 export async function getStudySummary(username: string): Promise<StudySummary> {
   return apiFetch<StudySummary>(`/social/summaries/${encodeURIComponent(username)}`);
 }
+export async function getStudyPresence(username: string, signal?: AbortSignal): Promise<StudyPresence> {
+  return apiFetch<StudyPresence>(`/social/presence/${encodeURIComponent(username)}`, { signal, cache: "no-store" });
+}
 export async function getBlocks(cursor?: string): Promise<BlockPage> {
   return apiFetch<BlockPage>(`/blocks${cursor === undefined ? "" : `?${new URLSearchParams({ cursor })}`}`);
 }
@@ -141,17 +146,21 @@ export async function startSession(
   activityType: ActivityType,
   notes?: string
 ): Promise<TimeEntry> {
-  return apiFetch<TimeEntry>("/time-entries/start", {
+  const entry = await apiFetch<TimeEntry>("/time-entries/start", {
     method: "POST",
     body: JSON.stringify({ activityType, notes }),
   });
+  notifyStudyPresenceChanged();
+  return entry;
 }
 
 /** Stop a specific session by id — backend sets end_time; duration is derived from timestamps. */
 export async function stopSession(entryId: string): Promise<TimeEntry> {
-  return apiFetch<TimeEntry>(`/time-entries/${entryId}/stop`, {
+  const entry = await apiFetch<TimeEntry>(`/time-entries/${entryId}/stop`, {
     method: "PUT",
   });
+  notifyStudyPresenceChanged();
+  return entry;
 }
 
 /** Returns the user's open session, or null if none — used to restore UI on page load. */

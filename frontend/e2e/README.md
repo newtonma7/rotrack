@@ -1,5 +1,16 @@
 # Authenticated Playwright critical path
 
+## M6.3 local presence acceptance
+
+`m63-study-presence.spec.ts` requires two distinct disposable external auth states and loopback frontend/API targets using the environment contract below. It creates an accepted Friendship, verifies the exact boolean/no-store payload, excludes Rot and private labels, exercises opt-in/revocation/block, observes a real 30-second poll, and proves immediate same-origin cross-tab invalidation after explicit tracker start/stop. After the completed poll, it pauses the observer tab's clock so ordinary polling cannot satisfy the start/stop invalidation checks. It restores preferences and removes its friendship/block state. The test stops stale fixture sessions and leaves completed test entries; use only disposable users. Viewport checks cover 320, 390, 768, and 1280 pixels.
+
+```bash
+ROTRACK_E2E_REQUIRE_AUTH=1 npm run e2e -- m63-study-presence.spec.ts --project=chromium
+```
+
+Local signed JWTs exercise the Spring security/database path but do not prove Supabase token issuance. Unit tests cover synthetic hide/show and late-response cleanup; this browser test does not claim OS-level background-tab validation.
+
+
 This suite exercises the real browser → Supabase Auth → Spring API path. It does
 not mock M1.4 dashboard behavior. It verifies Work and Rot mutations,
 reload/navigation/browser-reopen restoration, explicit stop, owner dashboard

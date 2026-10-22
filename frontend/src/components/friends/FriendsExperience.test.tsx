@@ -8,7 +8,7 @@ import { ApiRequestError } from "@/lib/api-errors";
 import type { UserSearchPage } from "@/types/friendships";
 
 vi.mock("@/context/AuthProvider", () => ({ useAuth: () => ({ user: { id: "test-user" } }) }));
-vi.mock("@/lib/api", () => ({ getFriends: vi.fn(), getFriendRequests: vi.fn(), getBlocks: vi.fn(), getStudySummary: vi.fn(), searchUsers: vi.fn(), requestFriend: vi.fn(), acceptFriendRequest: vi.fn(), deleteFriendRequest: vi.fn(), removeFriend: vi.fn(), blockUser: vi.fn(), unblockUser: vi.fn() }));
+vi.mock("@/lib/api", () => ({ getFriends: vi.fn(), getFriendRequests: vi.fn(), getBlocks: vi.fn(), getStudySummary: vi.fn(), getStudyPresence: vi.fn(), searchUsers: vi.fn(), requestFriend: vi.fn(), acceptFriendRequest: vi.fn(), deleteFriendRequest: vi.fn(), removeFriend: vi.fn(), blockUser: vi.fn(), unblockUser: vi.fn() }));
 const empty = { items: [], nextCursor: null };
 const alice = { id: "relationship-id", username: "alice" };
 beforeEach(() => {
@@ -17,11 +17,24 @@ beforeEach(() => {
   vi.mocked(api.getFriendRequests).mockResolvedValue(empty);
   vi.mocked(api.getBlocks).mockResolvedValue(empty);
   vi.mocked(api.getStudySummary).mockResolvedValue({ workSeconds: 0, studyDayStreak: 0, streakCapped: false });
+  vi.mocked(api.getStudyPresence).mockResolvedValue({ studying: false });
   vi.mocked(api.searchUsers).mockResolvedValue({ items: [] });
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
 
 describe("friendship workspace", () => {
+  it("polls only accepted Friends and stops when switching to request lists", async () => {
+    vi.mocked(api.getFriends).mockResolvedValue({ items: [alice], nextCursor: null });
+    vi.mocked(api.getFriendRequests).mockResolvedValue({ items: [alice], nextCursor: null });
+    const view = render(<FriendsExperience />);
+    await screen.findByText("Not studying");
+    expect(api.getStudyPresence).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Incoming" }));
+    await screen.findByRole("button", { name: "Accept alice" });
+    expect(screen.queryByLabelText("Study presence for alice")).toBeNull();
+    expect(api.getStudyPresence).toHaveBeenCalledTimes(1);
+    view.unmount();
+  });
   it("reveals a friend summary only on request and explains its timezone and completed-work scope", async () => {
     vi.mocked(api.getFriends).mockResolvedValue({ items: [alice], nextCursor: null });
     vi.mocked(api.getStudySummary).mockResolvedValue({ workSeconds: 0, studyDayStreak: 365, streakCapped: true });

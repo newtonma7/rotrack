@@ -1,7 +1,7 @@
 /* @vitest-environment jsdom */
 
 import { forwardRef, useEffect, useImperativeHandle } from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Note, NoteSummary } from "@/types/notes";
 
@@ -134,14 +134,14 @@ describe("ActiveTracker", () => {
   it("switches selection to a returned Save as new Note", async () => {
     api.getNotes.mockResolvedValue({ notes: [summary], nextCursor: null });
     renderTracker();
-    fireEvent.click(await screen.findByRole("button", { name: /Work plan/ }));
-    await screen.findByRole("button", { name: "Save as new Note" });
-    const mountsBeforeSaveAsNew = editor.mounts;
+    const select = await screen.findByRole("button", { name: /Work plan/ });
+    await act(async () => { fireEvent.click(select); });
+    const editorBeforeSaveAsNew = screen.getByRole("region", { name: "Note editor" });
 
     fireEvent.click(screen.getByRole("button", { name: "Save as new Note" }));
     await waitFor(() => expect(screen.getByText("copied note · entry-1")).toBeTruthy());
     expect(screen.getByRole("button", { name: /copied note/ }).getAttribute("aria-current")).toBe("true");
-    expect(editor.mounts).toBe(mountsBeforeSaveAsNew);
+    expect(screen.getByRole("region", { name: "Note editor" })).toBe(editorBeforeSaveAsNew);
   });
 
   it("keeps timer and Notes failures independent", async () => {

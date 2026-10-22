@@ -35,10 +35,11 @@ public final class RouteTemplates {
     public static final String BLOCKS = "/api/v1/blocks";
     public static final String BLOCK = "/api/v1/blocks/{username}";
     public static final String STUDY_SUMMARY = "/api/v1/social/summaries/{username}";
+    public static final String STUDY_PRESENCE = "/api/v1/social/presence/{username}";
     private static final String UNMATCHED = "/unmatched";
     private static final Set<String> ALLOWED_TEMPLATES = Set.of(
             HEALTH, READINESS, START, COLLECTION, HISTORY, ACTIVE, ENTRY, STOP, DASHBOARD_STATS, PREFERENCES, NOTES, NOTE, DAILY_LOGS, DAILY_LOG, DAILY_LOG_REFLECTION,
-            USER_SEARCH, FRIENDS, FRIEND, REQUESTS, REQUEST, ACCEPT, BLOCKS, BLOCK, STUDY_SUMMARY
+            USER_SEARCH, FRIENDS, FRIEND, REQUESTS, REQUEST, ACCEPT, BLOCKS, BLOCK, STUDY_SUMMARY, STUDY_PRESENCE
     );
 
     private RouteTemplates() {
@@ -69,6 +70,7 @@ public final class RouteTemplates {
         if (path != null && path.matches("/api/v1/friends/[^/]+")) return FRIEND;
         if (path != null && path.matches("/api/v1/blocks/[^/]+")) return BLOCK;
         if (path != null && path.matches("/api/v1/social/summaries/[^/]+")) return STUDY_SUMMARY;
+        if (path != null && path.matches("/api/v1/social/presence/[^/]+")) return STUDY_PRESENCE;
         // Match the route shape before validating dates so malformed labels cannot bypass
         // authenticated save budgets or the pre-deserialization body cap.
         if (path != null && path.matches("/api/v1/daily-logs/[^/]+/reflection")) return DAILY_LOG_REFLECTION;
