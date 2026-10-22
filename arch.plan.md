@@ -1,7 +1,7 @@
 # rotrack Architecture
 
 **Status:** Living architecture and contract document
-**Last reviewed:** 2026-10-21
+**Last reviewed:** 2026-10-22
 **Delivery backlog:** [`todo.md`](todo.md)
 
 ## 1. Purpose and Product Boundaries
@@ -47,7 +47,7 @@ This section describes what exists in source control today. It is not a completi
 
 ### Backend and database
 
-- Spring Boot 3.4, Java 21 target, Maven, Spring Web, JPA, OAuth2 Resource Server, validation, and PostgreSQL
+- Spring Boot 4.1.1, Java 21 target, Maven, Spring MVC, Jackson 3, JPA, OAuth2 Resource Server, validation, and PostgreSQL
 - M5.3 source adds generated Daily Log calendar/detail projections and private date-label-owned Reflection updates. Migration `007_reflections.sql` is additive and locally verified only; it has not been applied to hosted data
 - M6.1 adds `008_friendships.sql`, a pair-serialized transactional lifecycle service, privacy-safe username search with its own limiter, social endpoints, and protected `/friends` UI. Isolated database and local signed-JWT browser checks pass; fresh Supabase acceptance and hosted rollout remain unverified
 - Implemented endpoints: independent liveness/readiness, explicit session lifecycle, dashboard stats, owned preferences GET/PUT, completed-only history/manual-entry routes, and owned Notes CRUD with attachment and optimistic-locking contracts
