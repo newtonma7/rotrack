@@ -2,7 +2,7 @@ package com.rotrack.config;
 
 import com.rotrack.security.NoteRateLimitFilter;
 import com.rotrack.security.NoteRateLimiter;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;

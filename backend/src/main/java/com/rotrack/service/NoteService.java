@@ -1,6 +1,6 @@
 package com.rotrack.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import com.rotrack.config.NoteHmac;
 import com.rotrack.dto.NoteAttachmentFilter;
 import com.rotrack.dto.NoteDTO;

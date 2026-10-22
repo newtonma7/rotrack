@@ -41,3 +41,17 @@ _Avoid_: Daily record, persisted daily snapshot
 **Daily Log Summary**:
 A calendar projection of totals, counts, and meaningful Reflection presence for one local date without private detail content.
 _Avoid_: Daily Log, daily snapshot
+
+## Social connections
+
+**Friendship Request**:
+A pending invitation from one person to another to establish a mutual Friendship. It is not permission to view study activity.
+_Avoid_: Friend, follow
+
+**Friendship**:
+An accepted mutual connection between two people. Study visibility still depends on each person's sharing choices and block state.
+_Avoid_: Follow, pending Friend
+
+**Block**:
+A person's directional refusal of direct interaction with another person. A block in either direction prevents the pair from interacting, but removing one person's block does not remove the other's.
+_Avoid_: Friendship state, hidden Friend

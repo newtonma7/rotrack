@@ -1,10 +1,10 @@
 package com.rotrack.richtext;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -52,7 +52,7 @@ public final class RichTextDocumentValidator {
         String serialized;
         try {
             serialized = mapper.writeValueAsString(canonical);
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalStateException("Could not serialize rich text", exception);
         }
         if (serialized.getBytes(StandardCharsets.UTF_8).length > MAX_BYTES) {
@@ -381,7 +381,7 @@ public final class RichTextDocumentValidator {
     }
 
     private void requireKeys(ObjectNode source, Set<String> allowed, String message) {
-        source.fieldNames().forEachRemaining(field -> {
+        source.propertyNames().forEach(field -> {
             if (!allowed.contains(field)) {
                 throw invalid(message);
             }

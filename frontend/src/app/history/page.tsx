@@ -39,29 +39,33 @@ export default function HistoryPage() {
 
   const loadHistory = useCallback(async () => {
     const requestId = ++requestSequence.current;
-    setLoading(true);
-    setLoadingMore(false);
-    setError(null);
-    try {
-      const [preferences, page] = await Promise.all([getPreferences(), getHistory()]);
+    await Promise.all([getPreferences(), getHistory()]).then(([preferences, page]) => {
       if (requestId !== requestSequence.current) return;
       setTimeZone(preferences.timeZone || browserTimeZone);
       setEntries(page.entries);
       setNextCursor(page.nextCursor);
       setLoadMoreError(null);
       setDeleteError(null);
-    } catch (requestError) {
+    }).catch((requestError: unknown) => {
       if (requestId === requestSequence.current) {
         setError(requestError instanceof Error ? requestError.message : "History could not be loaded.");
       }
-    } finally {
+    }).finally(() => {
       if (requestId === requestSequence.current) setLoading(false);
-    }
+    });
   }, [browserTimeZone]);
 
   useEffect(() => {
     void loadHistory();
+    return () => { requestSequence.current += 1; };
   }, [loadHistory]);
+
+  const refreshHistory = async () => {
+    setLoading(true);
+    setLoadingMore(false);
+    setError(null);
+    await loadHistory();
+  };
 
   const loadMore = async () => {
     if (!nextCursor || loadingMore) return;
@@ -81,7 +85,7 @@ export default function HistoryPage() {
         setLoadMoreError(requestError instanceof Error ? requestError.message : "More history could not be loaded.");
       }
     } finally {
-      setLoadingMore(false);
+      if (requestId === requestSequence.current) setLoadingMore(false);
     }
   };
 
@@ -89,7 +93,7 @@ export default function HistoryPage() {
     if (id) await updateHistoryEntry(id, input);
     else await createHistoryEntry(input);
     // Re-read page one: mutations can move an entry across the keyset boundary.
-    await loadHistory();
+    await refreshHistory();
     setFormEntry(undefined);
   };
 
@@ -102,7 +106,7 @@ export default function HistoryPage() {
     setDeleteError(null);
     try {
       await deleteHistoryEntry(entry.id);
-      await loadHistory();
+      await refreshHistory();
     } catch (requestError) {
       setDeleteError(requestError instanceof Error ? requestError.message : "Entry could not be deleted.");
     } finally {
@@ -134,7 +138,7 @@ export default function HistoryPage() {
           <div role="alert" className="rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-8 md:p-10">
             <p className="font-display text-3xl">history stayed quiet.</p>
             <p className="mt-3 text-[var(--rt-ink-muted)]">{error}</p>
-            <Button onClick={() => void loadHistory()} className="mt-6 rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] shadow-[0_10px_30px_-10px_rgba(236,107,14,0.6)] hover:bg-[var(--rt-orange-deep)]">Try again</Button>
+            <Button onClick={() => void refreshHistory()} className="mt-6 rounded-full bg-[var(--rt-orange)] text-[var(--rt-cream)] shadow-[0_10px_30px_-10px_rgba(236,107,14,0.6)] hover:bg-[var(--rt-orange-deep)]">Try again</Button>
           </div>
         ) : (
           <section aria-label="Completed history" className="space-y-4">

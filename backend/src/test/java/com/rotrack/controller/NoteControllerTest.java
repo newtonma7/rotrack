@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
+import com.rotrack.config.JacksonConfiguration;
 import com.rotrack.config.SecurityConfig;
 import com.rotrack.dto.NoteDTO;
 import com.rotrack.dto.NotePageDTO;
@@ -25,7 +26,7 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -34,7 +35,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(NoteController.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@Import({JacksonConfiguration.class, SecurityConfig.class, GlobalExceptionHandler.class})
 @TestPropertySource(properties = {
         "spring.security.oauth2.resourceserver.jwt.jwk-set-uri=https://example.test/jwks",
         "spring.security.oauth2.resourceserver.jwt.issuer-uri=https://example.test/issuer"
@@ -161,6 +162,26 @@ class NoteControllerTest {
     }
 
     @Test
+    void richTextBodiesRejectUnknownFieldsAndFractionalVersions() throws Exception {
+        var token = jwt().jwt(value -> value.subject(USER.toString()).audience(List.of("authenticated")));
+        String content = "\"contentJson\":{\"schemaVersion\":1,\"document\":{\"type\":\"doc\",\"content\":[]}}";
+
+        mockMvc.perform(post("/api/v1/notes")
+                        .with(token)
+                        .header("Idempotency-Key", KEY.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Title\"," + content + ",\"timeEntryId\":null,\"unexpected\":true}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("MALFORMED_JSON"));
+        mockMvc.perform(put("/api/v1/notes/{id}", KEY)
+                        .with(token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Title\"," + content + ",\"timeEntryId\":null,\"expectedVersion\":1.5}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("MALFORMED_JSON"));
+    }
+
+    @Test
     void omittedExpectedVersionIsValidationErrorWithFieldError() throws Exception {
         mockMvc.perform(delete("/api/v1/notes/{id}", KEY)
                         .with(jwt().jwt(token -> token.subject(USER.toString()).audience(List.of("authenticated")))))
@@ -208,14 +229,15 @@ class NoteControllerTest {
     }
 
     private String taskNoteBody() throws Exception {
-        com.fasterxml.jackson.databind.node.ObjectNode body = (com.fasterxml.jackson.databind.node.ObjectNode) taskDocument(false, "before");
+        tools.jackson.databind.node.ObjectNode body = new tools.jackson.databind.ObjectMapper().createObjectNode();
         body.put("title", "Task");
+        body.set("contentJson", taskDocument(false, "before"));
         body.putNull("timeEntryId");
-        return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(body);
+        return new tools.jackson.databind.ObjectMapper().writeValueAsString(body);
     }
 
-    private com.fasterxml.jackson.databind.JsonNode taskDocument(boolean checked, String text) throws Exception {
-        return new com.fasterxml.jackson.databind.ObjectMapper().readTree("""
+    private tools.jackson.databind.JsonNode taskDocument(boolean checked, String text) throws Exception {
+        return new tools.jackson.databind.ObjectMapper().readTree("""
                 {"schemaVersion":1,"document":{"type":"doc","content":[
                   {"type":"taskList","content":[
                     {"type":"taskItem","attrs":{"checked":%s},"content":[
@@ -229,6 +251,6 @@ class NoteControllerTest {
     private NoteDTO note() {
         return new NoteDTO(UUID.fromString("33333333-3333-4333-8333-333333333333"), "Title", "", null,
                 1, Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z"),
-                new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode(), "", 1);
+                new tools.jackson.databind.ObjectMapper().createObjectNode(), "", 1);
     }
 }

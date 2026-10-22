@@ -1,6 +1,6 @@
 package com.rotrack.richtext;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 
 public record RichTextValue(
         JsonNode contentJson,

@@ -47,6 +47,8 @@ describe("SettingsPage", () => {
 
     expect((await screen.findByRole("alert")).textContent).toContain("Preferences unavailable");
     fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+    expect(screen.getByRole("status").textContent).toMatch(/loading preferences/i);
+    expect(screen.queryByRole("alert")).toBeNull();
 
     await waitFor(() => expect(getPreferences).toHaveBeenCalledTimes(2));
     expect(await screen.findByDisplayValue("America/New_York")).toBeTruthy();

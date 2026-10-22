@@ -93,10 +93,10 @@ export function useNoteAutosave({
 
   const meaningful = useCallback(() => Boolean(titleRef.current.trim() || contentTextRef.current.trim()), []);
 
-  const performSave = useCallback(async (revision = revisionRef.current, retrying = false): Promise<boolean> => {
+  const performSave = useCallback(async function save(revision = revisionRef.current, retrying = false): Promise<boolean> {
     if (inFlightRef.current) {
       await new Promise<void>((resolve) => inFlightWaitersRef.current.push(resolve));
-      return performSave(revisionRef.current);
+      return save(revisionRef.current);
     }
     if (!dirtyRef.current || (!noteRef.current && !meaningful())) return true;
     const validation = validateRichTextDocument(documentRef.current);
@@ -140,7 +140,7 @@ export function useNoteAutosave({
       setDirty(dirtyRef.current);
       if (dirtyRef.current) {
         setStatus("Waiting");
-        timerRef.current = setTimeout(() => void performSave(revisionRef.current), 750);
+        timerRef.current = setTimeout(() => void save(revisionRef.current), 750);
       } else {
         setStatus("Saved");
       }
@@ -158,7 +158,7 @@ export function useNoteAutosave({
         setError("Saving is waiting briefly before trying again.");
         if (!retrying && retryRevisionRef.current !== revision) {
           retryRevisionRef.current = revision;
-          retryRef.current = setTimeout(() => void performSave(revision, true), requestError.retryAfterMs ?? 1000);
+          retryRef.current = setTimeout(() => void save(revision, true), requestError.retryAfterMs ?? 1000);
         }
       } else {
         setStatus("Offline");

@@ -34,18 +34,15 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   const loadStats = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Calendar days only make sense in the user's saved zone; the API converts
-      // these boundaries to authoritative instants and handles DST before aggregating.
-      const preferences = await getPreferences();
-      setStats(await getDashboardStats({ timeZone: preferences.timeZone || browserTimeZone }));
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to load dashboard");
-    } finally {
-      setLoading(false);
-    }
+    // Calendar days use the saved zone; the API handles authoritative DST boundaries.
+    await getPreferences()
+      .then((preferences) => getDashboardStats({ timeZone: preferences.timeZone || browserTimeZone }))
+      .then(setStats)
+      .catch((requestError: unknown) => {
+        setError(requestError instanceof Error ? requestError.message : "Failed to load dashboard");
+      }).finally(() => {
+        setLoading(false);
+      });
   }, [browserTimeZone]);
 
   useEffect(() => {
@@ -69,7 +66,7 @@ export default function DashboardPage() {
         {loading && !stats ? (
           <LoadingState />
         ) : error ? (
-          <ErrorState message={error} onRetry={() => void loadStats()} />
+          <ErrorState message={error} onRetry={() => { setLoading(true); setError(null); void loadStats(); }} />
         ) : stats ? (
           <DashboardContent stats={stats} />
         ) : null}

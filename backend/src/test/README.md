@@ -23,7 +23,7 @@ Choose one target and mode:
 
 - `apply` requires an empty disposable database. It creates a minimal
   `auth.users`/`auth.uid()` test contract only when PostgreSQL does not already
-  provide one, applies checked-in migrations `001` through `006`, proves the
+  provide one, applies checked-in migrations `001` through `008`, proves the
   invariants, and rolls back all DDL and data. Run only the raw migration test,
   because the rollback intentionally leaves no schema for a later Spring context:
 
@@ -38,7 +38,7 @@ Choose one target and mode:
 
   ```bash
   ROTRACK_TEST_DATABASE_MODE=verify mvn -Drotrack.postgres.integration=true \
-    -Dtest='PostgresMigrationIntegrationTest,TimeEntryRepositoryPostgresIntegrationTest,NoteServicePostgresIntegrationTest' test
+    -Dtest='PostgresMigrationIntegrationTest,TimeEntryRepositoryPostgresIntegrationTest,NoteServicePostgresIntegrationTest,DailyLogServicePostgresIntegrationTest,FriendshipStoragePostgresIntegrationTest,FriendshipServicePostgresIntegrationTest' test
   ```
 
 `NoteServicePostgresIntegrationTest` uses the public Note service/repository seam to verify
@@ -46,6 +46,10 @@ non-transactional reads, exactly-one concurrent creation, replay conflicts/delet
 attachment move/detach and Time Entry deletion, history attachment counts, stale versions,
 and ownership. It is intentionally verify-mode only because it needs a committed migrated
 schema.
+
+`FriendshipStoragePostgresIntegrationTest` verifies canonical/unique pairs, request membership/state constraints, directional blocks, account-deletion cascades, defensive RLS, immutable database-owned creation timestamps, and browser/runtime column privileges. It permits only an explicitly isolated loopback target with migrations 001–008 already applied. Probe data, grants, and test-role creation roll back. It does not verify lifecycle API behavior or the UI.
+
+`FriendshipServicePostgresIntegrationTest` covers owned transitions, retries, literal prefix search, keyset pages, block cleanup, reversed requests, request/accept-versus-block races, and reciprocal blocks. Deterministic advisory-lock waiter tests prove post-lock re-reads. This suite also requires an explicitly isolated loopback database. It creates a temporary BYPASSRLS probe role that inherits only migration-owned runtime DML plus profile ID/username reads. The role reproduces the API's separate runtime-role setup without widening timestamp grants. The suite removes its committed fixtures and probe role afterward; its administrator connection needs role-creation permission. Browser acceptance is documented in `frontend/e2e/README.md`.
 
 The role needs enough permission for the selected mode, including temporary
 fixture inserts into `auth.users` and `public.users`. The raw migration test and

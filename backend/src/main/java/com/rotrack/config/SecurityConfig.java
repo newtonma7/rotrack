@@ -1,6 +1,6 @@
 package com.rotrack.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.rotrack.dto.ApiErrorResponse;
 import com.rotrack.security.MutationRateLimitFilter;
 import com.rotrack.security.NoteBodySizeLimitFilter;
@@ -53,7 +53,8 @@ public class SecurityConfig {
             ObjectMapper objectMapper,
             ObjectProvider<NoteBodySizeLimitFilter> noteBodySizeLimitFilter,
             ObjectProvider<MutationRateLimitFilter> mutationRateLimitFilter,
-            ObjectProvider<com.rotrack.security.NoteRateLimitFilter> noteRateLimitFilter
+            ObjectProvider<com.rotrack.security.NoteRateLimitFilter> noteRateLimitFilter,
+            ObjectProvider<com.rotrack.security.UserSearchRateLimitFilter> userSearchRateLimitFilter
     ) throws Exception {
         var authenticationEntryPoint = (org.springframework.security.web.AuthenticationEntryPoint)
                 (request, response, exception) -> {
@@ -95,6 +96,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler)
                 );
 
+        userSearchRateLimitFilter.ifAvailable(filter -> http.addFilterAfter(filter, BearerTokenAuthenticationFilter.class));
         mutationRateLimitFilter.ifAvailable(filter -> http.addFilterAfter(filter, BearerTokenAuthenticationFilter.class));
         noteRateLimitFilter.ifAvailable(rateFilter -> {
             // Count authenticated save attempts before buffering up to the wire limit, then stop oversized bodies before Jackson.

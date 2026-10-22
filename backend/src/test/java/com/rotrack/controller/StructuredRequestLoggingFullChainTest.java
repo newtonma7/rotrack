@@ -9,8 +9,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.rotrack.config.RateLimitConfiguration;
 import com.rotrack.config.SecurityConfig;
 import com.rotrack.dto.TimeEntryDTO;
@@ -26,7 +26,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -64,7 +64,7 @@ class StructuredRequestLoggingFullChainTest {
     @BeforeEach
     void setUp() {
         events = new ArrayList<>();
-        objectMapper = new ObjectMapper().findAndRegisterModules();
+        objectMapper = new ObjectMapper();
         StructuredRequestLoggingFilter loggingFilter = new StructuredRequestLoggingFilter(
                 objectMapper,
                 Clock.systemUTC(),

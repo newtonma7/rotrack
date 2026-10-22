@@ -52,6 +52,7 @@ export const e2eEnvironment = {
     "ROTRACK_E2E_STORAGE_STATE",
   ),
   userBStorageState: externalStorageState("ROTRACK_E2E_USER_B_STORAGE_STATE"),
+  userCStorageState: externalStorageState("ROTRACK_E2E_USER_C_STORAGE_STATE"),
   requireAuth: process.env.ROTRACK_E2E_REQUIRE_AUTH === "1",
 };
 

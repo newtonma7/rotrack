@@ -25,6 +25,9 @@ import type {
   NotePage,
   UpdateNoteRequest,
 } from "@/types/notes";
+import type { DailyLog, DailyLogRangeQuery, DailyLogSummaryPage, UpdateReflectionRequest } from "@/types/daily-logs";
+
+import type { BlockPage, Relationship, RelationshipPage, RequestDirection, UserSearchPage } from "@/types/friendships";
 
 // NEXT_PUBLIC_* vars are embedded at build time and visible in the browser — safe for URLs, not secrets.
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ||
@@ -94,6 +97,39 @@ async function apiFetch<T>(
   if (response.status === 204) return undefined as T;
   const json = (await response.json()) as ApiResponse<T>;
   return json.data;
+}
+
+export async function searchUsers(query: string): Promise<UserSearchPage> {
+  return apiFetch<UserSearchPage>(`/users/search?${new URLSearchParams({ q: query })}`);
+}
+export async function getFriends(cursor?: string): Promise<RelationshipPage> {
+  return apiFetch<RelationshipPage>(`/friends${cursor === undefined ? "" : `?${new URLSearchParams({ cursor })}`}`);
+}
+export async function getFriendRequests(direction: RequestDirection, cursor?: string): Promise<RelationshipPage> {
+  const query = new URLSearchParams({ direction });
+  if (cursor !== undefined) query.set("cursor", cursor);
+  return apiFetch<RelationshipPage>(`/friend-requests?${query}`);
+}
+export async function getBlocks(cursor?: string): Promise<BlockPage> {
+  return apiFetch<BlockPage>(`/blocks${cursor === undefined ? "" : `?${new URLSearchParams({ cursor })}`}`);
+}
+export async function requestFriend(username: string): Promise<Relationship> {
+  return apiFetch<Relationship>("/friend-requests", { method: "POST", body: JSON.stringify({ username }) });
+}
+export async function acceptFriendRequest(id: string): Promise<Relationship> {
+  return apiFetch<Relationship>(`/friend-requests/${encodeURIComponent(id)}/accept`, { method: "POST" });
+}
+export async function deleteFriendRequest(id: string): Promise<void> {
+  await apiFetch<null>(`/friend-requests/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+export async function removeFriend(id: string): Promise<void> {
+  await apiFetch<null>(`/friends/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+export async function blockUser(username: string): Promise<void> {
+  await apiFetch<null>(`/blocks/${encodeURIComponent(username)}`, { method: "PUT" });
+}
+export async function unblockUser(username: string): Promise<void> {
+  await apiFetch<null>(`/blocks/${encodeURIComponent(username)}`, { method: "DELETE" });
 }
 
 /** Start a new active session — backend rejects if another session is already open. */
@@ -193,6 +229,33 @@ export async function getNote(id: string): Promise<Note> {
 export async function updateNote(id: string, request: UpdateNoteRequest): Promise<Note> {
   return apiFetch<Note>(`/notes/${encodeURIComponent(id)}`, {
     method: "PUT",
+    body: JSON.stringify(request),
+  });
+}
+
+/** Fetches a complete local-date range of generated, owner-private daily summaries. */
+export async function getDailyLogs(query: DailyLogRangeQuery): Promise<DailyLogSummaryPage> {
+  const search = new URLSearchParams({ start: query.start, end: query.end, timeZone: query.timeZone });
+  return apiFetch<DailyLogSummaryPage>(`/daily-logs?${search.toString()}`);
+}
+
+export async function getDailyLog(localDate: string, timeZone: string): Promise<DailyLog> {
+  const search = new URLSearchParams({ timeZone });
+  return apiFetch<DailyLog>(`/daily-logs/${encodeURIComponent(localDate)}?${search.toString()}`);
+}
+
+/** Idempotency key is required for first creation (expectedVersion 0), never for updates. */
+export async function updateReflection(
+  localDate: string,
+  request: UpdateReflectionRequest,
+  idempotencyKey: string | undefined,
+  timeZone: string,
+): Promise<import("@/types/daily-logs").Reflection> {
+  const headers: Record<string, string> = idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {};
+  const search = new URLSearchParams({ timeZone });
+  return apiFetch<import("@/types/daily-logs").Reflection>(`/daily-logs/${encodeURIComponent(localDate)}/reflection?${search.toString()}`, {
+    method: "PUT",
+    headers,
     body: JSON.stringify(request),
   });
 }

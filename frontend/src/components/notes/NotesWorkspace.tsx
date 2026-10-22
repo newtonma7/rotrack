@@ -10,45 +10,78 @@ import type { HistoryEntry } from "@/types/history";
 import type { Note, NoteAttachmentFilter, NoteSummary } from "@/types/notes";
 import type { TimeEntry } from "@/types/time-entry";
 
+type ListQueryState =
+  | { key: string; status: "loading" | "ready" }
+  | { key: string; status: "error"; message: string };
+
+type NoteDetailState =
+  | { id: string | null; status: "loading" }
+  | { id: string | null; status: "ready"; note: Note | null }
+  | { id: string | null; status: "error"; message: string };
+
 export function NotesWorkspace({ selectedNoteId = null }: { selectedNoteId?: string | null }) {
   const router = useRouter();
   const editorRef = useRef<NoteEditorHandle>(null);
   const requestSequence = useRef(0);
   const [notes, setNotes] = useState<NoteSummary[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [detail, setDetail] = useState<NoteDetailState>(() => selectedNoteId
+    ? { id: selectedNoteId, status: "loading" }
+    : { id: null, status: "ready", note: null });
+  if (detail.id !== selectedNoteId) {
+    setDetail(selectedNoteId
+      ? { id: selectedNoteId, status: "loading" }
+      : { id: null, status: "ready", note: null });
+  }
+  const selectedNote = detail.id === selectedNoteId && detail.status === "ready" ? detail.note : null;
+  const detailLoading = selectedNoteId !== null && (detail.id !== selectedNoteId || detail.status === "loading");
+  const detailError = detail.id === selectedNoteId && detail.status === "error" ? detail.message : null;
   const [entries, setEntries] = useState<Array<HistoryEntry | TimeEntry>>([]);
   const [attachment, setAttachment] = useState<NoteAttachmentFilter | "ALL">("ALL");
   const [entryFilter, setEntryFilter] = useState("");
-  const [loading, setLoading] = useState(true);
+  const queryKey = `${attachment}:${entryFilter}`;
+  const [query, setQuery] = useState<ListQueryState>({ key: queryKey, status: "loading" });
+  if (query.key !== queryKey) setQuery({ key: queryKey, status: "loading" });
+  const loading = query.key !== queryKey || query.status === "loading";
+  const error = query.key === queryKey && query.status === "error" ? query.message : null;
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [detailError, setDetailError] = useState<string | null>(null);
-  const [detailLoading, setDetailLoading] = useState(Boolean(selectedNoteId));
   const [draftNonce, setDraftNonce] = useState(0);
   const [mobileDraft, setMobileDraft] = useState(false);
 
   const loadList = useCallback(async (cursor?: string) => {
     const requestId = ++requestSequence.current;
-    if (cursor) setLoadingMore(true); else setLoading(true);
-    setError(null);
-    try {
-      const page = await getNotes({
-        cursor,
-        attachment: attachment === "ALL" ? undefined : attachment,
-        timeEntryId: entryFilter || undefined,
-      });
+    await getNotes({
+      cursor,
+      attachment: attachment === "ALL" ? undefined : attachment,
+      timeEntryId: entryFilter || undefined,
+    }).then((page) => {
       if (requestId !== requestSequence.current) return;
+      setQuery({ key: queryKey, status: "ready" });
       setNotes((current) => cursor ? dedupeSummaries([...current, ...page.notes]) : page.notes);
       setNextCursor(page.nextCursor);
-    } catch (requestError) {
-      if (requestId === requestSequence.current) setError(requestError instanceof Error ? requestError.message : "Notes could not be loaded.");
-    } finally {
-      if (requestId === requestSequence.current) { setLoading(false); setLoadingMore(false); }
-    }
-  }, [attachment, entryFilter]);
+    }).catch((requestError: unknown) => {
+      if (requestId === requestSequence.current) setQuery({ key: queryKey, status: "error", message: requestError instanceof Error ? requestError.message : "Notes could not be loaded." });
+    }).finally(() => {
+      if (requestId === requestSequence.current) {
+        setLoadingMore(false);
+      }
+    });
+  }, [attachment, entryFilter, queryKey]);
 
-  useEffect(() => { void loadList(); }, [loadList]);
+  const refreshList = async (cursor?: string) => {
+    if (cursor) {
+      setLoadingMore(true);
+      setQuery({ key: queryKey, status: "ready" });
+    } else {
+      setQuery({ key: queryKey, status: "loading" });
+    }
+    await loadList(cursor);
+  };
+
+  useEffect(() => {
+    void loadList();
+    return () => { requestSequence.current += 1; };
+  }, [loadList]);
 
   useEffect(() => {
     let active = true;
@@ -71,21 +104,12 @@ export function NotesWorkspace({ selectedNoteId = null }: { selectedNoteId?: str
   }, []);
 
   useEffect(() => {
-    if (!selectedNoteId) {
-      setSelectedNote(null);
-      setDetailError(null);
-      setDetailLoading(false);
-      return;
-    }
+    if (!selectedNoteId) return;
     let active = true;
-    setDetailLoading(true);
-    setDetailError(null);
     void getNote(selectedNoteId).then((note) => {
-      if (active) setSelectedNote(note);
+      if (active) setDetail({ id: selectedNoteId, status: "ready", note });
     }).catch((requestError) => {
-      if (active) setDetailError(requestError instanceof Error ? requestError.message : "Note could not be loaded.");
-    }).finally(() => {
-      if (active) setDetailLoading(false);
+      if (active) setDetail({ id: selectedNoteId, status: "error", message: requestError instanceof Error ? requestError.message : "Note could not be loaded." });
     });
     return () => { active = false; };
   }, [selectedNoteId]);
@@ -100,7 +124,7 @@ export function NotesWorkspace({ selectedNoteId = null }: { selectedNoteId?: str
     // Keep the draft editor mounted during its first create so keystrokes that landed
     // during the request cannot be lost to a route/key change. Explicit Save-as-new
     // starts from an existing URL and may switch to the new stable URL safely.
-    if (selectedNoteId === saved.id) setSelectedNote(saved);
+    if (selectedNoteId === saved.id) setDetail({ id: selectedNoteId, status: "ready", note: saved });
     if (selectedNoteId && selectedNoteId !== saved.id) {
       router.replace(`/notes/${saved.id}`);
     }
@@ -128,10 +152,10 @@ export function NotesWorkspace({ selectedNoteId = null }: { selectedNoteId?: str
   const handleDelete = async (note: Note) => {
     try {
       await deleteNote(note.id, note.version);
-      await loadList();
+      await refreshList();
       router.push("/notes");
     } catch (requestError) {
-      setDetailError(requestError instanceof Error ? requestError.message : "Note could not be deleted.");
+      setDetail({ id: selectedNoteId, status: "error", message: requestError instanceof Error ? requestError.message : "Note could not be deleted." });
     }
   };
 
@@ -157,15 +181,15 @@ export function NotesWorkspace({ selectedNoteId = null }: { selectedNoteId?: str
             <label htmlFor="note-entry-filter" className="relative mt-4 block text-sm font-semibold">Exact time entry</label>
             <select id="note-entry-filter" value={entryFilter} onChange={(event) => setEntryFilter(event.target.value)} className="mt-2 w-full rounded-full border border-[var(--rt-line)] bg-[var(--rt-paper)] px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--rt-orange)]"><option value="">All entries</option>{attachmentOptions.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}</select>
             <div className="relative mt-5" aria-live="polite">
-              {loading ? <p role="status" className="py-8 text-sm text-[var(--rt-ink-muted)]">Loading notes…</p> : error ? <div role="alert" className="py-4 text-sm"><p>{error}</p><Button variant="outline" onClick={() => void loadList()} className="mt-3 rounded-full">Try again</Button></div> : notes.length === 0 ? <p className="py-8 text-sm text-[var(--rt-ink-muted)]">No notes match these filters.</p> : <ul className="space-y-2">{notes.map((note) => <li key={note.id}><button type="button" onClick={() => void leaveEditor(`/notes/${note.id}`)} className={`w-full rounded-2xl border p-4 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--rt-orange)] ${selectedNoteId === note.id ? "border-[var(--rt-orange)] bg-[var(--rt-orange-soft)]" : "border-transparent hover:border-[var(--rt-line)] hover:bg-[var(--rt-cream)]"}`}><span className="block truncate font-semibold">{note.title || note.preview || "untitled note"}</span><span className="mt-1 block truncate text-sm text-[var(--rt-ink-muted)]">{note.preview || "empty note"}</span><span className="mt-2 block text-xs text-[var(--rt-ink-muted)]">v{note.version} · {note.timeEntryId ? "attached" : "standalone"}</span></button></li>)}</ul>}
-              {nextCursor && <Button variant="outline" onClick={() => void loadList(nextCursor)} disabled={loadingMore} className="mt-4 w-full rounded-full">{loadingMore ? "Loading…" : "Load more"}</Button>}
+              {loading ? <p role="status" className="py-8 text-sm text-[var(--rt-ink-muted)]">Loading notes…</p> : error ? <div role="alert" className="py-4 text-sm"><p>{error}</p><Button variant="outline" onClick={() => void refreshList()} className="mt-3 rounded-full">Try again</Button></div> : notes.length === 0 ? <p className="py-8 text-sm text-[var(--rt-ink-muted)]">No notes match these filters.</p> : <ul className="space-y-2">{notes.map((note) => <li key={note.id}><button type="button" onClick={() => void leaveEditor(`/notes/${note.id}`)} className={`w-full rounded-2xl border p-4 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--rt-orange)] ${selectedNoteId === note.id ? "border-[var(--rt-orange)] bg-[var(--rt-orange-soft)]" : "border-transparent hover:border-[var(--rt-line)] hover:bg-[var(--rt-cream)]"}`}><span className="block truncate font-semibold">{note.title || note.preview || "untitled note"}</span><span className="mt-1 block truncate text-sm text-[var(--rt-ink-muted)]">{note.preview || "empty note"}</span><span className="mt-2 block text-xs text-[var(--rt-ink-muted)]">v{note.version} · {note.timeEntryId ? "attached" : "standalone"}</span></button></li>)}</ul>}
+              {!loading && !error && nextCursor && <Button variant="outline" onClick={() => void refreshList(nextCursor)} disabled={loadingMore} className="mt-4 w-full rounded-full">{loadingMore ? "Loading…" : "Load more"}</Button>}
             </div>
           </aside>
           <div className={`${!selectedNoteId && !mobileDraft ? "hidden lg:block" : ""} min-w-0`}>
             {(selectedNoteId || mobileDraft) && <Button type="button" variant="ghost" onClick={() => void showLibrary()} className="mb-3 rounded-full lg:hidden">Back to notes</Button>}
             {detailError ? <div role="alert" className="rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-8"><p>{detailError}</p><Button variant="outline" onClick={() => router.push("/notes")} className="mt-4 rounded-full">Back to notes</Button></div> : detailLoading ? <div role="status" className="rounded-[32px] border border-[var(--rt-line)] bg-[var(--rt-paper)] p-8">Loading note…</div> : <NoteEditor key={selectedNote?.id ?? `draft-${draftNonce}`} ref={editorRef} initialNote={selectedNote} attachments={attachmentOptions} onSaved={handleSaved} onDelete={handleDelete} onReload={selectedNote ? async () => {
               const fresh = await getNote(selectedNote.id);
-              setSelectedNote(fresh);
+              setDetail({ id: selectedNoteId, status: "ready", note: fresh });
               return fresh;
             } : undefined} />}
           </div>

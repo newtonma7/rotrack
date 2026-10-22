@@ -1,7 +1,6 @@
 package com.rotrack.observability;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.rotrack.web.RouteTemplates;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -40,6 +39,7 @@ public final class StructuredRequestLoggingFilter extends OncePerRequestFilter {
             "CONFLICT",
             "CONSTRAINT_VIOLATION",
             "FORBIDDEN",
+            "FRIENDSHIP_CONFLICT",
             "INTERNAL_ERROR",
             "INVALID_PARAMETER",
             "INVALID_CURSOR",
@@ -137,7 +137,7 @@ public final class StructuredRequestLoggingFilter extends OncePerRequestFilter {
         }
         try {
             sink.accept(objectMapper.writeValueAsString(event));
-        } catch (JsonProcessingException | RuntimeException exception) {
+        } catch (RuntimeException exception) {
             // The map contains only primitives and constants; this is a last-resort safe failure.
             FALLBACK_LOGGER.error("Structured request event serialization failed");
         }

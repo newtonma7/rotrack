@@ -168,7 +168,7 @@ describe("RichTextEditor", () => {
   it("exposes a filtered, keyboard-operable slash menu only in an empty paragraph", async () => {
     render(<RichTextEditor />);
     const editor = screen.getByLabelText("Note content");
-    expect(editor.getAttribute("role")).toBeNull();
+    expect(screen.getByRole("textbox", { name: "Note content" })).toBe(editor);
     expect(editor.getAttribute("aria-haspopup")).toBe("listbox");
     expect(editor.getAttribute("aria-expanded")).toBe("false");
     expect(editor.getAttribute("aria-controls")).toBeNull();
@@ -177,7 +177,7 @@ describe("RichTextEditor", () => {
     simulateEditorInput("/");
     const menu = await screen.findByRole("listbox", { name: "Insert block" });
     expect(menu.querySelectorAll('[role="option"]')).toHaveLength(7);
-    expect(editor.getAttribute("aria-expanded")).toBe("true");
+    await waitFor(() => expect(editor.getAttribute("aria-expanded")).toBe("true"));
     expect(editor.getAttribute("aria-controls")).toBe("rich-text-slash-menu");
     expect(editor.getAttribute("aria-activedescendant")).toBe("rich-text-slash-option-paragraph");
     expect(menu.className).toContain("max-h-");
