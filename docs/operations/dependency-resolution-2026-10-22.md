@@ -12,7 +12,7 @@ No hosted migration or manual deployment is included.
 
 ## Dependency PR disposition
 
-The lockfile records these versions. Updates supersede the older individual bumps rather than merging overlapping lockfiles.
+The lockfile records these versions. The 16 overlapping update PRs were closed as superseded by #59; #43 was closed with the incompatibility evidence below. None was represented as merged. The unrelated #55 remains open.
 
 | PR | Dependency | Integrated version or disposition |
 | --- | --- | --- |
@@ -48,7 +48,7 @@ The advisory describes stack exhaustion from deeply nested brace patterns.
 GitHub reports `first_patched_version: null`; npm's latest `braces` release is 3.0.3.
 The proposed npm downgrade to eslint-config-next 14 does not preserve the current Next/ESLint toolchain and was not applied.
 
-Later full and production-only npm audit calls timed out at the registry's bulk advisory endpoint.
+A final successful full audit confirms five high entries and no critical findings. Every remaining reported node is marked dev-only in the lockfile. Separate production-only audit attempts timed out at the registry's bulk advisory endpoint; no production-only audit pass is claimed.
 An offline audit without cached advisories is not security evidence.
 The existing full CI audit remains enabled; an unavailable audit service is not a pass.
 
@@ -58,6 +58,8 @@ Raw local evidence is outside the repository at `/tmp/rotrack-dependency-resolut
 The backend upgrade record is `backend-upgrade.md`; integrated Java 21 results are in `backend-integrated.log`.
 The source migration preserves strict unknown-field/numeric validation, canonical rich-text serialization, JWT ownership, database grants, and `ddl-auto: validate`.
 
-Final frontend, browser, and hosted-check results are recorded in `todo.md` after integration.
+An old Boot 3.4.1/Jackson 2 process and the new Boot 4.1.1/Jackson 3 process shared only the disposable database. A local probe created Unicode/link/task Notes and a Reflection under the old version, replayed both creation keys under the new version, then read a new-version Note update through the old version. Identity, versions, and canonical documents remained unchanged; no stored-data conversion was required. Evidence: `jackson-cross-version.log`.
+
+Frontend lint and typecheck pass. Two sequential full Vitest runs pass 202/202; the normal Turbopack production build passes. Structural compatibility fixes preserve event-driven loading, query identity, stale-response guards, timer restoration, and autosave coalescing without disabling lint rules. Local browser groups pass 14/14 for tracker/Notes/Daily Logs and 2/2 for Friends. The separate groups respect the default mutation budget. Final commands, limitations, and hosted-check readbacks are recorded in `todo.md`.
 Local browser fixtures use generated ES256 JWTs with real Spring security and disposable PostgreSQL.
 They do not verify Supabase token issuance or hosted production readiness.
