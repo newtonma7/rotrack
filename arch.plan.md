@@ -433,7 +433,7 @@ Friendships are mutual and use `PENDING` and `ACCEPTED` states. Store one canoni
 - Users cannot friend themselves.
 - Duplicate and reversed requests are rejected.
 - Blocking atomically deletes pending/accepted friendship state and prevents new direct requests. When M7 introduces invitations, the same transactional boundary must remove pairwise invitations. M6.2/M6.3 must suppress blocked-pair activity/presence projections.
-- Shared study summaries contain only opted-in Work totals and study-day streak. Goal progress may be added only after the goals feature defines its own sharing contract.
+- Shared study summaries contain only opted-in Work totals and study-day streak. Goal progress may be added only after the goals feature defines its own sharing contract. The [M6.2 contract](docs/specs/m6-study-summaries-contracts.md) defines completed Work over seven peer-local calendar days, saved peer timezone with UTC fallback, and a current/yesterday-anchored streak with an explicitly capped 366-day lookback. One database snapshot enforces accepted friendship, peer opt-in, and either-direction block exclusion; unavailable cases are indistinguishable and responses are not cached. No personal dashboard payload or raw entry projection crosses this boundary.
 - Rot totals, raw sessions, timestamps, notes, and reflections are never shared.
 - Active presence is a derived boolean: `studying=true` only when an opted-in user has an active `WORK` session.
 - Social screens poll an authenticated presence projection every 30 seconds while visible and stop polling when hidden or unmounted.

@@ -815,7 +815,9 @@ The gate requires all of the following:
 
 ### M6.2 — Privacy-safe study summaries
 
-**Status:** Not started
+**Status:** In progress
+
+**Source/local contract:** [M6.2 study summaries](docs/specs/m6-study-summaries-contracts.md) fixes the privacy matrix, seven-day completed-Work window, peer-timezone/UTC day boundaries, current/yesterday streak and explicit 366-day cap, minimal DTO, unavailable behavior, and validation gates. Implementation is isolated on `feature/m62-study-summaries` from `e8ba3900f7ed016f840d4cfe4ced4a084ed9920e`; no publishing or hosted work is authorized.
 
 - Expose Work totals and study-day streak only when `share_study_summary` is enabled; do not expose goal progress until the goals feature defines its sharing contract.
 - Build explicit projection DTOs; never serialize time-entry, note, reflection, or persistence entities directly.
