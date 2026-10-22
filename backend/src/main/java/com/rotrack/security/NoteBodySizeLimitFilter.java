@@ -1,6 +1,6 @@
 package com.rotrack.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.rotrack.dto.ApiErrorResponse;
 import com.rotrack.observability.RequestLogAttributes;
 import com.rotrack.web.RouteTemplates;

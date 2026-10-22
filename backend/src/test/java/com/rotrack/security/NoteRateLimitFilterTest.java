@@ -2,7 +2,7 @@ package com.rotrack.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -22,7 +22,7 @@ class NoteRateLimitFilterTest {
     @Test
     void noteBudgetIsSeparateAndReturnsRetryAfter() throws Exception {
         NoteRateLimiter limiter = new NoteRateLimiter(1, Duration.ofMinutes(1), 10, java.time.Clock.systemUTC());
-        NoteRateLimitFilter filter = new NoteRateLimitFilter(limiter, new ObjectMapper().findAndRegisterModules());
+        NoteRateLimitFilter filter = new NoteRateLimitFilter(limiter, new ObjectMapper());
         MockHttpServletResponse first = invoke(filter, "POST", "/api/v1/notes");
         MockHttpServletResponse second = invoke(filter, "PUT", "/api/v1/notes/22222222-2222-4222-8222-222222222222");
         assertThat(first.getStatus()).isEqualTo(200);
@@ -33,7 +33,7 @@ class NoteRateLimitFilterTest {
     @Test
     void reflectionWritesShareTheRichTextSaveBudget() throws Exception {
         NoteRateLimiter limiter = new NoteRateLimiter(1, Duration.ofMinutes(1), 10, java.time.Clock.systemUTC());
-        NoteRateLimitFilter filter = new NoteRateLimitFilter(limiter, new ObjectMapper().findAndRegisterModules());
+        NoteRateLimitFilter filter = new NoteRateLimitFilter(limiter, new ObjectMapper());
 
         MockHttpServletResponse reflection = invoke(filter, "PUT", "/api/v1/daily-logs/2026-01-01/reflection");
         MockHttpServletResponse note = invoke(filter, "PUT", "/api/v1/notes/22222222-2222-4222-8222-222222222222");
@@ -46,7 +46,7 @@ class NoteRateLimitFilterTest {
     @Test
     void readsAndTimerMutationsDoNotConsumeNoteBudget() throws Exception {
         NoteRateLimiter limiter = new NoteRateLimiter(1, Duration.ofMinutes(1), 10, java.time.Clock.systemUTC());
-        NoteRateLimitFilter filter = new NoteRateLimitFilter(limiter, new ObjectMapper().findAndRegisterModules());
+        NoteRateLimitFilter filter = new NoteRateLimitFilter(limiter, new ObjectMapper());
         MockHttpServletResponse read = invoke(filter, "GET", "/api/v1/notes");
         MockHttpServletResponse timer = invoke(filter, "POST", "/api/v1/time-entries/start");
         assertThat(read.getStatus()).isEqualTo(200);

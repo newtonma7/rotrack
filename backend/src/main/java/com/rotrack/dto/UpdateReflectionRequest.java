@@ -3,7 +3,7 @@ package com.rotrack.dto;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 
 @JsonIgnoreProperties(ignoreUnknown = false)
 public final class UpdateReflectionRequest {

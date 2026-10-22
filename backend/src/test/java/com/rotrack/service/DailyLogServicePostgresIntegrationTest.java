@@ -3,7 +3,7 @@ package com.rotrack.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.rotrack.config.DatabaseTlsValidator;
 import com.rotrack.dto.UpdateReflectionRequest;
 import com.rotrack.exception.ConflictException;
@@ -64,7 +64,7 @@ class DailyLogServicePostgresIntegrationTest {
         jdbc.update("DELETE FROM auth.users WHERE id = ?", OWNER);
     }
 
-    private UpdateReflectionRequest request(com.fasterxml.jackson.databind.JsonNode content, long version) {
+    private UpdateReflectionRequest request(tools.jackson.databind.JsonNode content, long version) {
         UpdateReflectionRequest request = new UpdateReflectionRequest();
         request.setContentJson(content);
         request.setExpectedVersion(version);

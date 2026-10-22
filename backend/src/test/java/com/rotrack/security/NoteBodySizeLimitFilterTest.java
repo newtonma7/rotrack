@@ -1,8 +1,8 @@
 package com.rotrack.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -20,7 +20,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 class NoteBodySizeLimitFilterTest {
     private static final UUID USER = UUID.fromString("11111111-1111-4111-8111-111111111111");
     private static final String NOTE_ID = "22222222-2222-4222-8222-222222222222";
-    private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @AfterEach
     void clearSecurityContext() {

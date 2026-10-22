@@ -2,7 +2,7 @@ package com.rotrack.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -110,7 +110,7 @@ class MutationRateLimitFilterTest {
     }
 
     private ObjectMapper configuredObjectMapper() {
-        return new ObjectMapper().findAndRegisterModules();
+        return new ObjectMapper();
     }
 
     private MockHttpServletResponse invoke(

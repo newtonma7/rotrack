@@ -1,6 +1,6 @@
 package com.rotrack.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.rotrack.security.MutationRateLimitFilter;
 import com.rotrack.security.MutationRateLimiter;
 import com.rotrack.security.UserSearchRateLimitFilter;

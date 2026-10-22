@@ -10,7 +10,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import com.rotrack.config.JacksonConfiguration;
 import com.rotrack.config.SecurityConfig;
 import com.rotrack.dto.PreferencesDTO;
 import com.rotrack.dto.UpdatePreferencesRequest;
@@ -20,7 +21,7 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.TestPropertySource;
@@ -28,7 +29,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(PreferencesController.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@Import({JacksonConfiguration.class, SecurityConfig.class, GlobalExceptionHandler.class})
 @TestPropertySource(properties = {
         "spring.security.oauth2.resourceserver.jwt.jwk-set-uri=https://example.test/jwks",
         "spring.security.oauth2.resourceserver.jwt.issuer-uri=https://example.test/issuer"

@@ -2,7 +2,7 @@ package com.rotrack.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.rotrack.security.MutationRateLimiter;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -13,7 +13,7 @@ class SafeguardConfigurationTest {
     void bindsNonSecretRateLimitAndLogMetadataConfiguration() {
         new ApplicationContextRunner()
                 .withUserConfiguration(RateLimitConfiguration.class, ObservabilityConfiguration.class)
-                .withBean(ObjectMapper.class, () -> new ObjectMapper().findAndRegisterModules())
+                .withBean(ObjectMapper.class, () -> new ObjectMapper())
                 .withPropertyValues(
                         "rotrack.logging.enabled=true",
                         "logging.structured.format.console=ecs",
@@ -36,7 +36,7 @@ class SafeguardConfigurationTest {
                     assertThat(registrations.get("userSearchFilterRegistration").isEnabled()).isFalse();
                     assertThat(registrations.values()).anySatisfy(registration ->
                             assertThat(registration.getOrder())
-                                    .isLessThan(org.springframework.boot.autoconfigure.security.SecurityProperties.DEFAULT_FILTER_ORDER)
+                                    .isLessThan(-100)
                     );
                 });
     }
