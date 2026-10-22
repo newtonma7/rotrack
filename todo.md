@@ -2,7 +2,7 @@
 
 **Architecture and contracts:** [`arch.plan.md`](arch.plan.md)
 **Backlog reviewed:** 2026-10-22
-**Current release target:** Source publication and dependency resolution are collected in PR #59. Its full audit/merge gate remains Blocked by operator decision for an unpatched lint dependency. Fresh Supabase acceptance, hosted M5.3/M6.1 rollout, and full production readiness remain unmet gates. M6.2 and M6.3 are implemented with source/local acceptance. The operator has separately authorized their source commit/push/PR publication as a stack over #59; fresh Supabase acceptance, merge, and hosted rollout remain open gates.
+**Current release target:** Source publication and dependency resolution are collected in PR #59. Its full audit/merge gate remains Blocked by operator decision for an unpatched lint dependency. Fresh Supabase acceptance, hosted M5.3/M6.1 rollout, and full production readiness remain unmet gates. M6.2 and M6.3 are implemented with source/local acceptance. Their source is published in draft [PR #60](https://github.com/newtonma7/rotrack/pull/60), stacked over #59; fresh Supabase acceptance, merge, and hosted rollout remain open gates.
 
 ## 1. Operating Rules
 
@@ -94,6 +94,8 @@ Do not record secrets, bearer tokens, database passwords, complete environment f
 ### M6.2/M6.3 source publication authorization — 2026-10-22
 
 The operator requested: "commit and publish all changes so far". This authorizes committing the reviewed M6.3 working tree and publishing the accumulated M6.2/M6.3 source on `feature/m63-study-presence`, with a pull request based on `feature/m61-friendships` so PR #59's existing work is not duplicated in the review diff. It does not authorize merging, hosted migrations, deployment, artifact releases, changes to PR #55, or an audit exception. Fresh Supabase acceptance remains unmet. The existing `braces` audit/merge block is unchanged.
+
+- Committed M6.3 as `e0388f7` (`Add opt-in active-study presence`) and pushed `feature/m63-study-presence`, including all six previously local M6.2 commits. Opened draft [PR #60](https://github.com/newtonma7/rotrack/pull/60) against `feature/m61-friendships`. Remote branch and PR head readback match the pushed source. Local publication guards and the history/prospective-tree secret scan pass. Hosted CI starts separately; no green CI-suite claim is made. The existing integration reports a successful Vercel Preview status automatically after publication; this is not production rollout or application smoke evidence. No merge, hosted migration, or manual deployment occurred.
 
 ### Canonical hosted candidate checkpoint — 2026-08-11
 
