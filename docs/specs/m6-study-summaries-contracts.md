@@ -1,6 +1,6 @@
 # M6.2 privacy-safe study summaries
 
-**Status:** Contract defined; source/local implementation in progress. No hosted rollout authorization.
+**Status:** Implemented with isolated local acceptance and independent review at `135682d`. Fresh Supabase authentication acceptance and hosted rollout remain unverified. No publishing or hosted rollout authorization.
 **Baseline:** `e8ba3900f7ed016f840d4cfe4ced4a084ed9920e`.
 **Scope:** Opted-in accepted Friends only. No presence, groups, goals, public profiles, or editor changes.
 

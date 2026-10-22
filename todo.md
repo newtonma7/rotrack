@@ -2,7 +2,7 @@
 
 **Architecture and contracts:** [`arch.plan.md`](arch.plan.md)
 **Backlog reviewed:** 2026-10-22
-**Current release target:** Source publication and dependency resolution are collected in PR #59. Its full audit/merge gate remains Blocked by operator decision for an unpatched lint dependency. Fresh Supabase acceptance, hosted M5.3/M6.1 rollout, and full production readiness remain unmet gates. M6.2 is the next unimplemented product slice.
+**Current release target:** Source publication and dependency resolution are collected in PR #59. Its full audit/merge gate remains Blocked by operator decision for an unpatched lint dependency. Fresh Supabase acceptance, hosted M5.3/M6.1 rollout, and full production readiness remain unmet gates. M6.2 is implemented with source/local acceptance; fresh Supabase acceptance and hosted rollout remain open. M6.3 has not started.
 
 ## 1. Operating Rules
 
@@ -815,7 +815,7 @@ The gate requires all of the following:
 
 ### M6.2 — Privacy-safe study summaries
 
-**Status:** In progress
+**Status:** Implemented—unverified
 
 **Source/local contract:** [M6.2 study summaries](docs/specs/m6-study-summaries-contracts.md) fixes the privacy matrix, seven-day completed-Work window, peer-timezone/UTC day boundaries, current/yesterday streak and explicit 366-day cap, minimal DTO, unavailable behavior, and validation gates. Implementation is isolated on `feature/m62-study-summaries` from `e8ba3900f7ed016f840d4cfe4ced4a084ed9920e`; no publishing or hosted work is authorized.
 
@@ -823,6 +823,19 @@ The gate requires all of the following:
 - Build explicit projection DTOs; never serialize time-entry, note, reflection, or persistence entities directly.
 - Ensure Rot totals, raw sessions, exact timestamps, note titles/content, and reflections never appear in responses or logs.
 - Add allow/deny matrix tests for friend state, sharing preference, block state, and unrelated users.
+
+**Evidence — 2026-10-22 / isolated local acceptance**
+
+- Baseline `e8ba3900f7ed016f840d4cfe4ced4a084ed9920e`; source commits `5116f6b`, `b6ea7ee`, `a39e368`, `af0dd01`, and review fixes `135682d` on separate local branch `feature/m62-study-summaries`. PR #59 and its unpatched dependency audit/merge block remain unchanged. No push, merge, hosted migration, deployment, or artifact publication occurred.
+- Added authenticated `GET /api/v1/social/summaries/{username}`, returning exactly `workSeconds`, `studyDayStreak`, and `streakCapped`. One PostgreSQL statement combines accepted-Friend authorization, peer opt-in, either-direction block exclusion, and bounded completed-WORK-only day aggregates. Missing/nonfriend/pending/self/opt-out/block cases return the same safe unavailable error. Responses and errors are `no-store`; no raw entries, private text, Rot, identities, timestamps, or presence appear in the DTO. No migration or table grant change is required.
+- Friends offers explicit reveal/refresh with zero, capped, unavailable, error/retry, loading, and stale-response states. Account/peer-keyed instances prevent old private values from reappearing when switching accounts and back. Relationship refresh remounts the controls. Summary cards sit below lifecycle controls at desktop/mobile widths; no polling or persistence was added.
+- Failing-before evidence: new API/UI/backend tests preceded implementation. Integration added a reproduced account-return regression and a route-label regression: the real API's 404 initially reported `/unmatched`, and the controller/template tests failed on that value. Fixes reset the private state structurally, register the sanitized summary template, and share canonical username validation with the friendship service. Final regression tests pass.
+- `cd backend && JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 mvn test package` passed at `135682d`: 248 tests, zero failures/errors, 43 expected opt-in skips. Isolated PostgreSQL 17.10 full verify command from `backend/src/test/README.md` passed: 43 tests, zero failures/errors, three mode-specific skips. After review fixes, `-Drotrack.postgres.integration=true -Dtest='FriendshipServicePostgresIntegrationTest,StudySummaryPostgresIntegrationTest' test` passed 15/15. Summary SQL/runtime-role coverage includes both pending and block directions, peer opt-out/missing preferences, zero versus unavailable, cross-window/now clipping, future/active/ROT/other-user exclusion, subsecond flooring, 23/25-hour DST days, fractional-offset midnight with a different database timezone, and the 366-day streak cap.
+- `cd frontend && npm run lint && npm run typecheck && npm test` passed: 38 files, 208 tests. The normal Turbopack production build passed with disposable loopback fixture public environment values. After the final browser-spec assertion, lint/typecheck passed again. The frontend child used a temporary dependency symlink and its webpack build passed; its Turbopack symlink limitation does not apply to the passing integrated normal build.
+- With fresh local ES256 JWT storage states outside the repository, real Spring security/runtime-role database access, and a separate disposable PostgreSQL browser database, `ROTRACK_E2E_REQUIRE_AUTH=1 npm run e2e -- m62-study-summaries.spec.ts --project=chromium` passed 1/1, zero skipped/flaky. It covers exact payload/cache headers, opt-in/revoke/block, sanitized error paths, keyboard reveal, and widths 320/390/768/1280. Native Chrome separately displayed seeded nonzero Work and verified desktop/mobile screenshots. This proves the local browser/Spring/database path, not Supabase token issuance or hosted acceptance.
+- `code-review` Standards reported two P2 findings: missing route-template registration and duplicated username validation. Both were fixed; targeted independent closure at `135682d` reports zero remaining Standards findings and zero Spec findings. Workflow-policy, migration-order, actionlint, sensitive-path guard, prospective-tree/history secret scan, and `git diff --check` pass. No audit exception or security-gate change was made.
+- Evidence is under `/tmp/rotrack-m62/`, with native component/review artifacts in this session's subagent artifact directory. An interrupted verification attempt is not counted; the isolated verify database was recreated before the successful full run. Owned browser, local auth/API/frontend processes, disposable PostgreSQL container/databases, and reusable browser auth states were cleaned up. Two managed writer worktrees remain retained for durable recovery; no agent is active.
+- **Remaining acceptance:** Fresh Supabase-issued authentication and separately authorized publication/hosted rollout. M6.2 remains Implemented—unverified under the repository's hosted acceptance boundary. M6.3 presence, M7 groups, dependency remediation, and editor redesign were not implemented.
 
 ### M6.3 — Active-study presence
 
@@ -899,4 +912,4 @@ Append evidence beneath the completed task; do not create unsupported global che
 
 ## 13. Next Action
 
-M6.2 privacy-safe study summaries is the next unimplemented product slice. M6.1 has complete source/local lifecycle/search/API/UI evidence but still needs fresh Supabase acceptance before a separately authorized hosted rollout. M5.3 has its own fresh-auth gate. PR #59 publishes the source/dependency work but must not merge while the unpatched braces audit gate remains blocked. Keep the current editor. Hosted migrations 007/008, manual deployment, artifact publishing, and broad production-readiness claims remain unauthorized.
+M6.2 privacy-safe study summaries and M6.1 friendships have complete source/local implementation evidence but still need fresh Supabase acceptance before separately authorized publication or hosted rollout. M6.3 active-study presence remains Not started and needs its own work unit. M5.3 has its own fresh-auth gate. PR #59 publishes the source/dependency work but must not merge while the unpatched braces audit gate remains blocked. Keep the current editor. Hosted migrations 007/008, manual deployment, artifact publishing, and broad production-readiness claims remain unauthorized.
