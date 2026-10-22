@@ -1,8 +1,7 @@
 # Backend integration tests
 
-The default Maven suite is credential-free. `PostgresMigrationIntegrationTest`
-is skipped unless the caller explicitly passes
-`-Drotrack.postgres.integration=true`.
+The default Maven suite is credential-free. `PostgresMigrationIntegrationTest` and the database-backed service suites are skipped unless the caller explicitly passes
+`-Drotrack.postgres.integration=true`. `StudySummaryPostgresIntegrationTest` exercises M6.2 projection behavior against real PostgreSQL and requires an already-migrated disposable loopback database in `verify` mode.
 
 ## PostgreSQL migration verification
 
@@ -38,8 +37,10 @@ Choose one target and mode:
 
   ```bash
   ROTRACK_TEST_DATABASE_MODE=verify mvn -Drotrack.postgres.integration=true \
-    -Dtest='PostgresMigrationIntegrationTest,TimeEntryRepositoryPostgresIntegrationTest,NoteServicePostgresIntegrationTest,DailyLogServicePostgresIntegrationTest,FriendshipStoragePostgresIntegrationTest,FriendshipServicePostgresIntegrationTest' test
+    -Dtest='PostgresMigrationIntegrationTest,TimeEntryRepositoryPostgresIntegrationTest,NoteServicePostgresIntegrationTest,DailyLogServicePostgresIntegrationTest,FriendshipStoragePostgresIntegrationTest,FriendshipServicePostgresIntegrationTest,StudySummaryPostgresIntegrationTest' test
   ```
+
+`StudySummaryPostgresIntegrationTest` invokes the real summary service/repository against disposable migrated PostgreSQL. Its fixture coverage includes accepted/opt-in authorization, unavailable equivalence, date-boundary clipping, future/active/ROT exclusion, fractional-second rounding, midnight, DST and fractional-offset days, streak anchoring/gaps/capping, and a bounded 366-day projection. Fixtures are deleted in teardown. Do not point it at a browser fixture or coordinator database.
 
 `NoteServicePostgresIntegrationTest` uses the public Note service/repository seam to verify
 non-transactional reads, exactly-one concurrent creation, replay conflicts/deleted replays,

@@ -183,8 +183,8 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         request.setAttribute(RequestLogAttributes.ERROR_CODE, code);
-        return ResponseEntity.status(status).body(
-                ApiErrorResponse.of(code, message, fieldErrors, RouteTemplates.resolve(request))
-        );
+        ResponseEntity.BodyBuilder response = ResponseEntity.status(status);
+        if (request.getRequestURI().startsWith("/api/v1/social/summaries/")) response.cacheControl(org.springframework.http.CacheControl.noStore());
+        return response.body(ApiErrorResponse.of(code, message, fieldErrors, RouteTemplates.resolve(request)));
     }
 }

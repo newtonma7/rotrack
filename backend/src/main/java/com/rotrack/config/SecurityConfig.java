@@ -191,6 +191,7 @@ public class SecurityConfig {
         request.setAttribute(com.rotrack.observability.RequestLogAttributes.ERROR_CODE, code);
         response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        if (request.getRequestURI().startsWith("/api/v1/social/summaries/")) response.setHeader("Cache-Control", "no-store");
         objectMapper.writeValue(
                 response.getOutputStream(),
                 ApiErrorResponse.of(code, message, java.util.Map.of(), com.rotrack.web.RouteTemplates.resolve(request))
