@@ -28,7 +28,7 @@ describe("friendship workspace", () => {
     render(<FriendsExperience />);
     fireEvent.click(await screen.findByRole("button", { name: "Show study summary for alice" }));
     expect(await screen.findByText("0h 0m work · last 7 days")).toBeTruthy();
-    expect(screen.getByText("365+ study days" )).toBeTruthy();
+    expect(screen.getByText("Study-day streak: 365+ days")).toBeTruthy();
     expect(screen.getByText(/friend's saved timezone \(UTC if unset\).*completed Work/i)).toBeTruthy();
     expect(api.getStudySummary).toHaveBeenCalledWith("alice");
   });

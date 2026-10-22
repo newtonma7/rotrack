@@ -51,7 +51,6 @@ export function FriendsExperience() {
 
   function actions(person: Relationship) {
     return <>
-      {view.id === "friends" && <StudySummaryControl key={`${person.username}-${revision}`} username={person.username} />}
       {view.id === "incoming" && <Button disabled={busy} className="rounded-full bg-[var(--rt-ink)] text-[var(--rt-paper)]" aria-label={`Accept ${person.username}`} onClick={() => void mutate(() => acceptFriendRequest(person.id), `You're now friends with @${person.username}.`)}>Accept</Button>}
       <Button variant="outline" disabled={busy} className="rounded-full border-[var(--rt-line)]" aria-label={`${view.id === "friends" ? "Remove" : view.id === "incoming" ? "Decline" : "Cancel request to"} ${person.username}`} onClick={() => {
         if (view.id === "friends") {
@@ -81,7 +80,7 @@ export function FriendsExperience() {
           <div aria-label="Connection lists" className="flex flex-wrap gap-1 rounded-2xl bg-[var(--rt-cream)] p-1">
             {views.map((item) => <Button key={item.id} variant="ghost" aria-pressed={view.id === item.id} disabled={busy} onClick={() => setView(item)} className={`flex-1 rounded-xl ${view.id === item.id ? "bg-[var(--rt-paper)] text-[var(--rt-ink)] shadow-sm" : "text-[var(--rt-ink-muted)]"}`}>{item.label}</Button>)}
           </div>
-          <PagedPeople key={`${view.id}-${revision}`} load={view.load} revision={revision} label={view.label.toLowerCase()} empty={view.empty} disabled={busy} actions={actions} />
+          <PagedPeople key={`${view.id}-${revision}`} load={view.load} revision={revision} label={view.label.toLowerCase()} empty={view.empty} disabled={busy} actions={actions} details={view.id === "friends" ? (person) => <StudySummaryControl username={person.username} /> : undefined} />
         </section>
         <div className="min-w-0 space-y-6">
           <FriendSearch revision={revision} busy={busy} request={(username) => void mutate(() => requestFriend(username), `Request sent to @${username}.`)} block={block} />

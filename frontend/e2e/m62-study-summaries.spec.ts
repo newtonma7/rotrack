@@ -65,15 +65,19 @@ test("M6.2 reveals only the opted-in accepted friend's allowlisted summary and c
 
     await page.reload();
     await expect(page.getByRole("button", { name: `Remove ${peerName}`, exact: true })).toBeVisible();
-    await page.getByRole("button", { name: `Show study summary for ${peerName}`, exact: true }).click();
-    const hidden = await page.waitForResponse((response) => response.url() === env.expectedApiUrl + `/social/summaries/${encodeURIComponent(peerName)}`);
+    const hiddenResponse = page.waitForResponse((response) => response.url() === env.expectedApiUrl + `/social/summaries/${encodeURIComponent(peerName)}`);
+    const reveal = page.getByRole("button", { name: `Show study summary for ${peerName}`, exact: true });
+    await reveal.focus();
+    await reveal.press("Enter");
+    const hidden = await hiddenResponse;
     expect(hidden.status()).toBe(404);
     await expect(page.getByText("Summary unavailable.", { exact: true })).toBeVisible();
     expect(await hidden.headerValue("cache-control")).toContain("no-store");
 
     await apiB.put("preferences", { data: { ...preferenceEnvelope.data, shareStudySummary: true } });
+    const availableResponse = page.waitForResponse((candidate) => candidate.url() === env.expectedApiUrl + `/social/summaries/${encodeURIComponent(peerName)}` && candidate.status() === 200);
     await page.getByRole("button", { name: `Retry study summary for ${peerName}`, exact: true }).click();
-    const response = await page.waitForResponse((candidate) => candidate.url() === env.expectedApiUrl + `/social/summaries/${encodeURIComponent(peerName)}` && candidate.status() === 200);
+    const response = await availableResponse;
     const payload = await response.json();
     expect(Object.keys(payload.data).sort()).toEqual(["streakCapped", "studyDayStreak", "workSeconds"]);
     expect(typeof payload.data.workSeconds).toBe("number");
@@ -81,10 +85,18 @@ test("M6.2 reveals only the opted-in accepted friend's allowlisted summary and c
     expect(typeof payload.data.streakCapped).toBe("boolean");
     expect(await response.headerValue("cache-control")).toContain("no-store");
     await expect(page.getByText(/work · last 7 days/)).toBeVisible();
+    await expect(page.getByText(/Study-day streak:/)).toBeVisible();
+    for (const width of [320, 390, 768, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await expect(page.getByRole("button", { name: `Refresh study summary for ${peerName}`, exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: `Remove ${peerName}`, exact: true })).toBeVisible();
+    }
 
     await apiB.put("preferences", { data: { ...preferenceEnvelope.data, shareStudySummary: false } });
+    const revokedResponse = page.waitForResponse((candidate) => candidate.url() === env.expectedApiUrl + `/social/summaries/${encodeURIComponent(peerName)}` && candidate.status() === 404);
     await page.getByRole("button", { name: `Refresh study summary for ${peerName}`, exact: true }).click();
-    const revoked = await page.waitForResponse((candidate) => candidate.url() === env.expectedApiUrl + `/social/summaries/${encodeURIComponent(peerName)}` && candidate.status() === 404);
+    const revoked = await revokedResponse;
     expect(await revoked.headerValue("cache-control")).toContain("no-store");
     await expect(page.getByText("Summary unavailable.", { exact: true })).toBeVisible();
 

@@ -10,13 +10,14 @@ type PageState<T> =
   | { kind: "ready"; page: PeoplePage<T>; moreError: boolean };
 
 export function PagedPeople<T extends { username: string }>({
-  load, revision, empty, label, actions, disabled,
+  load, revision, empty, label, actions, details, disabled,
 }: {
   load: (cursor?: string) => Promise<PeoplePage<T>>;
   revision: number;
   empty: string;
   label: string;
   actions: (person: T) => ReactNode;
+  details?: (person: T) => ReactNode;
   disabled: boolean;
 }) {
   const [state, setState] = useState<PageState<T>>({ kind: "loading" });
@@ -61,6 +62,7 @@ export function PagedPeople<T extends { username: string }>({
             <li key={person.username} className="flex min-w-0 flex-wrap items-center justify-between gap-3 py-4">
               <span className="min-w-0 break-all font-semibold">@{person.username}</span>
               <div className="flex flex-wrap items-center gap-1">{actions(person)}</div>
+              {details?.(person)}
             </li>
           ))}
         </ul>

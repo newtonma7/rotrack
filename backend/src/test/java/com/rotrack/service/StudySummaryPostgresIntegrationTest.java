@@ -9,7 +9,6 @@ import com.rotrack.exception.ResourceNotFoundException;
 import java.net.URI;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
@@ -110,6 +109,9 @@ class StudySummaryPostgresIntegrationTest {
         assertThatThrownBy(() -> runtime(() -> service.get(VIEWER, "m62_peer"))).isInstanceOf(ResourceNotFoundException.class);
         assertThatThrownBy(() -> runtime(() -> service.get(VIEWER, "m62_other"))).isInstanceOf(ResourceNotFoundException.class);
         assertThatThrownBy(() -> runtime(() -> service.get(PEER, "m62_peer"))).isInstanceOf(ResourceNotFoundException.class);
+        jdbc.update("DELETE FROM user_preferences WHERE user_id=?", PEER);
+        assertThatThrownBy(() -> runtime(() -> service.get(VIEWER, "m62_peer"))).isInstanceOf(ResourceNotFoundException.class);
+        assertThatThrownBy(() -> runtime(() -> service.get(VIEWER, "m62_missing"))).isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test void clipsSevenDayWindowRoundsEachDayAndExcludesFutureActiveAndRot() {
@@ -126,13 +128,49 @@ class StudySummaryPostgresIntegrationTest {
         assertThat(result.streakCapped()).isFalse();
     }
 
-    @Test void timezoneBoundariesUseSavedZoneIncludingDstAndFractionalOffsets() {
+    @Test void savedZoneSplitsBothDstTransitionsAtActualMidnight() {
         jdbc.update("UPDATE user_preferences SET timezone='America/New_York' WHERE user_id=?", PEER);
-        entry(PEER, "WORK", "2026-03-08T04:59:59Z", "2026-03-08T05:00:00Z");
-        var result = runtime(() -> service.get(VIEWER, "m62_peer"));
-        assertThat(result.workSeconds()).isZero(); // valid study day outside the rolling seven-day total
+        when(clock.instant()).thenReturn(Instant.parse("2026-03-09T04:00:00Z"));
+        entry(PEER, "WORK", "2026-03-08T05:00:00Z", "2026-03-09T04:00:00Z");
+        var spring = runtime(() -> service.get(VIEWER, "m62_peer"));
+        assertThat(spring.workSeconds()).isEqualTo(23 * 3600);
+        assertThat(spring.studyDayStreak()).isEqualTo(1);
+        jdbc.update("DELETE FROM time_entries WHERE user_id=?", PEER);
+        when(clock.instant()).thenReturn(Instant.parse("2026-11-02T05:00:00Z"));
+        entry(PEER, "WORK", "2026-11-01T04:00:00Z", "2026-11-02T05:00:00Z");
+        var fall = runtime(() -> service.get(VIEWER, "m62_peer"));
+        assertThat(fall.workSeconds()).isEqualTo(25 * 3600);
+        assertThat(fall.studyDayStreak()).isEqualTo(1);
+    }
+
+    @Test void fractionalOffsetAndDatabaseTimezoneCannotRedefineThePeerDay() {
         jdbc.update("UPDATE user_preferences SET timezone='Asia/Kathmandu' WHERE user_id=?", PEER);
-        entry(PEER, "WORK", "2026-06-11T06:15:00Z", "2026-06-11T06:15:01Z");
-        assertThat(runtime(() -> service.get(VIEWER, "m62_peer")).workSeconds()).isEqualTo(1);
+        when(clock.instant()).thenReturn(Instant.parse("2026-06-11T19:00:00Z")); // June 12 locally
+        entry(PEER, "WORK", "2026-06-11T18:14:59Z", "2026-06-11T18:15:01Z");
+        var result = runtime(() -> {
+            jdbc.execute("SET LOCAL TIME ZONE 'Pacific/Honolulu'");
+            return service.get(VIEWER, "m62_peer");
+        });
+        assertThat(result.workSeconds()).isEqualTo(2);
+        assertThat(result.studyDayStreak()).isEqualTo(2);
+    }
+
+    @Test void clipsEntriesAcrossSevenDayStartAndNowWithoutReadingAnotherUser() {
+        entry(PEER, "WORK", "2026-06-04T23:59:59Z", "2026-06-05T00:00:01Z");
+        entry(PEER, "WORK", "2026-06-11T11:59:59Z", "2026-06-11T12:00:02Z");
+        entry(OTHER, "WORK", "2026-06-11T08:00:00Z", "2026-06-11T09:00:00Z");
+        var result = runtime(() -> service.get(VIEWER, "m62_peer"));
+        assertThat(result.workSeconds()).isEqualTo(2);
+        assertThat(result.studyDayStreak()).isEqualTo(1);
+    }
+
+    @Test void queryBoundsTheStreakAndHonorsBothPendingDirections() {
+        entry(PEER, "WORK", "2025-06-01T00:00:00Z", "2026-06-11T12:00:00Z");
+        var full = runtime(() -> service.get(VIEWER, "m62_peer"));
+        assertThat(full.studyDayStreak()).isEqualTo(366);
+        assertThat(full.streakCapped()).isTrue();
+        assertThat(full.workSeconds()).isEqualTo(6 * 86400 + 12 * 3600);
+        jdbc.update("UPDATE friendships SET state='PENDING', requester_id=? WHERE user_low_id=? AND user_high_id=?", PEER, VIEWER, PEER);
+        assertThatThrownBy(() -> runtime(() -> service.get(VIEWER, "m62_peer"))).isInstanceOf(ResourceNotFoundException.class);
     }
 }

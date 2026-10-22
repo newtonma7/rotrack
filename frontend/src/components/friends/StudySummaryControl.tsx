@@ -22,10 +22,12 @@ function formatWork(seconds: number): string {
 
 export function StudySummaryControl({ username }: { username: string }) {
   const { user } = useAuth();
-  const accountId = user?.id ?? null;
-  const identity = `${accountId ?? "signed-out"}:${username}`;
-  const [snapshot, setSnapshot] = useState<{ identity: string; state: SummaryState }>({ identity, state: { kind: "hidden" } });
-  const state = snapshot.identity === identity ? snapshot.state : { kind: "hidden" as const };
+  // A new account or peer gets a new instance, so returning to an old account cannot reveal its stale data.
+  return <SummaryRequest key={`${user?.id ?? "signed-out"}:${username}`} username={username} />;
+}
+
+function SummaryRequest({ username }: { username: string }) {
+  const [state, setState] = useState<SummaryState>({ kind: "hidden" });
   const requestId = useRef(0);
   const mounted = useRef(true);
 
@@ -34,29 +36,24 @@ export function StudySummaryControl({ username }: { username: string }) {
     return () => { mounted.current = false; requestId.current += 1; };
   }, []);
 
-  useEffect(() => {
-    requestId.current += 1;
-  }, [identity]);
-
   async function reveal() {
     const currentRequest = ++requestId.current;
-    const requestedAccount = accountId;
-    setSnapshot({ identity, state: { kind: "loading" } });
+    setState({ kind: "loading" });
     try {
       const summary = await getStudySummary(username);
-      if (mounted.current && requestId.current === currentRequest && requestedAccount === accountId) {
-        setSnapshot({ identity, state: { kind: "available", summary } });
+      if (mounted.current && requestId.current === currentRequest) {
+        setState({ kind: "available", summary });
       }
     } catch (error: unknown) {
-      if (mounted.current && requestId.current === currentRequest && requestedAccount === accountId) {
-        setSnapshot({ identity, state: error instanceof ApiRequestError && error.status === 404 ? { kind: "unavailable" } : { kind: "error" } });
+      if (mounted.current && requestId.current === currentRequest) {
+        setState(error instanceof ApiRequestError && error.status === 404 ? { kind: "unavailable" } : { kind: "error" });
       }
     }
   }
 
   const capped = state.kind === "available" && state.summary.streakCapped;
   return (
-    <div className="w-full basis-full rounded-2xl bg-[var(--rt-cream)] p-4 sm:max-w-md">
+    <div className="w-full basis-full rounded-2xl bg-[var(--rt-cream)] p-4">
       <div className="flex flex-wrap items-center gap-2">
         {state.kind === "hidden" && <Button variant="outline" className="rounded-full border-[var(--rt-line)]" aria-label={`Show study summary for ${username}`} onClick={() => void reveal()}>Show study summary</Button>}
         {state.kind === "loading" && <p role="status" className="text-sm text-[var(--rt-ink-muted)]">Loading study summary…</p>}
@@ -64,7 +61,7 @@ export function StudySummaryControl({ username }: { username: string }) {
         {state.kind === "error" && <><p role="alert" className="text-sm">Could not load study summary.</p><Button variant="outline" className="rounded-full border-[var(--rt-line)]" aria-label={`Retry study summary for ${username}`} onClick={() => void reveal()}>Retry</Button></>}
         {state.kind === "available" && <>
           <p className="w-full font-semibold tabular-nums">{formatWork(state.summary.workSeconds)}</p>
-          <p className="text-sm font-semibold tabular-nums">{state.summary.studyDayStreak}{capped ? "+" : ""} study days</p>
+          <p className="text-sm font-semibold tabular-nums">Study-day streak: {state.summary.studyDayStreak}{capped ? "+" : ""} {state.summary.studyDayStreak === 1 ? "day" : "days"}</p>
           <Button variant="ghost" className="rounded-full text-sm" aria-label={`Refresh study summary for ${username}`} onClick={() => void reveal()}>Refresh</Button>
         </>}
       </div>
