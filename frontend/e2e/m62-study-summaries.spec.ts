@@ -71,6 +71,7 @@ test("M6.2 reveals only the opted-in accepted friend's allowlisted summary and c
     await reveal.press("Enter");
     const hidden = await hiddenResponse;
     expect(hidden.status()).toBe(404);
+    expect((await hidden.json()).path).toBe("/api/v1/social/summaries/{username}");
     await expect(page.getByText("Summary unavailable.", { exact: true })).toBeVisible();
     expect(await hidden.headerValue("cache-control")).toContain("no-store");
 

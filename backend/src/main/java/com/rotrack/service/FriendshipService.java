@@ -16,7 +16,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -30,7 +29,7 @@ public class FriendshipService {
     }
 
     public SearchPage search(UUID viewer, String query) {
-        String prefix = username(query);
+        String prefix = UsernameValidator.canonicalize(query);
         return new SearchPage(repository.search(viewer, prefix));
     }
 
@@ -64,7 +63,7 @@ public class FriendshipService {
 
     @Transactional
     public Relationship request(UUID viewer, String rawUsername) {
-        var peer = repository.peer(username(rawUsername)).orElseThrow(this::missing);
+        var peer = repository.peer(UsernameValidator.canonicalize(rawUsername)).orElseThrow(this::missing);
         var pair = pair(viewer, peer.id());
         repository.lock(pair);
         if (repository.blocked(pair)) throw missing();
@@ -100,7 +99,7 @@ public class FriendshipService {
 
     @Transactional
     public void block(UUID viewer, String rawUsername) {
-        var peer = repository.peer(username(rawUsername)).orElseThrow(this::missing);
+        var peer = repository.peer(UsernameValidator.canonicalize(rawUsername)).orElseThrow(this::missing);
         var pair = pair(viewer, peer.id());
         repository.lock(pair);
         repository.block(viewer, peer.id());
@@ -109,7 +108,7 @@ public class FriendshipService {
 
     @Transactional
     public void unblock(UUID viewer, String rawUsername) {
-        repository.peer(username(rawUsername)).ifPresent(peer -> {
+        repository.peer(UsernameValidator.canonicalize(rawUsername)).ifPresent(peer -> {
             var pair = pair(viewer, peer.id());
             repository.lock(pair);
             repository.unblock(viewer, peer.id());
@@ -126,15 +125,6 @@ public class FriendshipService {
     private FriendshipPair pair(UUID viewer, UUID peer) {
         if (viewer.equals(peer)) throw validation("username", "Choose another username");
         return FriendshipPair.of(viewer, peer);
-    }
-
-    private String username(String value) {
-        if (value == null) throw validation("username", "A canonical username of 3–24 characters is required");
-        String normalized = value.trim().toLowerCase(Locale.ROOT);
-        if (!normalized.matches("[a-z0-9_]{3,24}")) {
-            throw validation("username", "Use 3–24 letters, numbers, or underscores");
-        }
-        return normalized;
     }
 
     private Relationship relationship(Row row) {

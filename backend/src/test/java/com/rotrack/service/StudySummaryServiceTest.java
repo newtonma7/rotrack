@@ -16,7 +16,20 @@ import org.junit.jupiter.api.Test;
 class StudySummaryServiceTest {
     private final StudySummaryRepository repository = mock(StudySummaryRepository.class);
     private final StudySummaryService service = new StudySummaryService(repository, Clock.fixed(Instant.parse("2026-06-11T12:00:00Z"), ZoneOffset.UTC));
-    private final UUID peer = UUID.randomUUID();
+
+    @Test
+    void canonicalizesSocialHandlesAndRejectsInvalidNamesBeforeReadingActivity() {
+        when(repository.project(any(), any(), any())).thenReturn(List.of());
+        assertThatThrownBy(() -> service.get(UUID.randomUUID(), " ALICE_1 "))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verify(repository).project(any(), eq("alice_1"), any());
+        clearInvocations(repository);
+        for (String name : new String[]{null, "ab", "a%lice", "a".repeat(25)}) {
+            assertThatThrownBy(() -> service.get(UUID.randomUUID(), name))
+                    .isInstanceOf(com.rotrack.exception.ValidationException.class);
+        }
+        verifyNoInteractions(repository);
+    }
 
     @Test
     void countsOnlyRecentDaysAndStreakCanEndYesterday() {

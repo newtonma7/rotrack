@@ -46,11 +46,13 @@ class StudySummaryControllerTest {
     @Test
     void routeRequiresAuthenticationAndNotFoundIsNoStore() throws Exception {
         mvc.perform(get("/api/v1/social/summaries/alice")).andExpect(status().isUnauthorized())
-                .andExpect(header().string("Cache-Control", "no-store"));
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.path").value("/api/v1/social/summaries/{username}"));
         UUID viewer = UUID.randomUUID();
         when(service.get(viewer, "alice")).thenThrow(new ResourceNotFoundException("Study summary not found"));
         mvc.perform(get("/api/v1/social/summaries/alice").with(jwt().jwt(token -> token.subject(viewer.toString()))))
                 .andExpect(status().isNotFound()).andExpect(header().string("Cache-Control", "no-store"))
-                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.path").value("/api/v1/social/summaries/{username}"));
     }
 }

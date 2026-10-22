@@ -25,7 +25,7 @@ public class StudySummaryService {
 
     @Transactional(readOnly = true, timeout = 5)
     public StudySummaryDTO get(UUID viewer, String username) {
-        String canonical = canonicalUsername(username);
+        String canonical = UsernameValidator.canonicalize(username);
         Instant now = clock.instant();
         List<StudySummaryRepository.DayTotal> days = repository.project(viewer, canonical, now);
         if (days.isEmpty()) throw new ResourceNotFoundException("Study summary not found");
@@ -47,15 +47,4 @@ public class StudySummaryService {
         return new StudySummaryDTO(work, streak, capped);
     }
 
-    private String canonicalUsername(String value) {
-        if (value == null) throw invalidUsername();
-        String name = value.trim().toLowerCase(java.util.Locale.ROOT);
-        if (!name.matches("[a-z0-9_]{3,24}")) throw invalidUsername();
-        return name;
-    }
-
-    private com.rotrack.exception.ValidationException invalidUsername() {
-        return new com.rotrack.exception.ValidationException("Use 3–24 letters, numbers, or underscores",
-                java.util.Map.of("username", "Use 3–24 letters, numbers, or underscores"));
-    }
 }

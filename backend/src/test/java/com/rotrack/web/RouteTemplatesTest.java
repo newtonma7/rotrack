@@ -71,6 +71,16 @@ class RouteTemplatesTest {
         assertThat(RouteTemplates.mutation(search)).isEmpty();
     }
 
+    @Test
+    void summaryRoutesNeverLogThePeerHandleBeforeOrAfterControllerMapping() {
+        var summary = request("GET", "/api/v1/social/summaries/private_handle");
+        assertThat(RouteTemplates.resolve(summary)).isEqualTo("/api/v1/social/summaries/{username}");
+        assertThat(RouteTemplates.mutation(summary)).isEmpty();
+        summary.setAttribute(org.springframework.web.servlet.HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE,
+                "/api/v1/social/summaries/{username}");
+        assertThat(RouteTemplates.resolve(summary)).isEqualTo("/api/v1/social/summaries/{username}");
+    }
+
     private MockHttpServletRequest request(String method, String path) {
         MockHttpServletRequest request = new MockHttpServletRequest(method, path);
         request.setServletPath(path);
